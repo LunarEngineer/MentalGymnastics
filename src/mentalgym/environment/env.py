@@ -19,7 +19,8 @@ class MentalGym():
     def __init__(
         self,
         experiment_space_dimensionality:int=2,
-        base_action_set_directory:'.atomic_actions'
+        base_action_set_directory:str='.atomic_actions',
+        manage_actions: Callable = lambda x: x
     ):
         # This is the dimensionality of the Experiment Space (i.e. a line, a plane, an n-dimensional hypercube)
         self._ndim = experiment_space_dimensionality
@@ -29,7 +30,19 @@ class MentalGym():
         self._ray_session = ray.init()
         # This creates the experiment space (syntax might be off, but this makes a DataFrame with n columns
         # 
-        self._experiment_space = ray.put(_make_env(experiment_space_dimensionality))
+        self._action_space = _build_action_space(self)
+        # self._experiment_space = ray.put(_make_experiment_space(experiment_space_dimensionality))
+        # Build an agent pool
+        # This function creates n agents using the same action space 
+        self._agent_pool = [RemoteAgent(self) for ]
+    def step(self,id:object,x:Iterable[float]):
+        """Places a node into the environment.
+        
+        Parameters
+        ----------
+        id: Any
+            The id of the node to place
+        """
 
 def _add_node(experiment_space):
     
@@ -45,7 +58,7 @@ def _make_experiment_space(
 
     The node_id is the population identifier for the action placed.
     The node type is a group identifier, currently used to distinguish
-    between input (type 0) and non-input nodes, though could be extended.
+    between input (type 0), output (type -1), though could be extended.
     The location is of the form <x_0,...,x_n> where n is the
     dimensionality of the experiment space.
     Inputs is a list of input action node population id's.

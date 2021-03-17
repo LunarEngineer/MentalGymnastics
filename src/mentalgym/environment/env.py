@@ -7,13 +7,21 @@ class MentalGym():
 
     Maintains an experiment space, an action bank, and an agent pool.
 
-    It maintains the agent pool using Ray
+    Each agent maintains its own Experiment Space, while the action
+    bank is maintained by the gym and shared amongst agents. Users
+    pass a 'action curation' method when they instantiate the gym;
+    that runs remotely and curates the action pool. The default method
+    baked into the gym drops 'dead-end' branches if they're under a
+    threshold for *metric*.
+
+    It maintains the agent pool using Ray. Each agent is maintaining
+    its own Experiment Space. 
 
     It maintains and curates the action bank by reading and writing
     files to the directory in which the agent stores actions.
 
     It maintains and curates statistics concerning the actions in
-    the action bank.
+    the action bank. These are shared across agents.8
 
     """
     def __init__(

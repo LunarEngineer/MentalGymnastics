@@ -3,6 +3,8 @@ import pandas as pd
 from __futures__ import annotation
 from utils.types import Action, ActionSet
 
+# This decorator is disabled until tests are implemented
+#@ray.remote
 class ActionBank():
     """Builds and tracks actions and their history.
 
@@ -24,17 +26,25 @@ class ActionBank():
     ----------
     action_bank_directory: str = '.action_bank'
         The directory to store / load the action bank from.
-
+    sampling_function: Optional[Callable] = None
+        The default sampling function. This is any function
+        that takes in a Pandas dataframe and returns a sampled
+	dataframe. This function is used when calling .sample().
+	This defaults to uniform random the size of the action
+	manifest.
     Methods
     -------
-    query()
+    query(): Needs testing, finished documentation
         Returns information for queried actions
-    _query()
+    _query(): Needs testing, finished documentation
         Calls .query on the Pandas representation of the actions.
     sample()
-        Returns a sample of actions
+        Returns a sample of actions.
+	Using this to build the set of actions is equivalent to shaping
+	action space.
     prune()
         Removes actions from the action bank.
+        This is used to prune dead-end elements of the search space.
     build()
         Returns a composed action from input.
     update()
@@ -63,21 +73,40 @@ class ActionBank():
         Returns
         -------
         action_manifest: ActionSet
-            This is an action manifest
+            This is a validated action manifest
         """
-	bank = None
-        action_dir = self._action_bank_query
-	raise NotImplementedError
-	return bank
+	# First, load in the manifest
+	def load_json():
+	    # Read .manifest from action bank directory
+	    # self._action_bank_directory
+	    raise NotImplementedError
+        action_manifest = load_json()
+	# Then, do any validation necessary for those actions
+	def validate_actions(action_manifest:ActionSet):
+	    # This will be abstracted
+	    raise NotImplementedError
+	return validate_actions(action_manifest)
 
     def _save_bank(self) -> None:
 	"""Save action bank to local directory.
 
 	Dump the action manifest to disk.
 	"""
-	raise NotImplementedError
+        manifest_file = os.path.join(
+            self._action_bank_directory,
+            '.manifest'
+        )
+	# This writes self._action_manifest to json
+	with open('.manifest','w') as f:
+            f.write(json.dumps(self._action_manifest))
+	    raise NotImplementedError
+	write_json()
 
-    def query(self, action_id: str) -> Action:
+    def query(
+	self,
+	action_id: str,
+	 **kwargs
+    ) -> Action:
         """Return action information.
 
         This returns the action identified by the action id. 
@@ -88,6 +117,8 @@ class ActionBank():
 	----------
 	action_id: str
 	    The string identifier for the action.
+	**kwargs
+	    Key word arguments
 
 	Returns
 	-------

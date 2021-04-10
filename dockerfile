@@ -6,12 +6,7 @@
 # Long term if this project takes off it could winnow down to a minimal
 #    docker environment; this one is quite heavy. It *is sufficient* for
 #    testing and building, though.
-FROM cschranz/gpu-jupyter:v1.3_cuda-10.2_ubuntu-18.04_slim as base
-
-# This section starts with the base cshranz image, nothing extra,
-#   and does the grunt work to install the package into a virtual
-#   environment..
-FROM base as builder
+FROM python:3.8.6-slim as builder
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -27,6 +22,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # prepend poetry and venv to path
 ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+
 
 # Install basic dependencies for poetry install
 RUN apt-get update \
@@ -45,12 +41,20 @@ RUN pip install --upgrade setuptools pip
 RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
 
 # copy project requirement files here to ensure they will be cached.
-COPY pyproject.toml /install
+COPY pyproject.toml /install/pyproject.toml
 COPY src /install/src
 
+WORKDIR /install
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN poetry install --no-dev --no-root
 
+FROM cschranz/gpu-jupyter:v1.3_cuda-10.2_ubuntu-18.04_slim as base
+
 # What else needs to be done to set up an environment?
+COPY --from=builder /install/.venv /usr/local/.mentalgym_env
+WORKDIR /usr/local/.mentalgym_env
+RUN source bin/activate
+RUN python -m ipykernel install --user --name mentalgym --display-name "Mental Gym (Python 3.8.6)"
+WORKDIR /home/jovyan
 # Need to copy from builder into base
 # Using https://github.com/python-poetry/poetry/discussions/1879 as a resource

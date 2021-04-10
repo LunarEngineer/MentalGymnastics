@@ -1,7 +1,7 @@
 """Contains the action bank class and supporting code."""
-import pandas as pd
 from __futures__ import annotation
-from utils.types import Action, ActionSet
+import pandas as pd
+from mentalgym.utils.types import Action, ActionSet
 
 # This import will be used to fill the atomic action set
 from mentalgym.constants import atomic_actions

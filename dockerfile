@@ -46,13 +46,14 @@ COPY src /install/src
 
 WORKDIR /install
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
-RUN poetry install --no-dev --no-root
+RUN poetry install --no-dev --no-root -vvv
 
-FROM cschranz/gpu-jupyter:v1.3_cuda-10.2_ubuntu-18.04_slim as base
+# Note that this *needs* to be a Docker ARG which can be overloaded.
+FROM cschranz/gpu-jupyter:v1.4_cuda-11.0_ubuntu-18.04_slim as base
 
 # What else needs to be done to set up an environment?
-COPY --from=builder /install/.venv /usr/local/.mentalgym_env
-WORKDIR /usr/local/.mentalgym_env
+COPY --from=builder /install/.venv /usr/local/.venv
+WORKDIR /usr/local/.venv
 RUN source bin/activate
 RUN python -m ipykernel install --user --name mentalgym --display-name "Mental Gym (Python 3.8.6)"
 WORKDIR /home/jovyan

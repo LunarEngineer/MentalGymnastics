@@ -7,3 +7,8 @@ workspace.code-workspace
 #                    Jupyter Notebook Artifacts                    #
 ####################################################################
 .ipynb_checkpoints
+
+####################################################################
+#                 Development Container Artifacts                  #
+####################################################################
+.devcontainer

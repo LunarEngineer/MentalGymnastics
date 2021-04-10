@@ -1,10 +1,10 @@
 from ray import ObjectId
-from typing import Dict, Iterable, Union
+from typing import Any, Dict, Iterable, Union
 
 # These types are used throughout the action bank
 ActionID = str
 Action = Dict[str, Any]
-ActionSet = Dict[str, Action]
+ActionSet = Iterable[Dict[str, Action]]
 
 ExperimentID = str
 Experiment = Union[ObjectId,ExperimentID]

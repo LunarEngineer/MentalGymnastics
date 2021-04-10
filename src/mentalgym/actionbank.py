@@ -3,6 +3,9 @@ import pandas as pd
 from __futures__ import annotation
 from utils.types import Action, ActionSet
 
+# This import will be used to fill the atomic action set
+from mentalgym.constants import atomic_actions
+
 # This decorator is disabled until tests are implemented
 #@ray.remote
 class ActionBank():
@@ -29,9 +32,9 @@ class ActionBank():
     sampling_function: Optional[Callable] = None
         The default sampling function. This is any function
         that takes in a Pandas dataframe and returns a sampled
-	dataframe. This function is used when calling .sample().
-	This defaults to uniform random the size of the action
-	manifest.
+        dataframe. This function is used when calling .sample().
+        This defaults to uniform random the size of the action
+        manifest.
     Methods
     -------
     query(): Needs testing, finished documentation
@@ -40,8 +43,8 @@ class ActionBank():
         Calls .query on the Pandas representation of the actions.
     sample()
         Returns a sample of actions.
-	Using this to build the set of actions is equivalent to shaping
-	action space.
+        Using this to build the set of actions is equivalent to shaping
+        action space.
     prune()
         Removes actions from the action bank.
         This is used to prune dead-end elements of the search space.
@@ -75,97 +78,100 @@ class ActionBank():
         action_manifest: ActionSet
             This is a validated action manifest
         """
-	# First, load in the manifest
-	def load_json():
-	    # Read .manifest from action bank directory
-	    # self._action_bank_directory
-	    raise NotImplementedError
-        action_manifest = load_json()
-	# Then, do any validation necessary for those actions
-	def validate_actions(action_manifest:ActionSet):
-	    # This will be abstracted
-	    raise NotImplementedError
-	return validate_actions(action_manifest)
-
-    def _save_bank(self) -> None:
-	"""Save action bank to local directory.
-
-	Dump the action manifest to disk.
-	"""
+        # TODO: Get some default atomics up for tests
+        atomic_actions = {
+            None
+        }
+        # First, load in the manifest
         manifest_file = os.path.join(
             self._action_bank_directory,
             '.manifest'
         )
-	# This writes self._action_manifest to json
-	with open('.manifest','w') as f:
+        with open(manifest_file,'r') as f:
+            action_manifest = json.loads(f.readlines())
+        # Then, do any validation necessary for those actions
+        def validate_actions(action_manifest:ActionSet):
+            # This will be abstracted
+            return action_manifest
+        return validate_actions(action_manifest)
+
+    def _save_bank(self) -> None:
+        """Save action bank to local directory.
+
+        Dump the action manifest to disk.
+        """
+        manifest_file = os.path.join(
+            self._action_bank_directory,
+            '.manifest'
+        )
+        # This writes self._action_manifest to json
+        with open('.manifest','w') as f:
             f.write(json.dumps(self._action_manifest))
-	    raise NotImplementedError
-	write_json()
 
     def query(
-	self,
-	action_id: str,
-	 **kwargs
+        self,
+        action_id: str,
+        **kwargs
     ) -> Action:
         """Return action information.
 
-        This returns the action identified by the action id. 
+        This returns the action identified by the action id.
 
-	Todo: Should this contain a secondary parameter to subset the action?
+        Todo: Should this contain a secondary parameter to subset the action?
 
-	Parameters
-	----------
-	action_id: str
-	    The string identifier for the action.
-	**kwargs
-	    Key word arguments
+        Parameters
+        ----------
+        action_id: str
+            The string identifier for the action.
+        **kwargs
+            Key word arguments
 
-	Returns
-	-------
-	action: Action
+        Returns
+        -------
+        action: Action
 
-	Examples
-	--------
-	>>> steve = ActionBank()
-	>>> steve.query('actionid')
-	Representationofaction
+        Examples
+        --------
+        >>> steve = ActionBank()
+        >>> steve.query('actionid')
+        Representationofaction
         """
-	return self._action_manifest[action_id]
+        return self._action_manifest[action_id]
 
     def _query(self, query_string: Optional[str] = None) -> pd.DataFrame:
-	"""Return filtered action set.
+        """Return filtered action set.
 
-	This constructs a Pandas DataFrame from the action manifest,
-	filters it according to the query_str parameter, and returns
-	the subset.
+        This constructs a Pandas DataFrame from the action manifest,
+        filters it according to the query_str parameter, and returns
+        the subset.
 
-	Parameters
-	----------
-	query_str: Optional[str] = None
-	    An empty string by default, this is a query string
-	    that meets the format used by pandas .query method.
+        Parameters
+        ----------
+        query_str: Optional[str] = None
+            An empty string by default, this is a query string
+            that meets the format used by pandas .query method.
 
-	Returns
-	-------
-	filtered_action_set: pandas.DataFrame
-	    This is the action manifest, filtered by a query string
+        Returns
+        -------
+        filtered_action_set: pandas.DataFrame
+            This is the action manifest, filtered by a query string
 
-	Examples
-	--------
-	>>> # Here is code that makes a default manifest which
-	>>> #   has an 'accuracy' feature in the dataset and
-	>>> #   contains an action with an id of 'steve'.
-	>>> # There are *three* actions in this set, two of
-	>>> #   which have accuracy over 50%
-	>>> ab = ActionBank()
-	>>> act = ab._query('id=="steve"')
-	>>> isinstance(act,pd.DataFrame)
-	True
-	>>> act.nrow
-	1
-	>>> act_set = ab._query('accuracy>0.5')
-	>>> act_set.nrow
-	2
-	"""
-	action_frame = pd.DataFrame.from_dict(self._action_manifest)
-	return action_frame.query(query_str)
+        Examples
+        --------
+        >>> # Here is code that makes a default manifest which
+        >>> #   has an 'accuracy' feature in the dataset and
+        >>> #   contains an action with an id of 'steve'.
+        >>> # There are *three* actions in this set, two of
+        >>> #   which have accuracy over 50%
+        >>> ab = ActionBank()
+        >>> act = ab._query('id=="steve"')
+        >>> isinstance(act,pd.DataFrame)
+        True
+        >>> act.nrow
+        1
+        >>> act_set = ab._query('accuracy>0.5')
+        >>> act_set.nrow
+        2
+        """
+        action_frame = pd.DataFrame.from_dict(self._action_manifest)
+        return action_frame.query(query_str)

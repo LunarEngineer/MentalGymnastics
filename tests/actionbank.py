@@ -3,33 +3,41 @@
 This lays out simple test cases which can be used to test the action bank.
 """
 from mentalgym import ActionBank
+from mentalgym.constants import atomic_actions
 
 ################
 #  Mock Data   #
 ################
 # The first set of actions are *inputs* in the dataset.
+# These are represented as input nodes in the experiment
+#   space / canvas. These are non-placable actions that
+#   the environment starts with. This should be replaced
+#   with a 'read_dataset' function that can make these
+#   dicts for input datasets.
 data_input_one = {
     'id': 'column_0',
-    'source': True,
+    'type': 'source',
     'input': None
 }
 data_input_two = {
     'id': 'column_1',
-    'source': True,
+    'type': 'source',
     'input': None
 }
+# The second set of actions are *composed* actions
+# These are created by agents during episodes.
 action_one = {
     'id': 'steve',
-    'source': False,
+    'type': 'composed',
     'input': ['column_0']
 }
 action_two = {
     'id': 'bob',
-    'source': False,
+    'type': 'composed',
     'input': ['column_0', 'column_1']
 }
 # Action manifest
-action_manifest = [
+action_manifest = atomic_actions + [
     data_input_one,
     data_input_two,
     action_one,
@@ -38,7 +46,7 @@ action_manifest = [
 
 err_msg_header = "Action Bank "
 
-def test_ab():
+def test_action_bank():
     """Test the action bank."""
     err_msg = f"""Action Bank Init Error:
     _action_bank_directory property not set correctly.
@@ -47,6 +55,7 @@ def test_ab():
     """
 
     with tempfile.TemporaryDirectory() as d:
+        # Spin up a new action bank using the temp directory.
         action_bank = ActionBank(
             action_bank_directory = d
         )
@@ -54,7 +63,7 @@ def test_ab():
         assert ab._action_bank_directory == d, err_msg
         # 2. Check to ensure that the default set of actions
         #   are created
-        default = None
+        default = action_bank._query('type=="atomic"')
         err_msg = """Action Bank Init Error:
         The default set of actions was created incorrectly.
         Expected value: {}

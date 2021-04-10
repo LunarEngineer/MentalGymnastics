@@ -1,0 +1,7 @@
+README.md
+setup.py
+mentalgym.egg-info/PKG-INFO
+mentalgym.egg-info/SOURCES.txt
+mentalgym.egg-info/dependency_links.txt
+mentalgym.egg-info/requires.txt
+mentalgym.egg-info/top_level.txt

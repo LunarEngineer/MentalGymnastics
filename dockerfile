@@ -15,12 +15,18 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DEFAULT_TIMEOUT=100
 
 # copy project requirement files here to ensure they will be cached.
+copy README.md /install/README.md
 COPY pyproject.toml /install/pyproject.toml
+COPY setup.py /install/setup.py
+COPY setup.cfg /install/setup.cfg
 COPY src /install/src
 
+USER root
 WORKDIR /install
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
-RUN pip install .
+RUN pip install build \
+    && python -m build \
+    && pip install -e .
 
 WORKDIR /home/jovyan
 # Need to copy from builder into base

@@ -1,9 +1,9 @@
-"""Holds testing for the action bank.
+"""Holds testing for the function bank.
 
 This lays out simple test cases which can be used to test the action bank.
 """
-from mentalgym import ActionBank
-from mentalgym.constants import atomic_actions
+from mentalgym import FunctionBank
+from mentalgym.constants import atomic_functions
 
 ################
 #  Mock Data   #

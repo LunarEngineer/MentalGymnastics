@@ -1,6 +1,6 @@
 """Holds testing for the function bank.
 
-This lays out simple test cases which can be used to test the action bank.
+This lays out simple test cases which can be used to test the function bank.
 """
 from mentalgym import FunctionBank
 from mentalgym.constants import atomic_functions

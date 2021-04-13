@@ -1,4 +1,4 @@
-# Mental Gymnastics
+i# Mental Gymnastics
 
 This is an OpenAI compatible reinforcement learning environment to deliver the final project for Deep Learning, Spring 2021.
 
@@ -21,6 +21,8 @@ This is a dataset of experiment nodes. This is an *episode length* long iterable
 * A *function id* for the functions which have been added to the Experiment Space,
 * A *location* at which the *function node* exists at in this Experiment Space.
 
+When the episode starts this consists solely of the *source* and *sink* nodes.
+
 ### The Function Space
 
 This is a dataset that represents a *function palette* which the agent may place into the Experiment Space and which contains:
@@ -32,19 +34,26 @@ This is a dataset that represents a *function palette* which the agent may place
 
 Input and Output functions are placed into the environment when the environment is instantiated; Atomic actions (when chosen) are used to create Composed functions.
 
+The *size* of the palette is defined at runtime when the gym is created.
+
 ## The Action Space
+
+The agent picks an action every turn by selecting a discrete value which is associated with one of the functions from the function bank.
+The agent also chooses a continous location and a continuous radius.
+
+In every time step the *state* is updated by inserting the function that was selected at the location and radius given.
+
+*Atomic functions* placed will take all *non-sink* nodes within the *radius* and use those as input to create a new node at *location*.
+
+*Composed functions* placed will *recreate* the composed function exactly.
 
 ## The Reward Function
 
-The reward system is linearly superimposed with an optional reward function that *you write*, which can access Experiment Space and Action space when calculating.
-A default reward system is embedded which rewards the agent with logarithmically increasing reward (negotiable) based on reduced variance in predictions.
+There are a few reward functions available in the repository:
 
-Additionally, the agent is *only* rewarded if it places an action which does not already exist in the space in the same location; if no changes are made to the DAG, no rewards are earned.
-
-Within the environment the bank of available actions draws the top *m* (based on score metric) and random function *m* actions from previously defined actions (uniform random by default).
-These previously defined actions are *created* by the agent.
-
-*A conversation about how to create and store the layers is in order.
+1. A *small* monotonic reward proportional to proximity to the sink.
+2. A *slightly large* constant value of *C* which is rewarded if the agent has connected a node.
+3. A *modest sized* constant value of *N* which is rewarded if the agent has connected from input to sink.
 
 ## Running Episodes, or an Experiment
 

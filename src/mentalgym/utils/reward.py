@@ -2,9 +2,6 @@
 
 This file contains basic reward functions used in the Mental Gym environment.
 It contains a small utility to make it easier to build rewards programatically.
-
-#TODO: Copy in Parameters to each function.
-
 """
 import numpy as np
 from mentalgym.utils.types import ExperimentSpace, FunctionSpace
@@ -39,6 +36,10 @@ def build_reward_function(
     -------
     reward: float
         The reward generated from the current state.
+
+    Examples
+    --------
+    >>> # Fill out examples when experiment space structure 
     """
     # Give default rewards of monotonic if unspecified
     if reward is None:
@@ -130,6 +131,6 @@ def linear_completion_reward(
         The output of the scoring function, used here as x.
     """
     x = score
-    m = 500.
+    m = 100.
     b = 20.
     return m*x + b

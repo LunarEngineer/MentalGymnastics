@@ -1,6 +1,10 @@
-"""Contains the function bank class and supporting code."""
+"""Contains the function bank class and supporting code.
+
+The function bank is a class which stores composed functions on top of atomic functions.
+"""
 from __futures__ import annotation
 import pandas as pd
+from collections import defaultdict
 from mentalgym.types import Function, FunctionSet
 
 # This import will be used to fill the atomic function set
@@ -18,7 +22,7 @@ class FunctionBank():
 
     The functions are stored locally in a dictionary of dictionaries.
     These dictionaries are created via the .build function, are
-    updated by the .update function, are pruned by the .prune
+    updated by the .update function, are pruned by the .prune function.
 
     These dictionaries are mirrored to local disk when calling
     _save_bank() as a json (check)
@@ -55,13 +59,12 @@ class FunctionBank():
     _save_bank()
         Stores the function bank information locally.
     """
-
     def __init__(
         self,
         function_bank_directory: str = ".function_bank"
     ) -> FunctionBank:
         self._function_bank_directory = function_bank_directory
-        self._function_manifest = self._build_bank()
+        self._function_manifest = self._build_bank(),
         raise NotImplementedError
 
     def _build_bank(self) -> FunctionSet:

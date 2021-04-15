@@ -4,6 +4,8 @@ import pandas as pd
 from mentalgym.types import Function, FunctionSet
 
 # This import will be used to fill the atomic function set
+# This will change, dependent on the code that's introduced
+#   for the atomic functions and composed functions.
 from mentalgym.constants import atomic_functions
 
 class FunctionBank():

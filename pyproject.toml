@@ -1,33 +1,3 @@
-[tool.poetry]
-name = "mentalgym"
-version = "0.0.1"
-description = "Learning to learn with visual experimentation"
-authors = [
-    "timothy d luna <timothy.d.luna@gmail.com>",
-    "ali k<some.example@whatever.com",
-    "christianne i",
-    "vahe h"
-]
-license = "MIT"
-packages = [
-    { include = "src"}
-]
-
-[tool.poetry.dependencies]
-python = "^3.8.5"
-numpy = "^1.20.2"
-pandas = "^1.2.3"
-gym = "^0.18.0"
-ray = "^1.2.0"
-virtualenv = "^20.4.3"
-
-[tool.poetry.dev-dependencies]
-pytest = "^6.1.2"
-flake8 = "^3.9.0"
-mypy = "^0.812"
-bandit = "^1.6.2"
-
-# Poetry req
-#[build-system]
-#requires = ["poetry-core>=1.0.10"]
-#build-backend = "poetry.core.masonry.api"
+[build-system]
+requires = ["setuptools>=", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -12,3 +12,4 @@ workspace.code-workspace
 #                 Development Container Artifacts                  #
 ####################################################################
 .devcontainer
+*.swp

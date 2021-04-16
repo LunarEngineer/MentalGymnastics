@@ -4,6 +4,7 @@ This has functions for working with the experiment space, function
 space, and the built in Gym spaces.
 """
 from mentalgym.typing import Function, FunctionSet
+from mentalgym.utils.validation import is_function
 from mentalgym.functionbank import FunctionBank
 from numpy.typing import ArrayLike
 
@@ -159,7 +160,6 @@ def experiment_space_from_container(
     ...    'input': ['column_0'],
     ...    'location': array([[ 0., 0.2]])
     ... }
-    >>> extend_container(cont, function_composed_one)
     """
     ids = container.id
     location_columns = [
@@ -182,9 +182,36 @@ def experiment_space_from_container(
 
 def append_to_experiment(
     experiment_space_container: pd.DataFrame,
+    composed_function: Function,
+    function_bank: FunctionBank
+) -> pd.DataFrame:
+    """Extend an experiment space container with a composed action.
+
+    Parameters
+    ----------
+    experiment_space_container: pd.DataFrame
+        This is the original experiment space container with a new
+        and shiny composed action added in.
     composed_function: Function
-):
-    pass
+        This is the function representation which has keys of id,
+        type, input, and location.
+    function_bank: FunctionBank
+        This is the function bank, which can be queried for function
+        information, and is used for validation here.
+    """
+    # 1) Ensure the function has the basic requirements
+    # TODO: Consider reworking this is raise errors instead.
+    assert is_function(composed_function), "{composed_function} is invalid."
+    # 2) Ensure the function inputs all exist in the bank
+    f_inputs = pd.Series(composed_function['input'])
+    f_queried = function_bank.query(f'id in {f_inputs}')
+    assert np.all(f_inputs.isin(f_queried)), "Missing input for function."
+    # 3) 'DataFrameify' the function and append it to the container.
+    raise NotImplementedError
+    # TODO: Fix *location* information for inputs.
+    return experiment_space_container.append(
+        pd.DataFrame.from_dict(composed_function)
+    )
     # This needs to take a dictionary function, add it
     #  it as a row to Pandas Dataframe. I was going to use
     #   .append()

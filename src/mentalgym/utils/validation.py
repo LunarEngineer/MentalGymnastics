@@ -5,7 +5,7 @@ def is_function(item: Any) -> bool:
     if not isinstance(item, Dict):
         return False
     # 2) Check that required keys exist.
-    required_keys = ['function_id']
+    required_keys = ['id', 'type', 'input', 'location']
     if not set(required_keys).issubset(item):
         return False
 

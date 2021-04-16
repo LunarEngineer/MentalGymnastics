@@ -15,7 +15,7 @@ from functionbank import FunctionBank
 FunctionID = str
 # A Function is a dictionary which has *at minimum* keys required
 #   to create a composed function
-# Those keys include: function_id
+# Those keys include: id, type, input, location
 Function = Dict[str, Any]
 # A Function Set is a container, with actions, that can be iterated
 #   over.

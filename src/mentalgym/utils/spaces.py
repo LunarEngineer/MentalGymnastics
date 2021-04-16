@@ -48,14 +48,14 @@ def refresh_experiment_container(
              id    type input  exp_loc_0  exp_loc_1
     0  column_0  source  None        0.0        0.0
     1  column_1  source  None       50.0        0.0
-    2  column_1  source  None      100.0        0.0
+    2  column_2  source  None      100.0        0.0
     3    output    sink  None        0.0      100.0
     >>> min_loc = [0, 50, 100]
     >>> max_loc = [100, 200, 300]
              id    type input  exp_loc_0  exp_loc_1  exp_loc_2
     0  column_0  source  None        0.0       50.0      100.0
     1  column_1  source  None       50.0       50.0      100.0
-    2  column_1  source  None      100.0       50.0      100.0
+    2  column_2  source  None      100.0       50.0      100.0
     3    output    sink  None        0.0      200.0      300.0
     """
     # This is to allow using Numpy syntax with the min and max loc
@@ -148,7 +148,7 @@ def experiment_space_from_container(
     >>> for k, v in cont.items():
     ...     print((k,v))
     ...
-    ('function_ids', array(['column_0', 'column_1', 'column_1', 'output'], dtype=object))
+    ('function_ids', array(['column_0', 'column_1', 'column_2', 'output'], dtype=object))
     ('function_locations', array([[  0.,   0.],
            [ 50.,   0.],
            [100.,   0.],

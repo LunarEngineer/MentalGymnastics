@@ -1,4 +1,7 @@
-"""Contains data for testing utilities in the environment."""
+"""Contains data for testing utilities in the environment.
+
+This should also create functions for working with a dataset.
+"""
 import pandas as pd
 from sklearn.datasets import make_classification
 
@@ -21,7 +24,7 @@ function_input_two = {
     'input': None
 }
 function_input_three = {
-    'id': 'column_1',
+    'id': 'column_2',
     'type': 'source',
     'input': None
 }
@@ -54,12 +57,7 @@ function_set = [
 
 function_bank = pd.DataFrame(function_set)
 
-simple_experiment_space = {
-    "function_id": ["column_0", "column_1", "column_3", "output"],
-    "function_location": np.array([[0, 0], [0, 1], [0, 2], [1, 1]]),
-    ""
-}
-
+###
 min_loc = [0, 0]
 max_loc = [100, 100]
 buffer = 0.1

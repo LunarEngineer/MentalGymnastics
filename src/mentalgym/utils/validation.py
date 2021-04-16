@@ -1,4 +1,5 @@
 """Contains utilities used to validate data structures."""
+from typing import Any
 
 def is_function(item: Any) -> bool:
     # 1) Check for type

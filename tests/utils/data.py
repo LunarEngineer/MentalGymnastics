@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from mentalgym.utils.data import dataset_to_actions
+from mentalgym.utils.data import dataset_to_functions
 
 static_df = pd.DataFrame(
     data = {
@@ -31,20 +31,20 @@ expected_output = [
 ]
 
 
-def action_equal(a1, a2):
-    """Test equality for two actions.
+def function_equal(a1, a2):
+    """Test equality for two functions.
 
     Parameters
     ----------
     a1: Dict[str, Any]
-        The first action
+        The first function
     a2: Dict[str, Any]
-        The second action
+        The second function
 
     Returns
     -------
-    action_equal: bool
-        Whether the two actions are equal.
+    function_equal: bool
+        Whether the two functions are equal.
     """
     assert a1['id'] == a2['id']
     assert a1['type'] == a2['type']
@@ -52,18 +52,17 @@ def action_equal(a1, a2):
     return True
 
 
-def test_dataset_to_actions_w_tgt():
-    actual = dataset_to_actions(static_df, target = 'A')
+def test_dataset_to_functions_w_tgt():
+    actual = dataset_to_functions(static_df, target = 'A')
     for e, a in zip(expected_output, actual):
-        assert action_equal(e, a)
-
-# These two lines update the testing dataset to ensure that
-#   a regular call will use the final column.
-expected_output[0]['type'] = 'source'
-expected_output[2]['type'] = 'sink'
+        assert function_equal(e, a)
 
 
-def test_dataset_to_actions():
-    actual = dataset_to_actions(static_df)
+def test_dataset_to_functions():
+    # These two lines update the testing dataset to ensure that
+    #   a regular call will use the final column.
+    expected_output[0]['type'] = 'source'
+    expected_output[2]['type'] = 'sink'
+    actual = dataset_to_functions(static_df)
     for e, a in zip(expected_output, actual):
-        assert action_equal(e, a)
+        assert function_equal(e, a)

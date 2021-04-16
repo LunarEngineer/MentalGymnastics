@@ -1,5 +1,6 @@
 """Contains data and data utilities for the environment."""
 import pandas as pd
+from mentalgym.types import FunctionSet
 from sklearn.datasets import make_classification
 from typing import Any, Dict, Iterable, Optional
 ####################################################################
@@ -141,11 +142,11 @@ def dataset_to_functions(
     """
     # Set a default target if none available
     if target is None:
-        target = static_df.columns[-1]
+        target = dataset.columns[-1]
     # Create an empty list
     output = []
     # Now, walk through the columns
-    for col, vals in static_df.iteritems():
+    for col, vals in dataset.iteritems():
         # Create an action
         col_dict = {
             'id': col,

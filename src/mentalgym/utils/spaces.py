@@ -3,10 +3,13 @@
 This has functions for working with the experiment space, function
 space, and the built in Gym spaces.
 """
-from mentalgym.typing import Function, FunctionSet
+import numpy as np
+import pandas as pd
+from mentalgym.types import Function, ExperimentSpace
 from mentalgym.utils.validation import is_function
 from mentalgym.functionbank import FunctionBank
 from numpy.typing import ArrayLike
+
 
 def refresh_experiment_container(
     function_bank: FunctionBank,
@@ -81,13 +84,13 @@ def refresh_experiment_container(
         num_inputs
     )
     input_locations = np.concatenate([
-        input_0.reshape(-1,1),
-        # All dimensions but the first are set to ones for the inputs 
+        input_0.reshape(-1, 1),
+        # All dimensions but the first are set to ones for the inputs
         np.ones((num_inputs, np.amax(ndim - 1, 0)))
-    ], axis = 1)
+    ], axis=1)
     # Then we set the values to be the experiment minimum along the other
     #   dimensions.
-    input_locations[:,1:] = _min_loc[1:]
+    input_locations[:, 1:] = _min_loc[1:]
     # Output nodes will also be uniformly distributed along the first axis.
     num_outputs = output_functions.shape[0]
     output_0 = np.linspace(
@@ -97,11 +100,11 @@ def refresh_experiment_container(
     )
     # But with all *other* dimensions set to max value.
     output_locations = np.concatenate([
-        output_0.reshape(-1,1),
-        # All dimensions but the first are set to ones for the inputs 
+        output_0.reshape(-1, 1),
+        # All dimensions but the first are set to ones for the inputs
         np.ones((num_outputs, np.amax(ndim - 1, 0)))
-    ], axis = 1)
-    output_locations[:,1:] = _max_loc[1:]
+    ], axis=1)
+    output_locations[:, 1:] = _max_loc[1:]
     # Now we take the DataFrame representation of the inputs and
     #   outputs, stack them vertically, and add the locations on
     #   as additional columns named exp_loc_0, ..., exp_loc_(n-1)
@@ -112,13 +115,14 @@ def refresh_experiment_container(
                 output_locations
             ]
         ),
-        columns = [f'exp_loc_{_}' for _ in range(ndim)]
+        columns=[f'exp_loc_{_}' for _ in range(ndim)]
     )
     function_df = pd.concat([input_functions, output_functions])
     # The final output has a row for every input and out node,
     #   and every node is in a proper location.
     output_df = pd.concat([function_df, location_df], axis=1)
     return output_df
+
 
 def experiment_space_from_container(
     container: pd.DataFrame
@@ -180,6 +184,7 @@ def experiment_space_from_container(
     }
     return experiment_space
 
+
 def append_to_experiment(
     experiment_space_container: pd.DataFrame,
     composed_function: Function,
@@ -213,7 +218,3 @@ def append_to_experiment(
         pd.DataFrame.from_dict(composed_function)
     )
     # This needs to take a dictionary function, add it
-    #  it as a row to Pandas Dataframe. I was going to use
-    #   .append()
-    # experiment_space_container.append(pd.DataFrame.from_dict(composed_function))
-    

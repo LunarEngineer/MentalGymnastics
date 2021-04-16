@@ -1,5 +1,5 @@
 """Contains the function bank class and supporting code."""
-from __futures__ import annotation
+from __future__ import annotations
 import pandas as pd
 from mentalgym.types import Function, FunctionSet
 

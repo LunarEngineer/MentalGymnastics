@@ -2,11 +2,9 @@
 
 The types below are used throughout the environment.
 """
-from ray import ObjectId
+import pandas as pd
 from numpy.typing import ArrayLike
 from typing import Any, Dict, Iterable, Union
-from functionbank import FunctionBank
-
 ####################################################################
 #                          Function Typing                         #
 ####################################################################
@@ -20,7 +18,8 @@ Function = Dict[str, Any]
 # A Function Set is a container, with actions, that can be iterated
 #   over.
 FunctionSet = Iterable[Dict[str, Function]]
-
+# A Function Bank is a Pandas DataFrame
+FunctionBank = pd.DataFrame
 ####################################################################
 #                   Observation Space Typing                       #
 ####################################################################

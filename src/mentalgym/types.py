@@ -25,9 +25,9 @@ FunctionSet = Iterable[Dict[str, Function]]
 #                   Observation Space Typing                       #
 ####################################################################
 # The ExperimentSpace is a component of the observation space
-# It contains a dictionary of Functions, keyed by function_id
+# It contains a dictionary of 
 ExperimentSpace = Dict[str, ArrayLike]
-
+ExperimentSpaceContainer = Dict[str, ArrayLike]
 ####################################################################
 #                    Function Metric Typing                        #
 ####################################################################

@@ -1,6 +1,6 @@
 """Contains utilities used to validate data structures."""
 
-def is_action(item: Any) -> bool:
+def is_function(item: Any) -> bool:
     # 1) Check for type
     if not isinstance(item, Dict):
         return False
@@ -8,3 +8,4 @@ def is_action(item: Any) -> bool:
     required_keys = ['function_id']
     if not set(required_keys).issubset(item):
         return False
+

@@ -2,19 +2,19 @@
 import pandas as pd
 from mentalgym.types import FunctionSet
 from sklearn.datasets import make_classification
-from typing import Any, Dict, Iterable, Optional
+from typing import Optional
 ####################################################################
 #                   Create simple testing data                     #
 ####################################################################
 # This dataset will be used as a testing dataset for the Gym.
 X, y = make_classification(
-    n_samples = 100000,
-    n_features = 4,
-    n_informative = 2,
-    n_redundant = 2,
-    n_repeated = 0,
-    n_classes = 2,
-    n_clusters_per_class = 2,
+    n_samples=100000,
+    n_features=4,
+    n_informative=2,
+    n_redundant=2,
+    n_repeated=0,
+    n_classes=2,
+    n_clusters_per_class=2,
     flip_y=0.01,
     class_sep=1.0,
     shift=0.0,
@@ -24,7 +24,7 @@ X, y = make_classification(
 )
 testing_df = pd.DataFrame(
     X,
-    columns = [
+    columns=[
         "A",
         "B",
         "C",
@@ -85,7 +85,7 @@ buffer = 0.1
 
 # This is a testing function bank.
 test_function_bank = pd.DataFrame(
-    data = {
+    data={
         'type': ['composed', 'input', 'input', 'input', 'output'],
         'random': ['1', '2', '3', '4', '5']
     }
@@ -93,7 +93,7 @@ test_function_bank = pd.DataFrame(
 
 # This is what the Experiment Space should look like on the far side
 test_experiment_space = pd.DataFrame(
-    data = {
+    data={
         'type': ['composed', 'input', 'input', 'input', 'output'],
         'random': ['1', '2', '3', '4', '5']
     }

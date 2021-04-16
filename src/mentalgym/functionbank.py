@@ -1,6 +1,10 @@
 """Contains the function bank class and supporting code."""
 from __future__ import annotations
+
+import json
+import os
 import pandas as pd
+
 from mentalgym.types import Function, FunctionSet
 
 # This import will be used to fill the atomic function set
@@ -61,7 +65,7 @@ class FunctionBank():
     def __init__(
         self,
         function_bank_directory: str = ".function_bank"
-    ) -> FunctionBank:
+    ):
         self._function_bank_directory = function_bank_directory
         self._function_manifest = self._build_bank()
         raise NotImplementedError

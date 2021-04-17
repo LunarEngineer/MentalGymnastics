@@ -13,3 +13,4 @@ workspace.code-workspace
 ####################################################################
 .devcontainer
 *.swp
+.vscode

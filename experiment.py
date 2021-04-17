@@ -1,4 +1,8 @@
 
+
+"""" Note 4/17/21: This is example code from https://github.com/ray-project/ray/blob/master/rllib/examples/custom_env.py. 
+     It will be modified as needed for this projet. """
+
 import argparse
 import gym
 from gym.spaces import Discrete, Box

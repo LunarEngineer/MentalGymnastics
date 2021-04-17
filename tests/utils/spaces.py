@@ -74,6 +74,7 @@ test_space_sets = zip(
     test_space_outputs
 )
 
+
 @pytest.mark.parametrize('kwargs,expected_space',test_space_sets)
 def test_experiment_space_from_container(kwargs, expected_space):
     container = refresh_experiment_container(function_bank,**kwargs)
@@ -91,3 +92,24 @@ def test_experiment_space_from_container(kwargs, expected_space):
         loc_eq,
         con_eq
     ])
+
+
+
+def test_experiment_space_eq()
+
+@pytest.mark.parametrize('kwargs',test_inputs)
+def test_append_to_experiment():
+    container = refresh_experiment_container(function_bank,**kwargs)
+    # Have sets of composed nodes here.
+    composed_funcs = function_bank.query('type=="composed"')
+    composed_iter = [
+        row.to_dict() for
+        ind, row in composed_funcs.iterrows()
+    ]
+    actual_container = append_to_experiment(
+        container,
+        composed_iter,
+        function_bank
+    ).sort_values(['type','id'])
+    expected_container = function_bank.sort_values(['type','id'])
+    assert actual_container.equals(expected_container)

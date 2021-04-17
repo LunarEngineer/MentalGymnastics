@@ -6,11 +6,7 @@ import os
 import pandas as pd
 
 from mentalgym.types import Function, FunctionSet
-
-# This import will be used to fill the atomic function set
-# This will change, dependent on the code that's introduced
-#   for the atomic functions and composed functions.
-
+from mentalgym.utils.validation import validate_function_bank
 
 class FunctionBank():
     """Builds and tracks Functions and their history.
@@ -23,8 +19,7 @@ class FunctionBank():
     functions.
 
     The functions are stored locally in a dictionary of dictionaries.
-    These dictionaries are created via the .build function, are
-    updated by the .update function, are pruned by the .prune
+    These dictionaries are created via the ._build_bank function.
 
     These dictionaries are mirrored to local disk when calling
     _save_bank() as a json (check)
@@ -52,10 +47,13 @@ class FunctionBank():
     prune()
         Removes functions from the function bank.
         This is used to prune dead-end elements of the search space.
+        All this does is 'disable' actions. A disabled action cannot
+        be drawn during an episode.
     build()
         Returns a composed function from input.
-    update()
-        Update an function.
+    score()
+        This takes an Experiment Space and a score, updating statistics
+        for those actions.
     _build_bank()
         Builds an function bank from a local directory.
     _save_bank()
@@ -70,10 +68,14 @@ class FunctionBank():
         self._function_manifest = self._build_bank()
         raise NotImplementedError
 
+    ################################################################
+    # These following functions are used to persist the function   #
+    #   bank
     def _build_bank(self) -> FunctionSet:
         """Build function bank from local directory.
 
         Read a json document to build the function manifest.
+        If one does not exist a default will be created.
 
         This function can get smarter, but this works as a stopgap.
 
@@ -82,22 +84,19 @@ class FunctionBank():
         function_manifest: FunctionSet
             This is a validated function manifest
         """
-        # TODO: Get some default atomics up for tests
-        atomic_functions = {
-            None
-        }
-        # First, load in the manifest
+        # The filepath for the function manifest.
         manifest_file = os.path.join(
             self._function_bank_directory,
             '.manifest'
         )
+        # This function will build a default json document if one
+        #   does not exist
+        if not os.path.exists(manifest_file):
+            
         with open(manifest_file,'r') as f:
-            function_manifest = json.loads(f.readlines())
+            function_manifest = json.load(f)
         # Then, do any validation necessary for those functions
-        def validate_functions(function_manifest:FunctionSet):
-            # This will be abstracted
-            return function_manifest
-        return validate_functions(function_manifest)
+        assert validate_function_bank(function_manifest)
 
     def _save_bank(self) -> None:
         """Save function bank to local directory.
@@ -179,3 +178,9 @@ class FunctionBank():
         """
         function_frame = pd.DataFrame.from_dict(self._function_manifest)
         return function_frame.query(query_str)
+
+def build_default_function_bank():
+    """Creates a Function Set composed of atomic functions.
+    """
+    # This is going to need to import from atomics
+    

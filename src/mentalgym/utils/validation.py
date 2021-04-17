@@ -1,5 +1,6 @@
 """Contains utilities used to validate data structures."""
 from typing import Any, Dict
+from mentalgym.types import FunctionBank
 
 
 def is_function(item: Any) -> bool:
@@ -43,3 +44,5 @@ def is_function(item: Any) -> bool:
         return False
     # Well, looks like a function, smells like a function...
     return True
+
+def validate_function_bank()

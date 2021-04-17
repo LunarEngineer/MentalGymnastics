@@ -5,7 +5,7 @@ space, and the built in Gym spaces.
 """
 import numpy as np
 import pandas as pd
-from mentalgym.types import Function, ExperimentSpace
+from mentalgym.types import FunctionSet, ExperimentSpace
 from mentalgym.utils.validation import is_function
 from mentalgym.functionbank import FunctionBank
 from numpy.typing import ArrayLike
@@ -65,9 +65,14 @@ def refresh_experiment_container(
     _min_loc = np.array(min_loc)
     _max_loc = np.array(max_loc)
     # This has id, type, and input among the base keys.
-    input_functions: pd.DataFrame = function_bank.query("type=='source'")
+    # This subsets to just those fields.
+    input_functions: pd.DataFrame = function_bank.query(
+        "type=='source'"
+    )[['id', 'type', 'input']]
     assert input_functions.shape[0] > 0, "No input functions available."
-    output_functions: pd.DataFrame = function_bank.query("type=='sink'")
+    output_functions: pd.DataFrame = function_bank.query(
+        "type=='sink'"
+    )[['id', 'type', 'input']]
     assert output_functions.shape[0] > 0, "No output functions available."
     # This tests to make sure nothing silly came up.
     assert _min_loc.shape == _max_loc.shape, "Min and max location length mismatch."
@@ -187,7 +192,7 @@ def experiment_space_from_container(
 
 def append_to_experiment(
     experiment_space_container: pd.DataFrame,
-    composed_function: Function,
+    composed_functions: FunctionSet,
     function_bank: FunctionBank
 ) -> pd.DataFrame:
     """Extend an experiment space container with a composed action.
@@ -195,26 +200,84 @@ def append_to_experiment(
     Parameters
     ----------
     experiment_space_container: pd.DataFrame
-        This is the original experiment space container with a new
-        and shiny composed action added in.
-    composed_function: Function
-        This is the function representation which has keys of id,
-        type, input, and location.
+        The original experiment space container to insert new
+        functions into.
+    composed_functions: FunctionSet
+        This is an iterable of functions, each of which have keys of
+        id, type, input, and location.
     function_bank: FunctionBank
         This is the function bank, which can be queried for function
         information, and is used for validation here.
+
+    Returns
+    -------
+    experiment_space_container: pd.DataFrame
+        This is the original experiment space container with new and
+        shiny composed functions added in.
+
+    Examples
+    --------
+    >>> # Load in a testing function bank
+    >>> from mentalgym.utils.data import function_bank
+    >>> # Grab the utilities to create some experiment data.
+    >>> from mentalgym.utils.spaces import refresh_experiment_container
+    >>> container = refresh_experiment_container(function_bank)
+    >>> # Now, take the composed actions and add them to the experiment
+    >>> composed_funcs = function_bank.query('type=="composed"')
+    >>> composed_iter = [
+    ...    row.to_dict() for
+    ...    ind, row in composed_funcs.iterrows()
+    ... ]
+    >>> append_to_experiment(
+    ...     container,
+    ...     composed_iter,
+    ...     function_bank
+    ... )
+             id      type                 input  exp_loc_0  exp_loc_1
+    0  column_0    source                  None        0.0        0.0
+    1  column_1    source                  None       50.0        0.0
+    2  column_2    source                  None      100.0        0.0
+    3    output      sink                  None        0.0      100.0
+    0     steve  composed            [column_0]       25.0       50.0
+    1       bob  composed  [column_0, column_1]       50.0       75.0
     """
     # 1) Ensure the function has the basic requirements
-    # TODO: Consider reworking this is raise errors instead.
-    assert is_function(composed_function), "{composed_function} is invalid."
+    for composed_function in composed_functions:
+        err_msg = f"""Composed Function Error:
+        {composed_function} is not a valid function structure.
+        """
+        assert is_function(composed_function), err_msg
     # 2) Ensure the function inputs all exist in the bank
-    f_inputs = pd.Series(composed_function['input'])
-    f_queried = function_bank.query(f'id in {f_inputs}')
-    assert np.all(f_inputs.isin(f_queried)), "Missing input for function."
-    # 3) 'DataFrameify' the function and append it to the container.
-    raise NotImplementedError
-    # TODO: Fix *location* information for inputs.
+    f_inputs = pd.DataFrame(composed_functions)
+    f_queried = function_bank.query('id in @f_inputs.id')
+    test_mask = f_inputs.id.isin(f_queried.id)
+    err_msg = f"""Composed Function Error:
+    The following id's were not in the Function Bank.
+    {f_inputs[~test_mask]}
+    """
+    assert np.all(test_mask), err_msg
+    # 3) Append the composed functions onto the space.
     return experiment_space_container.append(
-        pd.DataFrame.from_dict(composed_function)
+        f_inputs
     )
-    # This needs to take a dictionary function, add it
+
+
+def experiment_space_eq(
+    experiment_space_container_a: pd.DataFrame,
+    experiment_space_container_b: pd.DataFrame
+) -> bool:
+    """Tests two containers for equivalency.
+
+    Parameters
+    ----------
+    experiment_space_container_a: pd.DataFrame
+        An experiment space container
+    experiment_space_container_b: pd.DataFrame
+        Another experiment space container
+
+    Returns
+    -------
+    eq: bool
+        Whether or not 
+    """
+# extended_container = append_to_experiment(container,composed_iter,function_bank)

@@ -93,7 +93,7 @@ class FunctionBank():
         # This function will build a default json document if one
         #   does not exist
         if not os.path.exists(manifest_file):
-            
+            raise NotImplementedError
         with open(manifest_file,'r') as f:
             function_manifest = json.load(f)
         # Then, do any validation necessary for those functions

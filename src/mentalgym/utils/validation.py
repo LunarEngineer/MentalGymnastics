@@ -45,4 +45,6 @@ def is_function(item: Any) -> bool:
     # Well, looks like a function, smells like a function...
     return True
 
-def validate_function_bank()
+def validate_function_bank():
+    """Validates a function bank"""
+    raise NotImplementedError

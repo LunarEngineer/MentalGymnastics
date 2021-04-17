@@ -11,7 +11,7 @@ X, y = make_classification(
     n_samples=100000,
     n_features=4,
     n_informative=2,
-    n_redundant=2,2
+    n_redundant=2,
     n_repeated=0,
     n_classes=2,
     n_clusters_per_class=2,
@@ -37,34 +37,46 @@ testing_df = pd.DataFrame(
 function_input_one = {
     'id': 'column_0',
     'type': 'source',
-    'input': None
+    'input': None,
+    'exp_loc_0': 0.,
+    'exp_loc_1': 0.,
 }
 function_input_two = {
     'id': 'column_1',
     'type': 'source',
-    'input': None
+    'input': None,
+    'exp_loc_0': 50.,
+    'exp_loc_1': 0.,
 }
 function_input_three = {
     'id': 'column_2',
     'type': 'source',
-    'input': None
+    'input': None,
+    'exp_loc_0': 100.,
+    'exp_loc_1': 0.,
 }
 function_output = {
     'id': 'output',
     'type': 'sink',
-    'input': None
+    'input': None,
+    'exp_loc_0': 0.,
+    'exp_loc_1': 100.,
 }
 # The second set of actions are *composed* actions
 # These are created by agents during episodes.
 function_composed_one = {
     'id': 'steve',
     'type': 'composed',
-    'input': ['column_0']
+    'input': ['column_0'],
+    'exp_loc_0': 25.,
+    'exp_loc_1': 50.,
 }
 function_composed_two = {
     'id': 'bob',
     'type': 'composed',
-    'input': ['column_0', 'column_1']
+    'input': ['column_0', 'column_1'],
+    'exp_loc_0': 50.,
+    'exp_loc_1': 75.,
 }
 
 function_set = [
@@ -79,25 +91,25 @@ function_set = [
 function_bank = pd.DataFrame(function_set)
 
 ###
-min_loc = [0, 0]
-max_loc = [100, 100]
-buffer = 0.1
+# min_loc = [0, 0]
+# max_loc = [100, 100]
+# buffer = 0.1
 
-# This is a testing function bank.
-test_function_bank = pd.DataFrame(
-    data={
-        'type': ['composed', 'input', 'input', 'input', 'output'],
-        'random': ['1', '2', '3', '4', '5']
-    }
-)
+# # This is a testing function bank.
+# test_function_bank = pd.DataFrame(
+#     data={
+#         'type': ['composed', 'input', 'input', 'input', 'output'],
+#         'random': ['1', '2', '3', '4', '5']
+#     }
+# )
 
-# This is what the Experiment Space should look like on the far side
-test_experiment_space = pd.DataFrame(
-    data={
-        'type': ['composed', 'input', 'input', 'input', 'output'],
-        'random': ['1', '2', '3', '4', '5']
-    }
-)
+# # This is what the Experiment Space should look like on the far side
+# test_experiment_space = pd.DataFrame(
+#     data={
+#         'type': ['composed', 'input', 'input', 'input', 'output'],
+#         'random': ['1', '2', '3', '4', '5']
+#     }
+# )
 
 
 def dataset_to_functions(
@@ -129,7 +141,7 @@ def dataset_to_functions(
     >>>         'C': [7, 8, 9]
     >>>     }
     >>> )
-    >>> dataset_to_actions(static_df, target = 'A')
+    >>> dataset_to_functions(static_df, target = 'A')
     [{'id': 'A',
       'type': 'sink',
       'input': None},

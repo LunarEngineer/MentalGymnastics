@@ -6,14 +6,14 @@ import os
 import pandas as pd
 
 from collections import defaultdict
-
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.validation import validate_function_bank
+from typing import Optional
 
 class FunctionBank():
     """Builds and tracks Functions and their history.
 
-    This is a class, used by the Mental Gymnastics gym environment
+    This is a class, used by the Mental Gymnastics gym environment,
     which is tracking the state of functions created by controller
     agents operating in the environment.
 
@@ -83,7 +83,7 @@ class FunctionBank():
         Returns
         -------
         function_manifest: FunctionSet
-            This is a validated function manifest
+            This is a validated function manifest.
         """
         # The filepath for the function manifest.
         manifest_file = os.path.join(
@@ -93,6 +93,7 @@ class FunctionBank():
         # This function will build a default json document if one
         #   does not exist
         if not os.path.exists(manifest_file):
+            # TODO: Build default bank.
             raise NotImplementedError
         with open(manifest_file,'r') as f:
             function_manifest = json.load(f)
@@ -109,7 +110,7 @@ class FunctionBank():
             '.manifest'
         )
         # This writes self._function_manifest to json
-        with open('.manifest','w') as f:
+        with open(manifest_file, 'w') as f:
             f.write(json.dumps(self._function_manifest))
 
     def query(
@@ -178,7 +179,7 @@ class FunctionBank():
         2
         """
         function_frame = pd.DataFrame.from_dict(self._function_manifest)
-        return function_frame.query(query_str)
+        return function_frame.query(query_string)
 
 def build_default_function_bank():
     """Creates a Function Set composed of atomic functions.

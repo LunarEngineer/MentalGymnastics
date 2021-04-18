@@ -1,6 +1,6 @@
 """Contains utilities used to validate data structures."""
+import pandas as pd
 from typing import Any, Dict
-from mentalgym.types import FunctionBank
 
 
 def is_function(item: Any) -> bool:
@@ -45,6 +45,21 @@ def is_function(item: Any) -> bool:
     # Well, looks like a function, smells like a function...
     return True
 
-def validate_function_bank():
-    """Validates a function bank"""
-    raise NotImplementedError
+
+def validate_function_bank(function_set):
+    """Validates a function bank.
+
+    Parameters
+    ----------
+    function_set: FunctionSet
+        A set of functions.
+
+    Examples
+    """
+    # Test each function
+    for function in function_set:
+        assert is_function(function)
+    # Test to ensure the basic types exist.
+    assert pd.DataFrame(
+        function_set
+    ).types.isin(['atomic', 'source', 'sink'])

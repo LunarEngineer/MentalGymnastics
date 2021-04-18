@@ -5,9 +5,9 @@ It contains a small utility to make it easier to build rewards programatically.
 """
 import numpy as np
 import pandas as pd
-from mentalgym.types import ExperimentSpace, FunctionSet
+from mentalgym.types import FunctionSet
 from scipy.spatial import cKDTree
-from typing import Iterable, Union, Callable, Optional
+from typing import Iterable, Union, Callable
 
 # This is shared by all the reward functions
 __param_str__ = """
@@ -35,6 +35,7 @@ __param_str__ = """
         This is a Numpy array of floats.
 """
 
+
 def build_reward_function(
     experiment_space_container: pd.DataFrame,
     function_set: FunctionSet,
@@ -54,10 +55,10 @@ def build_reward_function(
 
     Examples
     --------
-    >>> # Fill out examples when experiment space structure 
+    >>> # Fill out examples when experiment space structure
     """
     # Give default rewards of monotonic if unspecified
-    if reward is None:
+    if reward_set is None:
         reward = ['monotonic']
     # Initialize reward to zero
     reward = 0
@@ -67,6 +68,7 @@ def build_reward_function(
         "connection": connection_reward,
         "completion": linear_completion_reward
     }
+
     # Helper function to trigger for completion reward
     def requires_score(x: str) -> bool:
         return x == "completion"
@@ -78,26 +80,27 @@ def build_reward_function(
             if requires_score(r):
                 # Pass the score
                 reward += reward_dict[r](
-                    experiment_space,
-                    function_space,
+                    experiment_space_container,
+                    function_set,
                     score
                 )
             else:
                 # Otherwise only the spaces
                 reward += reward_dict[r](
-                    experiment_space,
-                    function_space
+                    experiment_space_container,
+                    function_set
                 )
         # If it's a function, use *that* function.
         elif isinstance(r, Callable):
             reward += r(
-                experiment_space,
-                function_space
+                experiment_space_container,
+                function_set
             )
         # Otherwise *blow up*! Kapow!
         raise Exception(f"{r} is not a valid reward.")
     # Then, return reward
     return reward
+
 
 def monotonic_reward(
     experiment_space_container: pd.DataFrame,

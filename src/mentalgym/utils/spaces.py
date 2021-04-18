@@ -278,6 +278,10 @@ def experiment_space_eq(
     Returns
     -------
     eq: bool
-        Whether or not 
+        Whether or not two experiment spaces are equivalent
     """
-# extended_container = append_to_experiment(container,composed_iter,function_bank)
+    cont_new_ind_a = experiment_space_container_a.reset_index(drop=True)
+    cont_new_ind_b = experiment_space_container_b.reset_index(drop=True)
+    cont_new_ind_a = cont_new_ind_a.sort_values(['type', 'id'])
+    cont_new_ind_b = cont_new_ind_b.sort_values(['type', 'id'])
+    return cont_new_ind_a.equals(cont_new_ind_b)

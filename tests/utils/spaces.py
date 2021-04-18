@@ -2,8 +2,12 @@ import numpy as np
 import pandas as pd
 import pytest
 from mentalgym.utils.data import function_bank
-from mentalgym.utils.spaces import refresh_experiment_container, experiment_space_from_container
-from typing import Dict
+from mentalgym.utils.spaces import (
+    append_to_experiment,
+    experiment_space_eq,
+    refresh_experiment_container,
+    experiment_space_from_container
+)
 
 
 metadata_df = pd.DataFrame(
@@ -94,14 +98,28 @@ def test_experiment_space_from_container(kwargs, expected_space):
     ])
 
 
+test_banks = [
+    function_bank,
+    function_bank.assign(
+        exp_loc_1=[50., 50., 50., 200., 50., 75.],
+        exp_loc_2=[100., 100., 100., 300., 100., 100.]
+    ),
+]
+test_append_sets = zip(
+    test_inputs,
+    test_banks
+)
 
-def test_experiment_space_eq()
-
-@pytest.mark.parametrize('kwargs',test_inputs)
-def test_append_to_experiment():
-    container = refresh_experiment_container(function_bank,**kwargs)
+@pytest.mark.parametrize(
+    'kwargs, expected_container',
+    test_append_sets
+)
+def test_append_to_experiment(kwargs, expected_container):
+    container = refresh_experiment_container(expected_container, **kwargs)
     # Have sets of composed nodes here.
-    composed_funcs = function_bank.query('type=="composed"')
+    composed_funcs = expected_container.query(
+        'type=="composed"'
+    )
     composed_iter = [
         row.to_dict() for
         ind, row in composed_funcs.iterrows()
@@ -109,7 +127,9 @@ def test_append_to_experiment():
     actual_container = append_to_experiment(
         container,
         composed_iter,
-        function_bank
-    ).sort_values(['type','id'])
-    expected_container = function_bank.sort_values(['type','id'])
-    assert actual_container.equals(expected_container)
+        expected_container
+    )
+    assert experiment_space_eq(
+        actual_container,
+        expected_container
+    )

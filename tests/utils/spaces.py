@@ -101,8 +101,8 @@ def test_experiment_space_from_container(kwargs, expected_space):
 test_banks = [
     function_bank,
     function_bank.assign(
-        exp_loc_1=[50., 50., 50., 200., 50., 75.],
-        exp_loc_2=[100., 100., 100., 300., 100., 100.]
+        exp_loc_1=[50., 50., 50., 200., 50., 200.], # , 50., 75.
+        exp_loc_2=[100., 100., 100., 300., 100., 300.] #, 100., 100.]
     ),
 ]
 test_append_sets = zip(
@@ -125,11 +125,22 @@ def test_append_to_experiment(kwargs, expected_container):
         ind, row in composed_funcs.iterrows()
     ]
     actual_container = append_to_experiment(
-        container,
-        composed_iter,
-        expected_container
+        experiment_space_container = container,
+        function_bank = expected_container,
+        composed_functions = composed_iter
     )
+    err_msg = f"""Frame Validation Error:
+    -------
+    Actual:
+    -------
+    {actual_container}
+
+    ---------
+    Expected:
+    ---------
+    {expected_container}
+    """
     assert experiment_space_eq(
         actual_container,
         expected_container
-    )
+    ), err_msg

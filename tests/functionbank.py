@@ -3,7 +3,7 @@
 This lays out simple test cases which can be used to test the function bank.
 """
 from mentalgym import FunctionBank
-from mentalgym.constants import atomic_functions
+from mentalgym.utils.data import atomic_functions
 
 ################
 #  Mock Data   #
@@ -37,7 +37,7 @@ action_two = {
     'input': ['column_0', 'column_1']
 }
 # Action manifest
-action_manifest = atomic_actions + [
+action_manifest = atomic_functions + [
     data_input_one,
     data_input_two,
     action_one,

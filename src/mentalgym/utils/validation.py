@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Any, Dict
 
 
-def is_function(item: Any) -> bool:
+def is_function(item: Any, raise_early: bool = False) -> bool:
     """Tests for function-ness
 
     Parameters
@@ -11,6 +11,9 @@ def is_function(item: Any) -> bool:
     item: Any
         This can be anything. This routine will determine if the
         thing is a function.
+
+    raise_early: bool
+        This will raise meaningful errors for non-valid functions.
 
     Returns
     -------
@@ -30,9 +33,23 @@ def is_function(item: Any) -> bool:
     ... }
     >>> is_function(composed_function)
     True
+    >>> stupid_function = {
+    ...     'type': 'composed',
+    ...     'input' ['column_0']
+    ... }
+    >>> is_function(composed_function)
+    False
+    >>> is_function(composed_function, True)
+    True
     """
     # 1) Check for type
     if not isinstance(item, Dict):
+        if raise_early:
+            err_msg = """Function Validation Error:
+            Expected type: Dict
+            Encountered type: {type(item)}
+            """
+            raise Exception(err_msg)
         return False
     # 2) Check that required keys exist.
     required_keys = [
@@ -41,6 +58,12 @@ def is_function(item: Any) -> bool:
         'input'
     ]
     if not set(required_keys).issubset(item):
+        if raise_early:
+            err_msg = """Function Validation Error:
+            Expected keys: {required_keys}
+            Encountered keys: {[_ for _ in item.keys()]}
+            """
+            raise Exception(err_msg)
         return False
     # Well, looks like a function, smells like a function...
     return True

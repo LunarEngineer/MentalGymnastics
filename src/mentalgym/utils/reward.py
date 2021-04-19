@@ -1,4 +1,4 @@
-"""Reward functions for Mental Gym.
+  """Reward functions for Mental Gym.
 
 This file contains basic reward functions used in the Mental Gym environment.
 It contains a small utility to make it easier to build rewards programatically.
@@ -59,7 +59,7 @@ def build_reward_function(
     """
     # Give default rewards of monotonic if unspecified
     if reward_set is None:
-        reward = ['monotonic']
+        reward_set  = ['monotonic']
     # Initialize reward to zero
     reward = 0
     # Loop through the iterable of strings / functions

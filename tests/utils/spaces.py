@@ -357,7 +357,7 @@ function_space = space_to_iterable(
     )
 )
 
-[
+test_sets = [
     (
         {
         'function_set': function_space,
@@ -373,7 +373,8 @@ function_space = space_to_iterable(
             {'id': 'beans', 'living': True, 'extra': 'e', 'information': 'e', 'score_accuracy': 0.6, 'score_complexity': 50.0}]
     )
 ]
-@pytest.mark.parametrize('kwargs, expected_results')
-def test_prune_function_set(kwargs):
-    prune_function_set(**kwargs)
-    # This tests the pruning function
+@pytest.mark.parametrize('kwargs, expected_results', test_sets)
+def test_prune_function_set(kwargs, expected_results):
+    actual_results = prune_function_set(**kwargs)
+    assert actual_results==expected_results
+# This tests the pruning function

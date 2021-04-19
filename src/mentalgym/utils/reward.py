@@ -1,4 +1,4 @@
-  """Reward functions for Mental Gym.
+"""Reward functions for Mental Gym.
 
 This file contains basic reward functions used in the Mental Gym environment.
 It contains a small utility to make it easier to build rewards programatically.

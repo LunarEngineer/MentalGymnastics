@@ -275,6 +275,39 @@ def experiment_space_eq(
     -------
     eq: bool
         Whether or not two experiment spaces are equivalent
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from mentalgym.utils.spaces import refresh_experiment_container
+    >>> from mentalgym.utils.spaces import experiment_space_eq
+    >>> from mentalgym.utils.data import function_bank
+    >>> metadata_df = pd.DataFrame(
+    ...     data = {
+    ...         'id': ['column_0', 'column_1', 'column_2', 'output'],
+    ...         'type': ['source', 'source', 'source', 'sink'],
+    ...         'input': [None, None, None, None]
+    ...     }
+    ... )
+    >>> space_constraints_1 = {
+    ...     'min_loc': [0, 0],
+    ...     'max_loc': [100, 100]
+    ... }
+    >>> base_container = refresh_experiment_container(
+    ...     metadata_df,
+    ...     **space_constraints_1
+    ... )
+    >>> experiment_space_eq(base_container, base_container)
+    True
+    >>> function_bank
+             id      type                 input  exp_loc_0  exp_loc_1
+    0  column_0    source                  None        0.0        0.0
+    1  column_1    source                  None       50.0        0.0
+    2  column_2    source                  None      100.0        0.0
+    3    output      sink                  None        0.0      100.0
+    0     steve  composed            [column_0]       25.0       50.0
+    1       bob  composed  [column_0, column_1]       50.0       75.0
+    >>> experiment_space_eq(base_container, function_bank)
     """
     cont_new_ind_a = experiment_space_container_a.reset_index(drop=True)
     cont_new_ind_b = experiment_space_container_b.reset_index(drop=True)
@@ -283,7 +316,6 @@ def experiment_space_eq(
     return cont_new_ind_a.equals(cont_new_ind_b)
 
 
-#TODO: Testing
 def space_to_iterable(
     space: pd.DataFrame
 ) -> FunctionSet:
@@ -300,6 +332,8 @@ def space_to_iterable(
 
     Examples
     --------
+    >>> import pandas as pd
+    >>> from mentalgym.utils.spaces import space_to_iterable
     >>> function_space = pd.DataFrame(
     ...     data = {
     ...         'id': ['bob','janice','dilly','dally','beans'],

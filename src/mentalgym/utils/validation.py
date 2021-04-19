@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 
 def is_function(item: Any, raise_early: bool = False) -> bool:
-    """Tests for function-ness
+    """Tests for function-ness.
 
     Parameters
     ----------
@@ -29,23 +29,33 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
     >>> composed_function = {
     ...     'id': 1,
     ...     'type': 'composed',
-    ...     'input' ['column_0']
+    ...     'input': ['column_0']
     ... }
     >>> is_function(composed_function)
     True
     >>> stupid_function = {
     ...     'type': 'composed',
-    ...     'input' ['column_0']
+    ...     'input': ['column_0']
     ... }
-    >>> is_function(composed_function)
+    >>> is_function(stupid_function)
     False
-    >>> is_function(composed_function, True)
-    True
+    >>> is_function(stupid_function, True)
+    Traceback (most recent call last):
+    ...
+    Exception: Function Validation Error:
+                Expected keys: ['id', 'type', 'input']
+                Encountered keys: ['type', 'input']
+    >>> is_function(1, True)
+    Traceback (most recent call last):
+    ...
+    Exception: Function Validation Error:
+                Expected type: Dict
+                Encountered type: <class 'int'>
     """
     # 1) Check for type
     if not isinstance(item, Dict):
         if raise_early:
-            err_msg = """Function Validation Error:
+            err_msg = f"""Function Validation Error:
             Expected type: Dict
             Encountered type: {type(item)}
             """
@@ -59,7 +69,7 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
     ]
     if not set(required_keys).issubset(item):
         if raise_early:
-            err_msg = """Function Validation Error:
+            err_msg = f"""Function Validation Error:
             Expected keys: {required_keys}
             Encountered keys: {[_ for _ in item.keys()]}
             """
@@ -68,9 +78,11 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
     # Well, looks like a function, smells like a function...
     return True
 
-
+# TODO: Finish and write testing and docs
 def validate_function_bank(function_set):
     """Validates a function bank.
+
+    This does basic validation for a function bank.
 
     Parameters
     ----------
@@ -85,4 +97,6 @@ def validate_function_bank(function_set):
     # Test to ensure the basic types exist.
     assert pd.DataFrame(
         function_set
-    ).types.isin(['atomic', 'source', 'sink'])
+    ).types.isin(['atomic', 'composed', 'source', 'sink'])
+    # There's more to be done here.
+    raise NotImplementedError

@@ -11,9 +11,11 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
     experiment_space_eq,
     experiment_space_from_container,
+    prune_function_set,
     refresh_experiment_container,
     space_to_iterable
 )
+from mentalgym.utils.sampling import softmax_score_sample
 
 
 metadata_df = pd.DataFrame(
@@ -199,7 +201,7 @@ eq_sets = [
 @pytest.mark.parametrize('a,b,result', eq_sets)
 def test_experiment_space_eq(a,b,result):
     err_msg = f"""Experiment Space Equality Error:
-    
+
     a == b should be {result}
 
     -----
@@ -340,3 +342,38 @@ def test_space_to_iterable(test_input, expected_output):
     {actual_output}
     """
     assert actual_output == expected_output, err_msg
+
+
+function_space = space_to_iterable(
+    pd.DataFrame(
+        data = {
+            'id': ['bob','janice','dilly','dally','beans'],
+            'living': [True,True,True,True,True],
+            'extra': ['a','b','c','d','e'],
+            'information': ['a','b','c','d','e'],
+            'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
+            'score_complexity': [0.01, 100, 10, 20, 50]
+        }
+    )
+)
+
+[
+    (
+        {
+        'function_set': function_space,
+        'sampling_func': softmax_score_sample,
+        'population_size': 3,
+        'random_state': 4
+        },
+        [
+            {'id': 'bob', 'living': True, 'extra': 'a', 'information': 'a', 'score_accuracy': 0.95, 'score_complexity': 0.01},
+            {'id': 'janice', 'living': True, 'extra': 'b', 'information': 'b', 'score_accuracy': 0.7, 'score_complexity': 100.0},
+            {'id': 'dilly', 'living': False, 'extra': 'c', 'information': 'c', 'score_accuracy': 0.6, 'score_complexity': 10.0},
+            {'id': 'dally', 'living': False, 'extra': 'd', 'information': 'd', 'score_accuracy': 0.5, 'score_complexity': 20.0},
+            {'id': 'beans', 'living': True, 'extra': 'e', 'information': 'e', 'score_accuracy': 0.6, 'score_complexity': 50.0}]
+    )
+]
+@pytest.mark.parametrize('kwargs, expected_results')
+def test_prune_function_set(kwargs):
+    prune_function_set(**kwargs)
+    # This tests the pruning function

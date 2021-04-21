@@ -37,7 +37,9 @@ class MentalAgent:
         self.criterion = torch.nn.MSELoss()
 
         # Instantiate Optimizer
-        self.optimizer = torch.optim.Adam(self.DQN_agent_Q.parameters(), lr=self.alpha)
+        self.optimizer = torch.optim.Adam(
+            self.DQN_agent_Q.parameters(), lr=self.alpha
+        )
 
         # Mask for invalid functions
         self.num_active_fns = num_active_fns_init
@@ -71,14 +73,19 @@ class MentalAgent:
                 fns_oh = np.zeros((max_steps, num_functions))
                 for i in range(max_steps):
                     fns_oh[
-                        np.arange(max_steps), S["experiment_space"]["function_ids"][i]
+                        np.arange(max_steps),
+                        S["experiment_space"]["function_ids"][i],
                     ] = 1
 
                 dqn_S = torch.cat(
                     (
                         torch.Tensor(fns_oh.flatten()),
-                        torch.Tensor(S["experiment_space"]["function_locations"]),
-                        torch.Tensor([S["experiment_space"]["function_connection"]]),
+                        torch.Tensor(
+                            S["experiment_space"]["function_locations"]
+                        ),
+                        torch.Tensor(
+                            [S["experiment_space"]["function_connection"]]
+                        ),
                     )
                 )
 
@@ -93,7 +100,11 @@ class MentalAgent:
                     dqn_action = np.argmax(dqas[0])
 
                 # TODO: need to supply location and radius components of action
-                action = {"function_id": dqn_action, "location": (0, 0), "radius": 0}
+                action = {
+                    "function_id": dqn_action,
+                    "location": (0, 0),
+                    "radius": 0,
+                }
 
                 # Take a step in the environment
                 Sp, dqn_R, done, info = self.env.step(action)
@@ -106,7 +117,8 @@ class MentalAgent:
                 fnsp_oh = np.zeros((max_steps, num_functions))
                 for i in range(max_steps):
                     fnsp_oh[
-                        np.arange(max_steps), Sp["experiment_space"]["function_ids"][i]
+                        np.arange(max_steps),
+                        Sp["experiment_space"]["function_ids"][i],
                     ] = 1
 
                 dqn_Sp = np.concatenate(
@@ -125,18 +137,23 @@ class MentalAgent:
                 # Sample minibatch from buffer if buffer is filled enough
                 if len(self.replay_buffer) > min_buffer_use_size:
                     minibatch = np.array(
-                        random.sample(self.replay_buffer, minibatch_size), dtype=object
+                        random.sample(self.replay_buffer, minibatch_size),
+                        dtype=object,
                     )
-                    Xr = torch.Tensor(np.stack(np.concatenate(minibatch[:, 0:1])))
+                    Xr = torch.Tensor(
+                        np.stack(np.concatenate(minibatch[:, 0:1]))
+                    )
                     Ar = torch.tensor(
-                        np.array(minibatch[:, 1:2], dtype=int), dtype=torch.long
+                        np.array(minibatch[:, 1:2], dtype=int),
+                        dtype=torch.long,
                     )
                     Rr = torch.Tensor(np.array(minibatch[:, 2:3], dtype=float))
                     Spr = torch.Tensor(
                         np.stack(np.concatenate(np.array(minibatch[:, 3:4])))
                     )
                     doner = torch.tensor(
-                        np.array(minibatch[:, 4:5], dtype=int), dtype=torch.int32
+                        np.array(minibatch[:, 4:5], dtype=int),
+                        dtype=torch.int32,
                     )
 
                     # Train DQN NN

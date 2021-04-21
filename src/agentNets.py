@@ -10,7 +10,9 @@ class DQNAgentNN(nn.Module):
     def __init__(self):
         super(DQNAgentNN, self).__init__()
 
-        self.layer1 = nn.Linear(num_functions * max_steps + max_steps + 1, num_neurons)
+        self.layer1 = nn.Linear(
+            num_functions * max_steps + max_steps + 1, num_neurons
+        )
         self.layer2 = nn.ReLU()
         self.layer3 = nn.Linear(num_neurons, 100)
 

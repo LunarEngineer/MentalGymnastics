@@ -1,10 +1,20 @@
 import gym
+
 # import numpy as np
-from gym import error, spaces, utils
+from gym import (
+    # error,
+    spaces,
+    # utils
+)
+
 # from gym.utils import seeding
 # from typing import Tuple, Any
 
-# from mentalgym.utils.reward import monotonic_reward, connection_reward, completion_reward
+# from mentalgym.utils.reward import (
+# monotonic_reward,
+# connection_reward,
+# completion_reward,
+# )
 
 
 class MentalEnv(gym.Env):
@@ -43,9 +53,9 @@ class MentalEnv(gym.Env):
             {
                 "experiment_space": spaces.Dict(
                     {
-                        # These are the functions currently placed in the experiment space
+                        # Functions currently placed in the experiment space
                         "function_ids": spaces.Tuple(fn_ids_tuple),
-                        # This are the locations of the functions
+                        # Locations of those functions
                         "function_locations": spaces.Box(
                             low=self.experiment_space_min,
                             high=self.experiment_space_max,
@@ -55,7 +65,9 @@ class MentalEnv(gym.Env):
                         "function_connection": spaces.MultiBinary(1),
                     }
                 ),
-                #           'function_metrics': np.ndarray((self.number_functions, self.number_metrics)) # populate with the actual actions
+                #  "function_metrics": np.ndarray(
+                #      (self.number_functions, self.number_metrics)
+                #  ),  # populate with the actual actions
             }
         )
 
@@ -80,7 +92,10 @@ class MentalEnv(gym.Env):
 
         # calculate reward based on current observation space and
 
-        # monotonic_reward(self.observation_space["experiment_space"], action, )
+        # monotonic_reward(
+        #     self.observation_space["experiment_space"],
+        #     action,
+        # )
 
         self.observation_space["experiment_space"]
 

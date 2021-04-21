@@ -8,30 +8,18 @@ import mentalgym.functionbank
 import agentNets
 from collections import deque
 
-max_steps = 10
-num_episodes = 2
-num_active_fns_init = 3
-epsilon_start = 1.0
-alpha_start = 0.001
-gamma = 0.99
-buffer_len = 100
-num_functions = 8
-minibatch_size = 8
-min_buffer_use_size = 10 * minibatch_size
-
 
 class MentalAgent:
-    def __init__(self):
+    def __init__(self, hparams):
         # Initialize RL Hyperparameters
-        self.epsilon = epsilon_start
-        self.alpha = alpha_start
-        self.gamma = gamma
+        self.epsilon = hparams["epsilon_start"]
+        self.alpha = hparams["alpha_start"]
 
         # Instantiate environment
         self.env = mentalgym.envs.MentalEnv()
 
         # Create DQN NN
-        self.DQN_agent_Q = agentNets.DQNAgentNN()
+        self.DQN_agent_Q = agentNets.DQNAgentNN(hparams)
 
         # Instantiate loss criterion
         self.criterion = torch.nn.MSELoss()
@@ -42,17 +30,17 @@ class MentalAgent:
         )
 
         # Mask for invalid functions
-        self.num_active_fns = num_active_fns_init
+        self.num_active_fns = hparams["num_active_fns_init"]
 
         # Experience replay buffer
-        self.replay_buffer = deque(maxlen=buffer_len)
+        self.replay_buffer = deque(maxlen=hparams["buffer_len"])
 
         # Variable to store all the episodic rewards
-        self.rewards = np.zeros(num_episodes)
+        self.rewards = np.zeros(hparams["num_episodes"])
 
-    def train(self):
+    def train(self, hparams):
         # Iterate over episodes
-        for e in range(num_episodes):
+        for e in range(hparams["num_episodes"]):
             # Initialize state
             S = self.env.reset()
 
@@ -70,10 +58,12 @@ class MentalAgent:
                 t += 1
 
                 # Vectorize state by changing function IDs into one-hot vectors
-                fns_oh = np.zeros((max_steps, num_functions))
-                for i in range(max_steps):
+                fns_oh = np.zeros(
+                    (hparams["max_steps"], hparams["num_functions"])
+                )
+                for i in range(hparams["max_steps"]):
                     fns_oh[
-                        np.arange(max_steps),
+                        np.arange(hparams["max_steps"]),
                         S["experiment_space"]["function_ids"][i],
                     ] = 1
 
@@ -95,7 +85,9 @@ class MentalAgent:
 
                 # Behavior Policy: epsilon-greedy
                 if np.random.rand() < self.epsilon:
-                    dqn_action = np.random.randint(num_active_fns_init)
+                    dqn_action = np.random.randint(
+                        hparams["num_active_fns_init"]
+                    )
                 else:
                     dqn_action = np.argmax(dqas[0])
 
@@ -114,10 +106,12 @@ class MentalAgent:
 
                 # Vectorize next state by changing function IDs into
                 # one-hot vectors
-                fnsp_oh = np.zeros((max_steps, num_functions))
-                for i in range(max_steps):
+                fnsp_oh = np.zeros(
+                    (hparams["max_steps"], hparams["num_functions"])
+                )
+                for i in range(hparams["max_steps"]):
                     fnsp_oh[
-                        np.arange(max_steps),
+                        np.arange(hparams["max_steps"]),
                         Sp["experiment_space"]["function_ids"][i],
                     ] = 1
 
@@ -135,9 +129,11 @@ class MentalAgent:
                 )
 
                 # Sample minibatch from buffer if buffer is filled enough
-                if len(self.replay_buffer) > min_buffer_use_size:
+                if len(self.replay_buffer) > hparams["min_buffer_use_size"]:
                     minibatch = np.array(
-                        random.sample(self.replay_buffer, minibatch_size),
+                        random.sample(
+                            self.replay_buffer, hparams["minibatch_size"]
+                        ),
                         dtype=object,
                     )
                     Xr = torch.Tensor(
@@ -160,13 +156,13 @@ class MentalAgent:
                     self.optimizer.zero_grad()
                     target = (
                         Rr
-                        + self.gamma
+                        + hparams["gamma"]
                         * torch.max(self.DQN_agent_Q(Spr), 1, keepdim=True)[0]
                     )
                     target = (1 - doner) * target + doner * Rr
                     Y = self.DQN_agent_Q(Xr)
                     Yt = Y.clone()
-                    Yt[torch.arange(0, minibatch_size), Ar] = target
+                    Yt[torch.arange(0, hparams["minibatch_size"]), Ar] = target
                     loss = self.criterion(Y, Yt)
                     loss.backward()
                     self.optimizer.step()
@@ -179,8 +175,26 @@ class MentalAgent:
 
 
 if __name__ == "__main__":
-    agent = MentalAgent()
-    agent.train()
+    # Customize training run **HERE**
+    hparams = {}
+    hparams["num_episodes"] = 10
+    hparams["max_steps"] = 10
+    hparams["hidden_layers"] = (10,)
+    hparams["gamma"] = 0.99
+    hparams["alpha_start"] = 0.001
+    hparams["alpha_const"] = 2.0
+    hparams["alpha_maintain"] = 0.00001
+    hparams["epsilon_start"] = 1.0
+    hparams["epsilon_const"] = 20.0
+    hparams["epsilon_maintain"] = 0.01
+    hparams["buffer_len"] = 100
+    hparams["minibatch_size"] = 8
+    hparams["min_buffer_use_size"] = 5 * hparams["minibatch_size"]
+    hparams["num_functions"] = 8
+    hparams["num_active_fns_init"] = 3
 
-    function_bank = mentalgym.functionbank.FunctionBank("mentalgym/functions")
+    agent = MentalAgent(hparams)
+    agent.train(hparams)
+
+#    function_bank = mentalgym.functionbank.FunctionBank("mentalgym/functions")
 #    print(function_bank)

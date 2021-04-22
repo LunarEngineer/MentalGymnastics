@@ -2,20 +2,84 @@
 from __future__ import annotations
 
 import json
+from numbers import Number
+import numpy as np
 import os
 import pandas as pd
 
 # TODO: Uncomment / change this when atomic function information more fleshed out.
 # from mentalgym.atomic_functions import base_atomic
 base_atomic = {}
+from collections import deque
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.data import dataset_to_functions
 from mentalgym.utils.sampling import softmax_score_sample
-from mentalgym.utils.spaces import prune_function_set
-from mentalgym.utils.validation import validate_function_bank
-from typing import Callable, Optional
+from mentalgym.utils.spaces import prune_function_set, space_to_iterable
+from mentalgym.utils.validation import validate_function_set
+from typing import Callable, Iterable, Optional
 
-#TODO Track function integer index as well with function bank.
+####################################################################
+#         These constants are used in the function bank.           #
+####################################################################
+# This is used to create random ID values, this is the length of the
+#   string.
+__FUNCTION_ID_LEN__ = 32
+# These are used with the function id length
+alphabet = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+np_alphabet = np.array(alphabet, dtype="|S1")
+# This is used as the maximum length of the score deques
+__MAX_SCORE_LEN__ = 100
+# TODO: Some day this needs a schema factory. import schema
+function_representation = {}
+
+def make_function(
+        function_object: Optional[Callable] = None,
+        function_type: str = 'composed',
+        function_inputs: Optional[Iterable[str]] = None
+    ) -> Function:
+    """Creates a Function representation.
+
+    This creates a representation of a Function and is used to
+    create a standardized data structure which the gym uses to
+    represent a complex action composed of a series of nested
+    functions. Note that functions can have scores *added* by the 
+    environment
+
+    Parameters
+    ----------
+    function_object: An object, representing a function, that exposes
+        a forward, in addition to saving and loading weights.
+    function_type: str = 'composed'
+        A value in the set {'composed','atomic','input','output}
+    function_inputs: Optional[Iterable[str]] = None
+        This is a list of input function id's which this function
+        expects as input.
+
+    Returns
+    -------
+    function_representation: Function
+        This is a Function object, currently a dictionary with a
+        predetermined keyset.
+    """
+    # TODO: Does this need to have a score?
+    function_representation = {
+        'id': "".join(
+            np.random.choice(alphabet, __FUNCTION_ID_LEN__)
+            ),
+        'type': function_type,
+        'input': function_inputs,
+        'living': True,
+        'function': function_object,
+        'score_default': 0 #This is to allow sampling with all functions.
+    }
+    return function_representation
+
+def build_default_function_set(
+    dataset:pd.DataFrame
+) -> FunctionSet:
+    """Creates a default Function Set.
+    """
+    raise NotImplementedError
 
 class FunctionBank():
     """Builds and tracks Functions and their history.
@@ -53,6 +117,13 @@ class FunctionBank():
     in the function bank directory. The names of the subdirectories
     are an exact match for the id and are case insensitive.
 
+    API usage for the *function objects* is still up in the air,
+    but they should be able to be instantiated and called in order
+    to:
+
+    * 'Call' a function
+    * Save and load weights of a function.
+
     Function Bank Directory Structure:
     ${function_bank_directory}\
         ${composed_function_1}\
@@ -64,6 +135,37 @@ class FunctionBank():
             artifact_{1_2}
             ...
             artifact_{n_2}
+
+    Function Representation keys and values:
+    
+    * i: This is an ascending integer id for the functions.
+    * id: This is a string representation of the function.
+    * type: This is a string representation of the type of the
+        function. This falls into the set of values ['input',
+        'output', 'atomic', 'composed']
+    * input: This is a iterable containing ids of nodes which this
+        function depends on.
+    * living: This is a boolean which specifies whether this
+        function can be drawn at sample time.
+    * forward: This is the callable representation of the
+        function, and each type of function has a different
+        representation:
+        * atomic: This callable is a factory function which can take
+            an arbitrary number of nodes as input to create a
+            composed function and return the composed callable.
+        * composed: This callable reproduces the atomic action which
+            produced it. This will load and save weights
+            appropriately in the forward.
+        * input: This callable returns the values of the column of
+            the *current sample* of the internal dataset.
+        * output: This callable returns the 
+
+    The function representation in the function bank *also* carries
+        a set of fields for every scoring function. This means that
+        if you 'score' with a function called 'x' then there will be
+        fields 'scores', which contains an array with
+        `buffer_length` values.
+
 
     Parameters
     ----------
@@ -81,8 +183,8 @@ class FunctionBank():
         The default sampling function. This is any function
         that takes in a Pandas DataFrame and returns a sampled
         DataFrame. This function is used when calling .sample().
-        This defaults to uniform random the size of the function
-        manifest.
+        This defaults to a weighted sampling that favors more
+        effective actions.
     pruning_function: Optional[Callable] = None
         The default pruning function. This is any function that
         takes in a Pandas DataFrame and returns a boolean mask
@@ -94,15 +196,15 @@ class FunctionBank():
 
     Methods
     -------
-    query(): Needs testing, finished documentation
+    query(): Needs testing, finish documentation
         Returns information for queried functions
     _query(): Needs testing, finished documentation
         Calls .query on the Pandas representation of the functions.
-    sample()
+    sample(): Needs testing, finished documentation
         Returns a sample of functions.
         Using this to build the set of functions is equivalent to shaping
         function space. This is how you define your exploration strategy.
-    prune()
+    prune(): 
         Removes functions from the function bank.
         This is used to prune dead-end elements of the search space.
         All this does is 'disable' actions. A disabled action cannot
@@ -155,11 +257,13 @@ class FunctionBank():
         else:
             self._pruning_function = prune_function_set
         ############################################################
-        #           This section stores hyperparameters.           #
+        #             This section stores parameters.              #
         ############################################################
         self._function_bank_directory = function_bank_directory
         self._population_size = population_size
         self._data = modeling_data
+        # This function id is incremented with every function made.
+        self._function_id = 0
         ############################################################
         #              This section starts the engine.             #
         ############################################################
@@ -183,7 +287,7 @@ class FunctionBank():
         Read a json document to build the function manifest.
         If one does not exist a default manifest will be created.
         The passed dataset ensures that input / output are created
-        and validated.
+        and validated correctly.
 
         This does some basic validation to ensure the modeling data
         matches existing dataset information and that all the
@@ -203,13 +307,13 @@ class FunctionBank():
         # This function will build a default json document if one
         #   does not exist
         if not os.path.exists(manifest_file):
-            build_default_function_bank(self._data)
+            build_default_function_set(self._data)
             self._save_bank()
         # Read in the manifest
         with open(manifest_file,'r') as f:
             function_manifest = json.load(f)
         # Then, do any validation necessary for those functions
-        assert validate_function_bank(function_manifest)
+        assert validate_function_set(function_manifest)
         # Finally, give up the goods.
         return function_manifest
 
@@ -223,26 +327,23 @@ class FunctionBank():
             '.manifest'
         )
         # This writes self._function_manifest to json
+        # Determine if this is appending.
         with open(manifest_file, 'w') as f:
             f.write(json.dumps(self._function_manifest))
 
     def query(
         self,
         function_id: str,
-        **kwargs
     ) -> Function:
         """Return function information.
 
-        This returns the function identified by the function id.
-
-        Todo: Should this contain a secondary parameter to subset the function?
+        This returns a Function representation for the function
+        identified by the function id.
 
         Parameters
         ----------
         function_id: str
             The string identifier for the function.
-        **kwargs
-            Key word arguments
 
         Returns
         -------
@@ -252,6 +353,7 @@ class FunctionBank():
         --------
         >>> steve = FunctionBank()
         >>> steve.query('functionid')
+        >>> # TODO: Meaningful output
         Representationoffunction
         """
         return self._function_manifest[function_id]
@@ -300,10 +402,90 @@ class FunctionBank():
         If `include_base` is set to True this will also return
         input, output, and atomic actions as counted among the n.
         This should be called at the beginning of episodes.
+
+        The input, output, and atomic should be persisted.
         """
-        # TODO: Call the self._sampling_func on the function manifest
+        # 1. Turn the function manifest into a DataFrame.
+        function_bank = pd.DataFrame(
+            self._function_manifest
+        )
+        # 2. Query the dataset.
+        if include_base:
+            # If we're including the base set then this gets input,
+            #   output, and atomic.
+            base_set = [
+                'input',
+                'output',
+                'atomic'
+            ]
+        else:
+            # If we're not including the base set then this ogets
+            #   nothing.
+            base_set = []
+        # This will query for all functions which match the expected
+        #   types in the base_set list.
+        base_functions = function_bank.query(
+            'type in @base_set'
+        )
+        # 3. How many functions still need to be returned?
+        n_remaining = n - base_functions.shape[0]
+        # 4. Get that many composed functions.
+        # Question. What happens if there are no scores?
+        # This requires scores don't it?
+        composed_functions = self._sampling_function(
+            function_bank.query('type == "composed"'),
+            n_remaining
+        )
+        # 5. Turn both those into iterables and *smoosh* them.
+        base_set = space_to_iterable(base_functions)
+        composed_set = space_to_iterable(composed_functions)
+        # 6. Return the concatenated array.
+        return base_set + composed_set
+
+    def prune():
         raise NotImplementedError
-def build_default_function_bank():
-    """Creates a Function Set composed of atomic functions.
-    """
-    raise NotImplementedError
+
+    def score(
+        self,
+        experiment_space: FunctionSet,
+        score: Number,
+        score_name: str = 'default',
+    ):
+        """Add scoring information to the bank
+
+        This adds scoring information to the function bank.
+
+        """
+        # Experiment space function representations contain an id.
+        # We are going to grab that id, because it matches the id
+        #   here, and we're going to increment the deques for
+        #   those functions. If those deques do not exist, they
+        #   are made.
+        ids = pd.DataFrame(experiment_space).id
+        function_space = pd.DataFrame(self._function_manifest)
+        # Check for the scoring function column. If it doesn't
+        #   exist, make one.
+        for id in ids:
+            if 
+        if score_name in self._scores:
+
+        # Get all the score deqeues
+        pd.DataFrame(
+            self._function_manifest
+        ).query(
+
+        )
+        score_deques = [
+            _[score_name]
+            for _ in self._function_manifest
+            if[]
+            ]
+        for function in experiment_space:
+            # The experiment space representation of a function has
+            #   at least the function id. That's good enough.
+            function['id']
+        raise NotImplementedError
+
+
+    
+

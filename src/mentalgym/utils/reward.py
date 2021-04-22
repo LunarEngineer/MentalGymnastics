@@ -225,7 +225,9 @@ def connection_reward(
     ... )
     array(0.)
     """
-    composed_funcs = experiment_space_container.query('type=="composed"')
+    composed_funcs = experiment_space_container.query(
+        'type in ["composed", "intermediate"]'
+    )
     # If there are composed functions, return a reward of 10.
     connected = composed_funcs.shape[0] > 0
     return np.array(connected * 10.)

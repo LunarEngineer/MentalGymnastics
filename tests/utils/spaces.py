@@ -377,4 +377,3 @@ test_sets = [
 def test_prune_function_set(kwargs, expected_results):
     actual_results = prune_function_set(**kwargs)
     assert actual_results==expected_results
-# This tests the pruning function

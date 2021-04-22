@@ -1,6 +1,8 @@
 """Contains utilities used to validate data structures."""
+import numpy as np
 import pandas as pd
-from typing import Any, Dict
+from mentalgym.constants import function_types
+from typing import Any, Dict, Iterable
 
 
 def is_function(item: Any, raise_early: bool = False) -> bool:
@@ -56,8 +58,8 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
     if not isinstance(item, Dict):
         if raise_early:
             err_msg = f"""Function Validation Error:
-            Expected type: Dict
-            Encountered type: {type(item)}
+            Expected data type: Dict
+            Encountered data type: {type(item)}
             """
             raise Exception(err_msg)
         return False
@@ -75,28 +77,51 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
             """
             raise Exception(err_msg)
         return False
+    # 3) Assert that the types are in the allowable subset
+    if not item['type'] in function_types:
+        if raise_early:
+            err_msg = f"""Function Validation Error:
+            Expected values for type variable: {function_types}
+            Encountered value for type variable: {item['type']}
+            """
+            raise Exception(err_msg)
+        return False
     # Well, looks like a function, smells like a function...
     return True
 
 # TODO: Finish and write testing and docs
-def validate_function_bank(function_set):
-    """Validates a function bank.
+def validate_function_set(function_set):
+    """Validates a function set.
 
-    This does basic validation for a function bank.
+    This does basic validation for a function set.
 
     Parameters
     ----------
     function_set: FunctionSet
-        A set of functions.
+        An iterable of Function objects.
 
     Examples
     """
-    # Test each function
-    for function in function_set:
-        assert is_function(function)
-    # Test to ensure the basic types exist.
-    assert pd.DataFrame(
-        function_set
-    ).types.isin(['atomic', 'composed', 'source', 'sink'])
+    # Test to ensure that all functions are Functions
+    # This is as long as the function set
+    is_functions: Iterable[bool] = pd.Series(
+        map(
+            is_function,
+            function_set
+        )
+    )
+    # If *any* of them are invalid.
+    if np.any(~is_functions):
+        unmasked_elements = [
+            f for f, _ in zip(function_set, is_functions)
+            if not _
+        ]
+        err_msg = f"""Invalid Functions:
+
+        The following functions are invalid.
+
+        {"\n".join(str(unmasked_elements))}
+        """
+        raise Exception("")
     # There's more to be done here.
     raise NotImplementedError

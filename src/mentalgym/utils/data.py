@@ -55,6 +55,13 @@ function_input_three = {
     'exp_loc_0': 100.,
     'exp_loc_1': 0.,
 }
+function_atomic_one = {
+    'id': 'ReLU',
+    'type': 'atomic',
+    'input': None,
+    'exp_loc_0': None,
+    'exp_loc_1': None,
+}
 function_output = {
     'id': 'output',
     'type': 'sink',
@@ -83,6 +90,7 @@ function_set = [
     function_input_one,
     function_input_two,
     function_input_three,
+    function_atomic_one,
     function_output,
     function_composed_one,
     function_composed_two

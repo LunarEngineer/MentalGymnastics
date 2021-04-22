@@ -34,7 +34,8 @@ class MentalAgent:
 
     def train(self, hparams):
         obs = self.env.reset()
-        while True:
+        dones = False
+        while not dones:
             action, _states = self.model.predict(obs)
             obs, rewards, dones, info = self.env.step(action)
             self.env.render()
@@ -43,7 +44,7 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
-    hparams["num_episodes"] = 10
+    hparams["num_episodes"] = 2
     hparams["max_steps"] = 10
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99

@@ -7,14 +7,13 @@ from gym import (
     # utils
 )
 
+from mentalgym.utils.data import function_bank
+from mentalgym.utils.spaces import refresh_experiment_container
+
 # from gym.utils import seeding
 # from typing import Tuple, Any
 
-# from mentalgym.utils.reward import (
-# monotonic_reward,
-# connection_reward,
-# completion_reward,
-# )
+from mentalgym.utils.reward import connection_reward, completion_reward
 
 
 class MentalEnv(gym.Env):
@@ -33,7 +32,10 @@ class MentalEnv(gym.Env):
         self._step = 0
         self.state = self.reset()
 
-        self.action_space = gym.spaces.Box(4,)
+        self._experiment_space = refresh_experiment_container(function_bank=function_bank, min_loc=np.array([0, 0]), max_loc=np.array([10, 10]))
+        print(self._experiment_space)
+
+        self.action_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(4,))
         # self.action_space = gym.spaces.Dict(
             # {
                 # "function_id": spaces.Discrete(self.number_functions),
@@ -49,20 +51,12 @@ class MentalEnv(gym.Env):
         # )
         # self.action_space = spaces.Tuple([spaces.Discrete(1)])
 
-        # Create iterable for function IDs
-#        fn_ids_tuple = ()
-#        for i in range(self.max_steps):
-#            fn_ids_tuple += (spaces.Discrete(self.number_functions),)
-
         # Fn ID, locX, locY, FnConnection
-        self.observation_space = gym.spaces.Box(4,self.max_steps)
+        self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(4, self.max_steps))
 
 
         # self.observation_space = gym.spaces.Dict(
             # {
-
-
-
                 # "experiment_space": spaces.Dict(
                     # {
                         # # Functions currently placed in the experiment space
@@ -105,41 +99,57 @@ class MentalEnv(gym.Env):
 
         # calculate reward based on current observation space and
 
+
+        # TODO: Check if new function connects to ANY node
+        # check if the new function, connects to other actions that have been dropped
+        # 
+        switch(action["type"]):
+            case "composed": 
+                # radius doesn't matter, it is put into place
+                # add to experiment space
+            case "atomic":
+                # radius does matter
+                # make tree from experiment space location query(action.r)
+                """
+                >>> from scipy.spatial import cKDTree
+
+                >>> points_ref = np.array([(1, 1), (3, 3), (4, 4), (5, 4), (6, 6)])
+                >>> tree = cKDTree(points_ref)
+
+                >>> idx = tree.query_ball_point((4, 4), action.r)
+                >>> points_ref[idx]
+                # array([[3, 3], [4, 4], [5, 4]])
+                """
+                # if it is a good action (that connects)
+                #   go get the actual atomic function and instantiate it
+                #   add to experiment space, not the function bank YET.
+        
+        # reward = connection_reward()
+
         print("Action:", action)
         self._step += 1
 
         if self._step == self.max_steps:
+            # run _build_net()
+            # reward = linear_completion_reward()
             done = True
 
         info = {}
-
-        # TODO: Check if new function connects to ANY node
-#        for
-
-#        self.state["experiment_space"]["function_ids"] += (action["function_id"],)
-#        self.state["experiment_space"]["function_locations"] += (action["location"],)
-
-#        if not self.function_connection:
-#            if distance(input, action["location"]
-#            if action['radius']
-
+        
         reward = 0
 
+        # self.state: all the function ids, all the locations, connection
+
         return self.state, reward, done, info
+
+    def _build_net(self):
+        pass
 
     def reset(self):
         self._step = 0
         self.function_connection = False
-
         # TODO: Initialize state to Input (get ID for this input to query in .step())
-        state = {
-            "experiment_space": {
-                "function_ids": tuple([0] * self.max_steps),
-                "function_locations": [0] * self.max_steps,
-                "function_connection": 0,
-            }
-        }
-        state = np.zeros(3)
+        state = np.zeros((4, self.max_steps))
         return state
 
     def render(self, mode="human"):

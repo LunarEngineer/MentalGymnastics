@@ -1,1 +1,12 @@
-gym
+tensorflow>=2.3.0
+bandit>=1.6.2
+flake8>=3.9.0
+gym>=0.18.0
+mypy>=0.812
+numpy>=1.20.2
+pandas>=1.2.3
+pytest>=6.1.2
+ray>=1.2.0
+scikit-learn>=0.24.1
+virtualenv>=20.4.3
+stable-baselines3>=1.0

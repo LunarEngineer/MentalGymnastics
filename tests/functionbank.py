@@ -2,6 +2,7 @@
 
 This lays out simple test cases which can be used to test the function bank.
 """
+import tempfile
 from mentalgym import FunctionBank
 from mentalgym.utils.data import atomic_functions
 
@@ -46,7 +47,7 @@ action_manifest = atomic_functions + [
 
 err_msg_header = "Action Bank "
 
-def test_action_bank():
+def test_action_bank(d, ab):
     """Test the action bank."""
     err_msg = f"""Action Bank Init Error:
     _action_bank_directory property not set correctly.
@@ -56,7 +57,7 @@ def test_action_bank():
 
     with tempfile.TemporaryDirectory() as d:
         # Spin up a new action bank using the temp directory.
-        action_bank = ActionBank(
+        action_bank = FunctionBank(
             action_bank_directory = d
         )
         # 1. Check to ensure the init functioned correctly

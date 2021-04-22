@@ -430,8 +430,8 @@ class FunctionBank():
         # 3. How many functions still need to be returned?
         n_remaining = n - base_functions.shape[0]
         # 4. Get that many composed functions.
-        # Question. What happens if there are no scores?
-        # This requires scores don't it?
+        # Because all functions come with score_default this will
+        #   automatically
         composed_functions = self._sampling_function(
             function_bank.query('type == "composed"'),
             n_remaining
@@ -443,6 +443,7 @@ class FunctionBank():
         return base_set + composed_set
 
     def prune():
+        self._prun
         raise NotImplementedError
 
     def score(

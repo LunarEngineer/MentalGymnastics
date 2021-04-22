@@ -113,15 +113,16 @@ def validate_function_set(function_set):
     # If *any* of them are invalid.
     if np.any(~is_functions):
         unmasked_elements = [
-            f for f, _ in zip(function_set, is_functions)
+            str(f) for f, _ in zip(function_set, is_functions)
             if not _
         ]
+        sub_str = "\n".join(unmasked_elements)
         err_msg = f"""Invalid Functions:
 
         The following functions are invalid.
 
-        {"\n".join(str(unmasked_elements))}
+        {sub_str}
         """
-        raise Exception("")
+        raise Exception(err_msg)
     # There's more to be done here.
     raise NotImplementedError

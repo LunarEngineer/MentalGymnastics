@@ -1,44 +1,39 @@
 import numpy as np
-import torch
+
+# import torch
 import mentalgym
 import mentalgym.envs
 import mentalgym.functionbank
-import agentNets
-import gym
 
+# import gym
 from stable_baselines3 import A2C
-from stable_baselines3.common.env_util import make_vec_env
-
 from stable_baselines3.common.env_checker import check_env
 
+# from stable_baselines3.common.env_util import make_vec_env
 
 
 class MentalAgent:
     def __init__(self, hparams):
-        # Initialize RL Hyperparameters
-        self.epsilon = hparams["epsilon_start"]
-        self.alpha = hparams["alpha_start"]
-
         # Instantiate environment
         self.env = mentalgym.envs.MentalEnv()
 
-        #  It will check your custom environment and output additional warnings if needed
+        #  Check custom environment and output additional warnings if needed
         check_env(self.env)
 
         # Create A2C Agent
-#        policy_kwargs = dict(act_fun=tf.nn.tanh, net_arch=[32, 32])
-        self.model = A2C("MlpPolicy", self.env, verbose=1,
-                         gamma=hparams["gamma"],
-                         learning_rate=hparams["alpha_start"])
-#                         policy_kwargs)
+        #        policy_kwargs = dict(act_fun=tf.nn.tanh, net_arch=[32, 32])
+        self.model = A2C(
+            "MlpPolicy",
+            self.env,
+            verbose=1,
+            gamma=hparams["gamma"],
+            learning_rate=hparams["alpha_start"],
+        )
+
+    #                         policy_kwargs)
 
     def train(self, hparams):
-        obs = self.env.reset()
-        dones = False
-        while not dones:
-            action, _states = self.model.predict(obs)
-            obs, rewards, dones, info = self.env.step(action)
-            self.env.render()
+        self.model.learn(total_timesteps=1000)
 
 
 if __name__ == "__main__":

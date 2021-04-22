@@ -1,4 +1,4 @@
-i# Mental Gymnastics
+# Mental Gymnastics
 
 This is an OpenAI compatible reinforcement learning environment to deliver the final project for Deep Learning, Spring 2021.
 

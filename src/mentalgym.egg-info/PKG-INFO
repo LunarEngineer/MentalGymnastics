@@ -1,10 +1,16 @@
-Metadata-Version: 1.0
+Metadata-Version: 2.1
 Name: mentalgym
 Version: 0.0.1
-Summary: UNKNOWN
-Home-page: UNKNOWN
-Author: UNKNOWN
-Author-email: UNKNOWN
+Summary: Learning to learn with spatial experimentation
+Home-page: https://github.com/LunarEngineer/MentalGymnastics
+Author: "Timothy D Luna, Ali K., Christianne I., Vahe H."
+Author-email: "timothy.d.luna@gmail.com, @, @, @"
 License: UNKNOWN
+Project-URL: Bug Tracker, https://github.com/LunarEngineer/MentalGymnastics/issues
 Description: UNKNOWN
 Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Ubuntu 18.04
+Requires-Python: >=3.7.9
+Description-Content-Type: text/markdown

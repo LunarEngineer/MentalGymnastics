@@ -1,0 +1,13 @@
+{
+    "function1": {
+	"id": 1,
+	"type": "composed",
+	"input": ["column_0"]
+    },
+
+    "function2": {
+	"id": 2,
+	"type": "composed",
+	"input": ["column_0"]
+    }
+}

@@ -102,14 +102,18 @@ testing_df = pd.DataFrame(
 #       Default and Meaningless Testing Atomic Functions           #
 ####################################################################
 function_atomic_one = {
-    'id': 'linear_type_1',
+    'id': 'ReLU',
     'type': 'atomic',
-    'input': None
+    'input': None,
+    'exp_loc_0': None,
+    'exp_loc_1': None,
 }
 function_atomic_two = {
-    'id': 'relu',
+    'id': 'Dropout',
     'type': 'atomic',
-    'input': None
+    'input': None,
+    'exp_loc_0': None,
+    'exp_loc_1': None,
 }
 atomic_functions = [
     function_atomic_one,
@@ -162,6 +166,8 @@ function_set = [
     function_composed_one,
     function_composed_two
 ]
+
+function_set += atomic_functions
 
 
 function_bank = append_to_experiment(

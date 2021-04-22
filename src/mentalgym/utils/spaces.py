@@ -112,6 +112,7 @@ def refresh_experiment_container(
         np.ones((num_outputs, np.amax(ndim - 1, 0)))
     ], axis=1)
     output_locations[:, 1:] = _max_loc[1:]
+
     # Now we take the DataFrame representation of the inputs and
     #   outputs, stack them vertically, and add the locations on
     #   as additional columns named exp_loc_0, ..., exp_loc_(n-1)
@@ -125,9 +126,11 @@ def refresh_experiment_container(
         columns=[f'exp_loc_{_}' for _ in range(ndim)]
     )
     function_df = pd.concat([input_functions, output_functions])
+
     # The final output has a row for every input and out node,
     #   and every node is in a proper location.
-    output_df = pd.concat([function_df, location_df], axis=1)
+
+    output_df = pd.concat([function_df, location_df])
     return output_df
 
 

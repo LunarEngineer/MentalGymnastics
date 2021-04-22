@@ -7,12 +7,12 @@ import numpy as np
 import pandas as pd
 from mentalgym.types import FunctionSet, ExperimentSpace
 from mentalgym.utils.validation import is_function
-from mentalgym.functionbank import FunctionBank
 from numpy.typing import ArrayLike
+from typing import Callable, Optional
 
 
 def refresh_experiment_container(
-    function_bank: FunctionBank,
+    function_bank: pd.DataFrame,
     min_loc: ArrayLike = np.array([0, 0]),
     max_loc: ArrayLike = np.array([100, 100])
 ) -> pd.DataFrame:
@@ -23,11 +23,13 @@ def refresh_experiment_container(
     the given extents of the Experiment Space to create the base set
     of functions.
 
-    This function can be called in .reset to initialize the state.
+    This function can be called in .reset to initialize the
+    experiment space elements of the observation space. The output
+    has elements for the input and output nodes.
 
     Parameters
     ----------
-    function_bank: FunctionBank
+    function_bank: pd.DataFrame
         This is an object which can be queried for function information
     min_loc: ArrayLike[float] = np.array([0, 0])
         This is an array of 'minimum' locations for every axis in the
@@ -166,12 +168,6 @@ def experiment_space_from_container(
            [100.,   0.],
            [  0., 100.]]))
     ('function_connections', array([False, False, False, False]))
-    >>> function_composed_one = {
-    ...    'id': 'steve',
-    ...    'type': 'composed',
-    ...    'input': ['column_0'],
-    ...    'location': array([[ 0., 0.2]])
-    ... }
     """
     ids = container.id
     location_columns = [
@@ -195,8 +191,8 @@ def experiment_space_from_container(
 
 def append_to_experiment(
     experiment_space_container: pd.DataFrame,
-    composed_functions: FunctionSet,
-    function_bank: FunctionBank
+    function_bank: pd.DataFrame,
+    composed_functions: FunctionSet
 ) -> pd.DataFrame:
     """Extend an experiment space container with a composed action.
 
@@ -205,12 +201,12 @@ def append_to_experiment(
     experiment_space_container: pd.DataFrame
         The original experiment space container to insert new
         functions into.
-    composed_functions: FunctionSet
-        This is an iterable of functions, each of which have keys of
-        id, type, input, and location.
     function_bank: FunctionBank
         This is the function bank, which can be queried for function
         information, and is used for validation here.
+    composed_functions: FunctionSet
+        This is an iterable of functions, each of which have keys of
+        id, type, input, and location.
 
     Returns
     -------
@@ -233,8 +229,8 @@ def append_to_experiment(
     ... ]
     >>> append_to_experiment(
     ...     container,
-    ...     composed_iter,
-    ...     function_bank
+    ...     function_bank,
+    ...     composed_iter
     ... )
              id      type                 input  exp_loc_0  exp_loc_1
     0  column_0    source                  None        0.0        0.0
@@ -281,6 +277,155 @@ def experiment_space_eq(
     Returns
     -------
     eq: bool
-        Whether or not 
+        Whether or not two experiment spaces are equivalent
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from mentalgym.utils.spaces import refresh_experiment_container
+    >>> from mentalgym.utils.spaces import experiment_space_eq
+    >>> from mentalgym.utils.data import function_bank
+    >>> metadata_df = pd.DataFrame(
+    ...     data = {
+    ...         'id': ['column_0', 'column_1', 'column_2', 'output'],
+    ...         'type': ['source', 'source', 'source', 'sink'],
+    ...         'input': [None, None, None, None]
+    ...     }
+    ... )
+    >>> space_constraints_1 = {
+    ...     'min_loc': [0, 0],
+    ...     'max_loc': [100, 100]
+    ... }
+    >>> base_container = refresh_experiment_container(
+    ...     metadata_df,
+    ...     **space_constraints_1
+    ... )
+    >>> experiment_space_eq(base_container, base_container)
+    True
+    >>> function_bank
+             id      type                 input  exp_loc_0  exp_loc_1
+    0  column_0    source                  None        0.0        0.0
+    1  column_1    source                  None       50.0        0.0
+    2  column_2    source                  None      100.0        0.0
+    3    output      sink                  None        0.0      100.0
+    0     steve  composed            [column_0]       25.0       50.0
+    1       bob  composed  [column_0, column_1]       50.0       75.0
+    >>> experiment_space_eq(base_container, function_bank)
     """
-# extended_container = append_to_experiment(container,composed_iter,function_bank)
+    cont_new_ind_a = experiment_space_container_a.reset_index(drop=True)
+    cont_new_ind_b = experiment_space_container_b.reset_index(drop=True)
+    cont_new_ind_a = cont_new_ind_a.sort_values(['type', 'id'])
+    cont_new_ind_b = cont_new_ind_b.sort_values(['type', 'id'])
+    return cont_new_ind_a.equals(cont_new_ind_b)
+
+
+def space_to_iterable(
+    space: pd.DataFrame
+) -> FunctionSet:
+    """Deconstructs a space of functions.
+
+    Parameters
+    ----------
+    space: pd.DataFrame
+        Either an experiment space container or a function bank.
+
+    Returns
+    -------
+    function_set: FunctionSet
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from mentalgym.utils.spaces import space_to_iterable
+    >>> function_space = pd.DataFrame(
+    ...     data = {
+    ...         'id': ['bob','janice','dilly','dally','beans'],
+    ...         'living': [True,True,True,True,True],
+    ...         'extra': ['a','b','c','d','e'],
+    ...         'information': ['a','b','c','d','e'],
+    ...         'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
+    ...         'score_complexity': [0.01, 100, 10, 20, 50]
+    ...     }
+    ... )
+    >>> function_set = space_to_iterable(function_space)
+    >>> function_set[0]
+    {'id': 'bob', 'living': True, 'extra': 'a', 'information': 'a', 'score_accuracy': 0.95, 'score_complexity': 0.01}
+    >>> function_set[1]['score_accuracy']
+    0.7
+    """
+    return [v.to_dict() for _, v in space.iterrows()]
+
+
+#TODO: Testing
+def prune_function_set(
+    function_set: FunctionSet,
+    sampling_func: Callable,
+    population_size: int,
+    random_state: Optional[int] = None
+) -> FunctionSet:
+    """Prunes a function set
+
+    This draws `n` samples from the function set.
+    All elements not drawn are marked as 'dead' and the original,
+    mutated, set is returned.
+
+    Parameters
+    ----------
+    function_set: FunctionSet
+        The iterable of function objects
+    sampling_func: Callable
+        The sampling function to use. Please see utils.sampling
+        for the expected function signature.
+    population_size: int
+        The number of functions to escape the cull.
+    random_state: Optional[int] = None
+        This is passed into the sampling function.
+
+    Returns
+    -------
+    curated_set: FunctionSet
+        The original bank with the 'living' status updated.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from mentalgym.utils.spaces import (
+    ...     space_to_iterable,
+    ...     prune_function_set
+    ... )
+    >>> from mentalgym.utils.sampling import softmax_score_sample
+    >>> function_space = pd.DataFrame(
+    ...     data = {
+    ...         'id': ['bob','janice','dilly','dally','beans'],
+    ...         'living': [True,True,True,True,True],
+    ...         'extra': ['a','b','c','d','e'],
+    ...         'information': ['a','b','c','d','e'],
+    ...         'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
+    ...         'score_complexity': [0.01, 100, 10, 20, 50]
+    ...     }
+    ... )
+    >>> function_set = space_to_iterable(function_space)
+    >>> pruned_set = prune_function_set(
+    ...     function_set,
+    ...     softmax_score_sample,
+    ...     3,
+    ...     0
+    ... )
+    >>> [_['id'] for _ in pruned_set if not _['living']]
+    ['dally', 'beans']
+    """
+    # Turn to dataframe for ease of use
+    function_bank = pd.DataFrame(function_set)
+    # Sample the population size.
+    sampled_ids = sampling_func(
+        function_bank,
+        population_size,
+        random_state
+    )
+    # Update the data.
+    function_bank.loc[
+        ~function_bank.id.isin(sampled_ids),
+        'living'
+    ] = False
+    # Cast the data back to records.
+    return space_to_iterable(function_bank)

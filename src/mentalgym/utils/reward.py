@@ -4,9 +4,10 @@ This file contains basic reward functions used in the Mental Gym environment.
 It contains a small utility to make it easier to build rewards programatically.
 """
 import numpy as np
-from mentalgym.types import ExperimentSpace, FunctionSet
+import pandas as pd
+from mentalgym.types import FunctionSet
 from scipy.spatial import cKDTree
-from typing import Iterable, Union, Callable, Optional
+from typing import Iterable, Union, Callable
 
 # This is shared by all the reward functions
 __param_str__ = """
@@ -34,27 +35,31 @@ __param_str__ = """
         This is a Numpy array of floats.
 """
 
+
 def build_reward_function(
     experiment_space_container: pd.DataFrame,
     function_set: FunctionSet,
     reward_set: Iterable[Union[str, Callable]] = ['monotonic'],
     score: float = 0
-) -> :
+) -> float:
     f"""Creates composite reward.
 
     Uses passed callables or strings representing default
     functions to calculate reward from an experiment space
     or a function space.
 
+    This is the function called from the environment when it comes
+    time to reward the agent.
+
     {__param_str__}
 
     Examples
     --------
-    >>> # Fill out examples when experiment space structure 
+    >>> # Fill out examples when experiment space structure
     """
     # Give default rewards of monotonic if unspecified
-    if reward is None:
-        reward = ['monotonic']
+    if reward_set is None:
+        reward_set  = ['monotonic']
     # Initialize reward to zero
     reward = 0
     # Loop through the iterable of strings / functions
@@ -63,6 +68,7 @@ def build_reward_function(
         "connection": connection_reward,
         "completion": linear_completion_reward
     }
+
     # Helper function to trigger for completion reward
     def requires_score(x: str) -> bool:
         return x == "completion"
@@ -74,26 +80,27 @@ def build_reward_function(
             if requires_score(r):
                 # Pass the score
                 reward += reward_dict[r](
-                    experiment_space,
-                    function_space,
+                    experiment_space_container,
+                    function_set,
                     score
                 )
             else:
                 # Otherwise only the spaces
                 reward += reward_dict[r](
-                    experiment_space,
-                    function_space
+                    experiment_space_container,
+                    function_set
                 )
         # If it's a function, use *that* function.
-        else if isinstance(r, Callable):
+        elif isinstance(r, Callable):
             reward += r(
-                experiment_space,
-                function_space
+                experiment_space_container,
+                function_set
             )
         # Otherwise *blow up*! Kapow!
         raise Exception(f"{r} is not a valid reward.")
     # Then, return reward
     return reward
+
 
 def monotonic_reward(
     experiment_space_container: pd.DataFrame,
@@ -178,12 +185,53 @@ def connection_reward(
     nodes in the net are composed functions.
 
     {__param_str__}
-
+    Examples
+    --------
+    >>> # Load in a testing function bank
+    >>> from mentalgym.utils.data import function_bank
+    >>> # Grab the utilities to create some experiment data.
+    >>> from mentalgym.utils.spaces import refresh_experiment_container
+    >>> from mentalgym.utils.spaces import append_to_experiment
+    >>> # Bring in the reward function
+    >>> from mentalgym.utils.reward import connection_reward
+    >>> container = refresh_experiment_container(function_bank)
+    >>> # Now, take the composed functions and add them to the experiment
+    >>> composed_funcs = function_bank.query('type=="composed"')
+    >>> composed_iter = [
+    ...    row.to_dict() for
+    ...    ind, row in composed_funcs.iterrows()
+    ... ]
+    >>> # This adds two nodes to the container.
+    >>> extended_container = append_to_experiment(
+    ...     container,
+    ...     composed_iter,
+    ...     function_bank
+    ... )
+    >>> # Here you can see the closest composed node has a
+    >>> #   distance of sqrt(25**2 + 50**2)
+    >>> extended_container
+             id      type                 input  exp_loc_0  exp_loc_1
+    0  column_0    source                  None        0.0        0.0
+    1  column_1    source                  None       50.0        0.0
+    2  column_2    source                  None      100.0        0.0
+    3    output      sink                  None        0.0      100.0
+    0     steve  composed            [column_0]       25.0       50.0
+    1       bob  composed  [column_0, column_1]       50.0       75.0
+    >>> connection_reward(extended_container, composed_iter)
+    array(10.)
+    >>> connection_reward(
+    ...     extended_container.query('type!="composed"'),
+    ...     composed_iter
+    ... )
+    array(0.)
     """
-    # TODO: Query function space for composed actions.
+    composed_funcs = experiment_space_container.query(
+        'type in ["composed", "intermediate"]'
+    )
     # If there are composed functions, return a reward of 10.
-    connected = False
-    return connected * 10.
+    connected = composed_funcs.shape[0] > 0
+    return np.array(connected * 10.)
+
 
 def linear_completion_reward(
     experiment_space_container: pd.DataFrame,
@@ -197,13 +245,44 @@ def linear_completion_reward(
     scalar multiplier and b is a small bias constant reward.
 
     {__param_str__}
-
-    Parameters
-    ----------
-    score: float
-        The output of the scoring function, used here as x.
+    Examples
+    --------
+    >>> # Load in a testing function bank
+    >>> from mentalgym.utils.data import function_bank
+    >>> # Grab the utilities to create some experiment data.
+    >>> from mentalgym.utils.spaces import refresh_experiment_container
+    >>> from mentalgym.utils.spaces import append_to_experiment
+    >>> # Bring in the reward function
+    >>> from mentalgym.utils.reward import connection_reward
+    >>> container = refresh_experiment_container(function_bank)
+    >>> # Now, take the composed functions and add them to the experiment
+    >>> composed_funcs = function_bank.query('type=="composed"')
+    >>> composed_iter = [
+    ...    row.to_dict() for
+    ...    ind, row in composed_funcs.iterrows()
+    ... ]
+    >>> # This adds two nodes to the container.
+    >>> extended_container = append_to_experiment(
+    ...     container,
+    ...     composed_iter,
+    ...     function_bank
+    ... )
+    >>> # Here you can see the closest composed node has a
+    >>> #   distance of sqrt(25**2 + 50**2)
+    >>> extended_container
+             id      type                 input  exp_loc_0  exp_loc_1
+    0  column_0    source                  None        0.0        0.0
+    1  column_1    source                  None       50.0        0.0
+    2  column_2    source                  None      100.0        0.0
+    3    output      sink                  None        0.0      100.0
+    0     steve  composed            [column_0]       25.0       50.0
+    1       bob  composed  [column_0, column_1]       50.0       75.0
+    >>> linear_completion_reward(extended_container, composed_iter, 0)
+    array([20.])
+    >>> linear_completion_reward(extended_container, composed_iter, 0)
+    array([9520.])
     """
     x = score
     m = 100.
     b = 20.
-    return m*x + b
+    return m * x + b

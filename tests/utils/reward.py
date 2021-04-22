@@ -1,27 +1,90 @@
-from mentalgym.utils.reward import build_reward_function
+import numpy as np
+import pytest
+from mentalgym.utils.data import function_bank
+from mentalgym.utils.spaces import (
+    refresh_experiment_container,
+    append_to_experiment
+)
+from mentalgym.utils.reward import (
+    build_reward_function,
+    connection_reward,
+    linear_completion_reward,
+    monotonic_reward
+)
+from typing import Any, Callable, Dict
 
-experiment_space = None
-function_space = None
-
-# In this experiment space the closest distance is 'd'
-# Here there are three sets of input, with d of 0, 0.5, 1
-d = (0, 0.5, 1)
-# The three levels of monotonic reward should return these values.
-monotonic_reward = [1, .606531, .36788]
-# The two levels of connection reward should return
-connection_reward = [0, 10]
-# The completion reward should be a linear combination
-# Accuracies: 50, 70, 90
-# Values: .5*100 + 20, .7*100 + 20, .9*100 + 20
-
-reward_function_sets = [
-    ([],)
-    (['monotonic']),
-    (['connection']),
-    (['completion']),
-    (['monotonic','connection']),
-    (['connection','completion'])
+container = refresh_experiment_container(function_bank)
+composed_funcs = function_bank.query('type=="composed"')
+composed_iter = [
+    row.to_dict() for
+    ind, row in composed_funcs.iterrows()
 ]
-@pytest.mark.parametrize('reward_functions,output',reward_function_sets)
-def test_reward_function(reward_functions,output):
-    pass
+extended_container = append_to_experiment(
+    container,
+    composed_iter,
+    function_bank
+)
+
+
+test_sets = [
+    (
+        'monotonic',
+        monotonic_reward,
+        {
+            'experiment_space_container': extended_container,
+            'function_set': composed_iter
+        },
+        np.array([5.27473208e-25])
+    ),
+    (
+        'connection_1',
+        connection_reward,
+        {
+            'experiment_space_container': extended_container,
+            'function_set': composed_iter
+        },
+        np.array([10.])
+    ),
+    (
+        'connection_0',
+        connection_reward,
+        {
+            'experiment_space_container': container,
+            'function_set': composed_iter
+        },
+        np.array([0.])
+    ),
+    (
+        'linear_completion_0',
+        linear_completion_reward,
+        {
+            'experiment_space_container': extended_container,
+            'function_set': composed_iter,
+            'score': 0
+        },
+        np.array([20.])
+    ),
+    (
+        'linear_completion_95',
+        linear_completion_reward,
+        {
+            'experiment_space_container': extended_container,
+            'function_set': composed_iter,
+            'score': 95
+        },
+        np.array([9520.])
+    )
+]
+
+test_param_string = 'test_name, reward_f, kwargs, expected_reward'
+
+
+@pytest.mark.parametrize(test_param_string, test_sets)
+def test_reward(
+    test_name: str,
+    reward_f: Callable,
+    kwargs: Dict[str, Any],
+    expected_reward: float
+):
+    actual_reward = reward_f(**kwargs)
+    assert np.allclose(actual_reward, expected_reward)

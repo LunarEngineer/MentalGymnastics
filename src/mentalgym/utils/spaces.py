@@ -429,3 +429,8 @@ def prune_function_set(
     ] = False
     # Cast the data back to records.
     return space_to_iterable(function_bank)
+
+def state_from_space(experiment_space_container):
+    """Creates a state representation from a container.
+    """
+    pass

@@ -172,7 +172,7 @@ def monotonic_reward(
     d, _ = non_sink_tree.query(sink_locations)
     # Reward calculation
     r = np.exp(-d)
-    return r
+    return float(r)
 
 
 def connection_reward(
@@ -230,7 +230,7 @@ def connection_reward(
     )
     # If there are composed functions, return a reward of 10.
     connected = composed_funcs.shape[0] > 0
-    return np.array(connected * 10.)
+    return connected * 10.
 
 
 def linear_completion_reward(
@@ -285,4 +285,4 @@ def linear_completion_reward(
     x = score
     m = 100.
     b = 20.
-    return m * x + b
+    return float(m * x + b)

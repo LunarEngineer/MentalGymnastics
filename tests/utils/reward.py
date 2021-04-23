@@ -21,8 +21,8 @@ composed_iter = [
 ]
 extended_container = append_to_experiment(
     container,
-    composed_iter,
-    function_bank
+    function_bank,
+    composed_iter
 )
 
 

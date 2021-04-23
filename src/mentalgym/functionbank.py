@@ -16,6 +16,7 @@ from mentalgym.utils.data import dataset_to_functions
 from mentalgym.utils.sampling import softmax_score_sample
 from mentalgym.utils.spaces import prune_function_set, space_to_iterable
 from mentalgym.utils.validation import validate_function_set
+from numpy.typing import ArrayLike
 from typing import Callable, Iterable, Optional
 
 ####################################################################
@@ -35,7 +36,8 @@ function_representation = {}
 def make_function(
         function_object: Optional[Callable] = None,
         function_type: str = 'composed',
-        function_inputs: Optional[Iterable[str]] = None
+        function_inputs: Optional[Iterable[str]] = None,
+        function_location: Optional[ArrayLike] = None
     ) -> Function:
     """Creates a Function representation.
 
@@ -54,6 +56,9 @@ def make_function(
     function_inputs: Optional[Iterable[str]] = None
         This is a list of input function id's which this function
         expects as input.
+    function_location: Optional[ArrayLike] = None
+        If this is passed then these fields are added to the function
+        and each one is keyed as 'exp_loc_i'.
 
     Returns
     -------
@@ -73,6 +78,12 @@ def make_function(
         'function': function_object,
         'score_default': 0 #This is to allow sampling with all functions.
     }
+    if function_location is not None:
+        function_representation.update(
+            {
+                f'exp_loc_{i}': x for i, x in enumerate(function_location)
+            }
+        )
     return function_representation
 
 def build_default_function_set(

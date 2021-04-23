@@ -329,7 +329,6 @@ def space_to_iterable(
     return space.to_dict(orient = 'records')
 
 
-#TODO: Testing
 def prune_function_set(
     function_set: FunctionSet,
     sampling_func: Callable,

@@ -1,8 +1,9 @@
 import pytest
 from mentalgym.utils.validation import is_function
+from mentalgym.constants import experiment_space_fields
 
 test_inputs = [
-    {'id': 'anything', 'type': 'imaginary', 'input': 'cheese'},
+    {_: 'composed' for _ in experiment_space_fields},
     {'id': 'not_quite', 'type': 'wrong'},
     'steve',
     1

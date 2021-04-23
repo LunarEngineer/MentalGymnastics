@@ -5,12 +5,15 @@ space, and the built in Gym spaces.
 """
 import numpy as np
 import pandas as pd
+from mentalgym.constants import experiment_space_fields
 from mentalgym.types import FunctionSet, ExperimentSpace
 from mentalgym.utils.validation import is_function
 from numpy.typing import ArrayLike
 from typing import Callable, Optional
 
 
+# TODO: This needs to add 'i' and all input/output should get i < 0
+# What do intermediate Functions do? Doesn't matter here?
 def refresh_experiment_container(
     function_bank: pd.DataFrame,
     min_loc: ArrayLike = np.array([0, 0]),
@@ -50,18 +53,18 @@ def refresh_experiment_container(
     >>> min_loc = [0, 0]
     >>> max_loc = [100, 100]
     >>> refresh_experiment_container(function_bank, min_loc, max_loc)
-             id    type input  exp_loc_0  exp_loc_1
-    0  column_0  source  None        0.0        0.0
-    1  column_1  source  None       50.0        0.0
-    2  column_2  source  None      100.0        0.0
-    3    output    sink  None        0.0      100.0
+       i        id    type input  exp_loc_0  exp_loc_1
+    0 -1  column_0  source  None        0.0        0.0
+    1 -1  column_1  source  None       50.0        0.0
+    2 -1  column_2  source  None      100.0        0.0
+    3 -1    output    sink  None        0.0      100.0
     >>> min_loc = [0, 50, 100]
     >>> max_loc = [100, 200, 300]
-             id    type input  exp_loc_0  exp_loc_1  exp_loc_2
-    0  column_0  source  None        0.0       50.0      100.0
-    1  column_1  source  None       50.0       50.0      100.0
-    2  column_2  source  None      100.0       50.0      100.0
-    3    output    sink  None        0.0      200.0      300.0
+       i        id    type input  exp_loc_0  exp_loc_1  exp_loc_2
+    0 -1  column_0  source  None        0.0        0.0      100.0
+    1 -1  column_1  source  None       50.0        0.0      100.0
+    2 -1  column_2  source  None      100.0        0.0      100.0
+    3 -1    output    sink  None        0.0      100.0      300.0
     """
     # This is to allow using Numpy syntax with the min and max loc
     _min_loc = np.array(min_loc)
@@ -129,7 +132,6 @@ def refresh_experiment_container(
 
     # The final output has a row for every input and out node,
     #   and every node is in a proper location.
-
     output_df = pd.concat(
         [
             function_df, 
@@ -137,65 +139,72 @@ def refresh_experiment_container(
         ], 
         axis=1
     )
-    
+
+    # This assigns a 'Function index' to the input
+    output_df.loc[output_df.type.isin(["source", "sink"]), 'i'] = -1
+    output_df['i'] = output_df['i'].astype('int')
+
+    # This does a final 'reordering' simply for prettiness
+    i_column = output_df.pop('i')
+    output_df.insert(0, 'i', i_column)
     return output_df
 
+# This is no longer necessary. Deprecate.
+# def experiment_space_from_container(
+#     container: pd.DataFrame
+# ) -> ExperimentSpace:
+#     """Collapses a container to an Experiment Space.
 
-def experiment_space_from_container(
-    container: pd.DataFrame
-) -> ExperimentSpace:
-    """Collapses a container to an Experiment Space.
+#     The gym requires a specific format for the observation space.
+#     This function enforces that format.
 
-    The gym requires a specific format for the observation space.
-    This function enforces that format.
+#     Parameters
+#     ----------
+#     container: ExperimentSpaceContainer
+#         This is a Pandas DataFrame with specific fields.
 
-    Parameters
-    ----------
-    container: ExperimentSpaceContainer
-        This is a Pandas DataFrame with specific fields.
+#     Returns
+#     -------
+#     experiment_space: ExperimentSpace
+#         This is in the form the gym will accept.
 
-    Returns
-    -------
-    experiment_space: ExperimentSpace
-        This is in the form the gym will accept.
+#     Examples
+#     --------
+#     >>> from mentalgym.data import function_bank
+#     >>> min_loc = [0, 0]
+#     >>> max_loc = [100, 100]
+#     >>> container = refresh_experiment_container(function_bank, min_loc, max_loc)
+#     >>> cont = experiment_space_from_container(container)
+#     >>> for k, v in cont.items():
+#     ...     print((k,v))
+#     ...
+#     ('function_ids', array(['column_0', 'column_1', 'column_2', 'output'], dtype=object))
+#     ('function_locations', array([[  0.,   0.],
+#            [ 50.,   0.],
+#            [100.,   0.],
+#            [  0., 100.]]))
+#     ('function_connections', array([False, False, False, False]))
+#     """
+#     ids = container.id
+#     location_columns = [
+#         _
+#         for _
+#         in container.columns
+#         if _.startswith('exp_loc_')
+#     ]
+#     locations = container[location_columns]
+#     # A *connection* is made if a node has another node
+#     #   as input.
+#     connections = container.input.apply(lambda x: x is not None)
+#     # Stuff it all into the output dictionary
+#     experiment_space = {
+#         'function_ids': ids.values,
+#         'function_locations': locations.values,
+#         'function_connections': connections.values
+#     }
+#     return experiment_space
 
-    Examples
-    --------
-    >>> from mentalgym.data import function_bank
-    >>> min_loc = [0, 0]
-    >>> max_loc = [100, 100]
-    >>> container = refresh_experiment_container(function_bank, min_loc, max_loc)
-    >>> cont = experiment_space_from_container(container)
-    >>> for k, v in cont.items():
-    ...     print((k,v))
-    ...
-    ('function_ids', array(['column_0', 'column_1', 'column_2', 'output'], dtype=object))
-    ('function_locations', array([[  0.,   0.],
-           [ 50.,   0.],
-           [100.,   0.],
-           [  0., 100.]]))
-    ('function_connections', array([False, False, False, False]))
-    """
-    ids = container.id
-    location_columns = [
-        _
-        for _
-        in container.columns
-        if _.startswith('exp_loc_')
-    ]
-    locations = container[location_columns]
-    # A *connection* is made if a node has another node
-    #   as input.
-    connections = container.input.apply(lambda x: x is not None)
-    # Stuff it all into the output dictionary
-    experiment_space = {
-        'function_ids': ids.values,
-        'function_locations': locations.values,
-        'function_connections': connections.values
-    }
-    return experiment_space
-
-
+# TODO: This needs to enforce scraping only the existent fields in the composed function
 def append_to_experiment(
     experiment_space_container: pd.DataFrame,
     function_bank: pd.DataFrame,
@@ -213,7 +222,7 @@ def append_to_experiment(
         information, and is used for validation here.
     composed_functions: FunctionSet
         This is an iterable of functions, each of which have keys of
-        id, type, input, and location.
+        i, id, type, input, and location.
 
     Returns
     -------

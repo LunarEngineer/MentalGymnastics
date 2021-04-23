@@ -63,6 +63,7 @@ def make_function(
     """
     # TODO: Does this need to have a score?
     function_representation = {
+        'i': -1,
         'id': "".join(
             np.random.choice(alphabet, __FUNCTION_ID_LEN__)
             ),
@@ -443,8 +444,20 @@ class FunctionBank():
         return base_set + composed_set
 
     def prune():
-        self._prun
+        # self._prun
         raise NotImplementedError
+
+    def idxmax(self):
+        """return max index"""
+        # This is pseudocode that needs to be tested
+        return pd.DataFrame(self._function_manifest).i.max()
+
+    def append(self, function:Function):
+        """Appends a function to the bank."""
+        # Pseudo code: add something to the manifest.
+        raise NotImplementedError
+        # What doctoring needs to be done to the function?
+        self._function_manifest.append(function)
 
     def score(
         self,

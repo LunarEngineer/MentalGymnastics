@@ -7,19 +7,20 @@ import numpy as np
 import pandas as pd
 import pytest
 from mentalgym.utils.data import function_bank
+
 from mentalgym.utils.spaces import (
     append_to_experiment,
     experiment_space_eq,
-    experiment_space_from_container,
+    #experiment_space_from_container,
     prune_function_set,
     refresh_experiment_container,
     space_to_iterable
 )
 from mentalgym.utils.sampling import softmax_score_sample
 
-
 metadata_df = pd.DataFrame(
     data = {
+        'i': [-1, -1, -1, -1],
         'id': ['column_0', 'column_1', 'column_2', 'output'],
         'type': ['source', 'source', 'source', 'sink'],
         'input': [None, None, None, None]
@@ -81,36 +82,35 @@ test_space_outputs = [
     }
 ]
 
-test_space_sets = zip(
-    test_inputs,
-    test_space_outputs
-)
+# test_space_sets = zip(
+#     test_inputs,
+#     test_space_outputs
+# )
 
 
-@pytest.mark.parametrize('kwargs,expected_space',test_space_sets)
-def test_experiment_space_from_container(kwargs, expected_space):
-    container = refresh_experiment_container(function_bank,**kwargs)
-    actual_space = experiment_space_from_container(container)
-    # 1: Function ID's
-    id_eq = np.all(
-        actual_space['function_ids']==expected_space['function_ids']
-    )
-    loc_eq = np.all(
-        actual_space['function_locations']==expected_space['function_locations'])
-    con_eq = np.all(
-        actual_space['function_connections']==expected_space['function_connections'])
-    assert np.all([
-        id_eq,
-        loc_eq,
-        con_eq
-    ])
-
+# @pytest.mark.parametrize('kwargs,expected_space',test_space_sets)
+# def test_experiment_space_from_container(kwargs, expected_space):
+#     container = refresh_experiment_container(function_bank,**kwargs)
+#     actual_space = experiment_space_from_container(container)
+#     # 1: Function ID's
+#     id_eq = np.all(
+#         actual_space['function_ids']==expected_space['function_ids']
+#     )
+#     loc_eq = np.all(
+#         actual_space['function_locations']==expected_space['function_locations'])
+#     con_eq = np.all(
+#         actual_space['function_connections']==expected_space['function_connections'])
+#     assert np.all([
+#         id_eq,
+#         loc_eq,
+#         con_eq
+#     ])
 
 test_banks = [
     function_bank,
     function_bank.assign(
-        exp_loc_1=[50., 50., 50., 200., 50., 200.], # , 50., 75.
-        exp_loc_2=[100., 100., 100., 300., 100., 300.] #, 100., 100.]
+        exp_loc_1=[50., 50., 50., 200., 50., 200., 50., 75.],
+        exp_loc_2=[100., 100., 100., 300., 100., 300., 100., 100.]
     ),
 ]
 test_append_sets = zip(

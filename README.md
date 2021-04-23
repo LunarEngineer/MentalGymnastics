@@ -70,3 +70,5 @@ At the end of an episode the *net structure* that the agent created is saved as 
 By default this stores all actions, though actions which have *gone stale* (i.e. haven't been in the leaderboard for some time and no layer in the leader board relies on them) will be pruned, and all their descendants will be removed as well.
 
 This will help to limit the breadth of available actions.
+
+

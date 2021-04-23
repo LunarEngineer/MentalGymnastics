@@ -103,6 +103,7 @@ testing_df = pd.DataFrame(
 #       Default and Meaningless Testing Atomic Functions           #
 ####################################################################
 function_atomic_one = {
+    'i': 0,
     'id': 'ReLU',
     'type': 'atomic',
     'input': None,
@@ -110,6 +111,7 @@ function_atomic_one = {
     'exp_loc_1': None,
 }
 function_atomic_two = {
+    'i': 1,
     'id': 'Dropout',
     'type': 'atomic',
     'input': None,
@@ -132,15 +134,6 @@ base_container = refresh_experiment_container(
 )
 
 ####################################################################
-#                  Create simple Function Bank                     #
-####################################################################
-# This default function bank has information for the input, output,
-#   atomic, and composed functions. It reads the atomic from the
-#   mentalgym.atomic module, reads the composed from the directory
-#   within which it's instantiated, and reads the input and output
-#   from the refreshed experiment container.
-
-####################################################################
 #                Simple Composed Function Example                  #
 ####################################################################
 # This base container has the input and output elements of the
@@ -149,6 +142,7 @@ base_container = refresh_experiment_container(
 #   during the course of an episode.
 
 function_composed_one = {
+    'i': 2,
     'id': 'steve',
     'type': 'composed',
     'input': ['column_0'],
@@ -156,12 +150,22 @@ function_composed_one = {
     'exp_loc_1': 50.,
 }
 function_composed_two = {
+    'i': 3,
     'id': 'bob',
     'type': 'composed',
     'input': ['column_0', 'column_1'],
     'exp_loc_0': 50.,
     'exp_loc_1': 75.,
 }
+
+####################################################################
+#                  Create simple Function Bank                     #
+####################################################################
+# This default function bank has information for the input, output,
+#   atomic, and composed functions. It reads the atomic from the
+#   mentalgym.atomic module, reads the composed from the directory
+#   within which it's instantiated, and reads the input and output
+#   from the refreshed experiment container.
 
 function_set = [
     function_composed_one,
@@ -175,5 +179,3 @@ function_bank = append_to_experiment(
     pd.DataFrame(function_set),
     function_set
 )
-
-function_bank = function_bank.assign(i=np.arange(function_bank.shape[0]))

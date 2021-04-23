@@ -23,7 +23,8 @@ metadata_df = pd.DataFrame(
         'i': [-1, -1, -1, -1],
         'id': ['column_0', 'column_1', 'column_2', 'output'],
         'type': ['source', 'source', 'source', 'sink'],
-        'input': [None, None, None, None]
+        'input': [None, None, None, None],
+        'object': [None, None, None, None]
     }
 )
 
@@ -66,7 +67,16 @@ def test_refresh_experiment_container(kwargs,locations):
         ],
         axis=1
     )
-    assert actual_container.equals(expected_container)
+    err_msg = f"""
+    Expected Values
+    ---------------
+    {expected_container}
+
+    Actual Values
+    -------------
+    {actual_container}
+    """
+    assert actual_container.equals(expected_container), err_msg
 
 
 test_space_outputs = [
@@ -82,29 +92,6 @@ test_space_outputs = [
     }
 ]
 
-# test_space_sets = zip(
-#     test_inputs,
-#     test_space_outputs
-# )
-
-
-# @pytest.mark.parametrize('kwargs,expected_space',test_space_sets)
-# def test_experiment_space_from_container(kwargs, expected_space):
-#     container = refresh_experiment_container(function_bank,**kwargs)
-#     actual_space = experiment_space_from_container(container)
-#     # 1: Function ID's
-#     id_eq = np.all(
-#         actual_space['function_ids']==expected_space['function_ids']
-#     )
-#     loc_eq = np.all(
-#         actual_space['function_locations']==expected_space['function_locations'])
-#     con_eq = np.all(
-#         actual_space['function_connections']==expected_space['function_connections'])
-#     assert np.all([
-#         id_eq,
-#         loc_eq,
-#         con_eq
-#     ])
 
 test_banks = [
     function_bank,
@@ -126,7 +113,7 @@ def test_append_to_experiment(kwargs, expected_container):
     container = refresh_experiment_container(expected_container, **kwargs)
     # Have sets of composed nodes here.
     composed_funcs = expected_container.query(
-        'type=="composed"'
+        'type in ["composed","atomic"]'
     )
     composed_iter = [
         row.to_dict() for
@@ -153,13 +140,6 @@ def test_append_to_experiment(kwargs, expected_container):
         expected_container
     ), err_msg
 
-
-frame_1 = pd.DataFrame(
-    [
-        {'id':'1', 'type': 'atomic',},
-        {},
-    ]
-)
 
 eq_sets = [
     (
@@ -220,7 +200,7 @@ def test_experiment_space_eq(a,b,result):
 
 
 test_inputs = [
-    function_bank,
+    function_bank.drop('object',axis=1),
     pd.DataFrame(
         data = {
             'id': ['bob','janice','dilly','dally','beans'],
@@ -236,6 +216,7 @@ test_inputs = [
 test_outputs = [
     [
         {
+            'i': -1,
             'id': 'column_0',
             'type': 'source',
             'input': None,
@@ -243,6 +224,7 @@ test_outputs = [
             'exp_loc_1': 0.0
         },
         {
+            'i': -1,
             'id': 'column_1',
             'type': 'source',
             'input': None,
@@ -250,6 +232,7 @@ test_outputs = [
             'exp_loc_1': 0.0
         },
         {
+            'i': -1,
             'id': 'column_2',
             'type': 'source',
             'input': None,
@@ -257,6 +240,7 @@ test_outputs = [
             'exp_loc_1': 0.0
         },
         {
+            'i': -1,
             'id': 'output',
             'type': 'sink',
             'input': None,
@@ -264,6 +248,7 @@ test_outputs = [
             'exp_loc_1': 100.0
         },
         {
+            'i': 2,
             'id': 'steve',
             'type': 'composed',
             'input': ['column_0'],
@@ -271,13 +256,29 @@ test_outputs = [
             'exp_loc_1': 50.0
         },
         {
+            'i': 3,
             'id': 'bob',
             'type': 'composed',
             'input': ['column_0', 'column_1'],
             'exp_loc_0': 50.0,
             'exp_loc_1': 75.0
-        }
-    ],
+        },
+        {
+            'i': 0,
+            'id': 'ReLU',
+            'type': 'atomic',
+            'input': None,
+            'exp_loc_0': np.nan,
+            'exp_loc_1': np.nan
+        },
+        {
+            'i': 1,
+            'id': 'Dropout',
+            'type': 'atomic',
+            'input': None,
+            'exp_loc_0': np.nan,
+            'exp_loc_1': np.nan
+        }],
     [
         {
             'id': 'bob',
@@ -341,7 +342,12 @@ def test_space_to_iterable(test_input, expected_output):
 
     {actual_output}
     """
-    assert actual_output == expected_output, err_msg
+    
+    assert pd.DataFrame(
+        actual_output
+    ).equals(
+        pd.DataFrame(expected_output)
+    ), err_msg
 
 
 function_space = space_to_iterable(

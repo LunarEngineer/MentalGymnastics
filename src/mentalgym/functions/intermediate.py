@@ -1,0 +1,2 @@
+class IntermediateFunction():
+    pass

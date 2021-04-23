@@ -1,0 +1,2 @@
+class ComposedFunction():
+    pass

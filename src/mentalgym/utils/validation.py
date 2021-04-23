@@ -1,11 +1,18 @@
 """Contains utilities used to validate data structures."""
 import numpy as np
 import pandas as pd
-from mentalgym.constants import function_types
+from mentalgym.constants import (
+    function_types,
+    experiment_space_fields
+)
 from typing import Any, Dict, Iterable
 
 
-def is_function(item: Any, raise_early: bool = False) -> bool:
+def is_function(
+    item: Any,
+    raise_early: bool = False,
+    extended: bool = False
+) -> bool:
     """Tests for function-ness.
 
     Parameters
@@ -64,15 +71,12 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
             raise Exception(err_msg)
         return False
     # 2) Check that required keys exist.
-    required_keys = [
-        'id',
-        'type',
-        'input'
-    ]
-    if not set(required_keys).issubset(item):
+    if not set(experiment_space_fields).issubset(item):
         if raise_early:
             err_msg = f"""Function Validation Error:
-            Expected keys: {required_keys}
+            The passed function cannot be represented in the experiment space.
+
+            Expected keys: {experiment_space_fields}
             Encountered keys: {[_ for _ in item.keys()]}
             """
             raise Exception(err_msg)
@@ -87,6 +91,9 @@ def is_function(item: Any, raise_early: bool = False) -> bool:
             raise Exception(err_msg)
         return False
     # Well, looks like a function, smells like a function...
+    if extended:
+        # This is testing for the function bank.
+        raise NotImplementedError
     return True
 
 # TODO: Finish and write testing and docs

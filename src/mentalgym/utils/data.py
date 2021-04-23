@@ -107,6 +107,7 @@ function_atomic_one = {
     'id': 'ReLU',
     'type': 'atomic',
     'input': None,
+    'object': lambda x: 1,
     'exp_loc_0': None,
     'exp_loc_1': None,
 }
@@ -114,6 +115,7 @@ function_atomic_two = {
     'i': 1,
     'id': 'Dropout',
     'type': 'atomic',
+    'object': lambda x: 2,
     'input': None,
     'exp_loc_0': None,
     'exp_loc_1': None,
@@ -146,6 +148,7 @@ function_composed_one = {
     'id': 'steve',
     'type': 'composed',
     'input': ['column_0'],
+    'object': lambda x: 'Steve!',
     'exp_loc_0': 25.,
     'exp_loc_1': 50.,
 }
@@ -153,6 +156,7 @@ function_composed_two = {
     'i': 3,
     'id': 'bob',
     'type': 'composed',
+    'object': lambda x: 'Bob!',
     'input': ['column_0', 'column_1'],
     'exp_loc_0': 50.,
     'exp_loc_1': 75.,

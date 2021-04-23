@@ -15,7 +15,7 @@ from stable_baselines3.common.env_checker import check_env
 class MentalAgent:
     def __init__(self, hparams):
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(1)
+        self.env = mentalgym.envs.MentalEnv(1,verbose=True)
 
         #  Check custom environment and output additional warnings if needed
         check_env(self.env)

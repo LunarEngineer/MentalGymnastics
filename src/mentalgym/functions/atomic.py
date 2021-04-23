@@ -1,0 +1,2 @@
+class AtomicFunction():
+    pass

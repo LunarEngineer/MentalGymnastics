@@ -1,3 +1,3 @@
-function_types = ['atomic', 'composed', 'source', 'sink']
+function_types = ['atomic', 'composed', 'source', 'sink', 'intermediate']
 
-experiment_space_fields = ['i', 'type', 'input']
+experiment_space_fields = ['i', 'id', 'type', 'input', 'object']

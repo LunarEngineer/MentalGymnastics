@@ -432,7 +432,7 @@ class MentalEnv(Env):
             Done: {done}
 
             State Observation
-            -----------------{state}
+            -----------------\n{state}
             """
             print(debug_message)
         return state, reward, done, info

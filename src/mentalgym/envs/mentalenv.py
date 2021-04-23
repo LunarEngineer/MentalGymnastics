@@ -7,6 +7,7 @@ from gym import (
     Env,
 )
 
+from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import (
     make_function,
     FunctionBank
@@ -383,7 +384,7 @@ class MentalEnv(Env):
                 )
                 new_function = {
                     k: v for k, v in built_function.items()
-                    if k in ["i", "id", "type", "input"]
+                    if k in experiment_space_fields
                 }
                 self._function_bank = self._function_bank.append(
                     new_function,

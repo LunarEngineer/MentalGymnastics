@@ -385,11 +385,8 @@ class MentalEnv(Env):
                     k: v for k, v in built_function.items()
                     if k in ["i", "id", "type", "input"]
                 }
-                new_new_function["exp_loc_0"] = action[1]
-                new_new_function["exp_loc_1"] = action[2]
-                new_new_function["i"] = 8 # make this increment, not hard coded
                 self._function_bank = self._function_bank.append(
-                    new_new_function,
+                    new_function,
                     ignore_index=True
                 )
         if self._verbose:

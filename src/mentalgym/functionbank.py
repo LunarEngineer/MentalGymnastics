@@ -466,9 +466,9 @@ class FunctionBank():
         function_space = pd.DataFrame(self._function_manifest)
         # Check for the scoring function column. If it doesn't
         #   exist, make one.
-        for id in ids:
-            if 
-        if score_name in self._scores:
+        # for id in ids:
+        #     if 
+        # if score_name in self._scores:
 
         # Get all the score deqeues
         pd.DataFrame(

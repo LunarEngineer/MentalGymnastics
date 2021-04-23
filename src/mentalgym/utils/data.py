@@ -7,6 +7,7 @@ from mentalgym.utils.spaces import (
 )
 from sklearn.datasets import make_classification
 from typing import Optional
+import numpy as np
 
 ####################################################################
 #                  Tools for working with data                     #
@@ -169,10 +170,10 @@ function_set = [
 
 function_set += atomic_functions
 
-
 function_bank = append_to_experiment(
     base_container,
     pd.DataFrame(function_set),
     function_set
 )
 
+function_bank = function_bank.assign(i=np.arange(function_bank.shape[0]))

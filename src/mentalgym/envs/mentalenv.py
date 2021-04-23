@@ -15,6 +15,8 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
 )
 
+from mentalgym.functionbank import make_function
+
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from numpy.typing import ArrayLike
 from typing import Optional
@@ -81,7 +83,7 @@ class MentalEnv(Env):
         experiment_space_min: ArrayLike = np.array([0.0, 0.0]),
         experiment_space_max: ArrayLike = np.array([100.0, 100.0]),
         number_functions: int = 8,
-        max_steps: int = 5,
+        max_steps: int = 4,
         seed: Optional[int] = None,
         **kwargs
     ):
@@ -154,7 +156,7 @@ class MentalEnv(Env):
         #   TODO: Since we're auto-connecting at completion and we are not adding functions which do not connect, this is unnecessary.
         #   TODO: We should remove the connection state element.
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(4, self.max_steps)
+            low=-np.inf, high=np.inf, shape=(3, self.max_steps)
         )
         ############################################################
         #              Instantiate the Action Space                #
@@ -181,19 +183,17 @@ class MentalEnv(Env):
         connected_to_sink = False
         done = connected_to_sink or self._step >= self.max_steps
 
-        if action is None:
-            action = np.random.random(self._action_size)
-
-        function_index = round(action[0]) 
+        function_index = 6 #round(action[0]) 
         # make sure it's greater than 0, and an integer, under the max_size of function bank
         function = self._function_bank.query("i == @function_index")
         # check if it returns what is needed
-        print("FUNCTION", function)
-        if function["type"] == "composed":
+       
+        if function["type"].iloc[0] == "composed":
             self._experiment_space = append_to_experiment(
                 self._experiment_space, function, self._function_bank
             )
-        elif function["type"] == "atomic":
+        elif function["type"].iloc[0] == "atomic":
+            action[3] = 200 # remove later
             tree = cKDTree(
                 self._experiment_space[
                     [
@@ -203,45 +203,55 @@ class MentalEnv(Env):
                     ]
                 ].values
             )
-            
             idx = tree.query_ball_point((action[1], action[2]), action[3])
 
-            print("INDEXES", idx)
-            """
-            >>> from scipy.spatial import cKDTree
+            if len(idx):
+                input_df = self._experiment_space.iloc[idx]
 
-            >>> points_ref = np.array([(1, 1), (3, 3), (4, 4), (5, 4), (6, 6)])
-            >>> tree = cKDTree(points_ref)
+                new_function = make_function(
+                    lambda x: x,
+                    "intermediate",
+                    input_df.id.to_list()
+                )
+                new_new_function = {k:v for k,v in new_function.items() if k in ["id", "type", "input"]}
+                new_new_function["exp_loc_0"] = action[1]
+                new_new_function["exp_loc_1"] = action[2]
+                new_new_function["i"] = 8 # make this increment, not hard coded
+                
+                self._function_bank = self._function_bank.append(new_new_function, ignore_index=True)
 
-            >>> idx = tree.query_ball_point((4, 4), action.r)
-            >>> points_ref[idx]
-            # array([[3, 3], [4, 4], [5, 4]])
-            """
-            # if it is a good action (that connects)
-            #   go get the actual atomic function and instantiate it
-            #   add to experiment space, not the function bank YET.
-            # pass
-
-        reward = connection_reward(self._experiment_space, None)
+        reward = float(connection_reward(self._experiment_space, None))
 
         self._step += 1
 
         if self._step == self.max_steps:
             # run _build_net()
-            reward = linear_completion_reward(
+            reward = float(linear_completion_reward(
                 self._experiment_space, None, 0.5
-            )
+            ))
             done = True
 
         info = {}
 
-        # self.state: all the function ids, all the locations, connection
-        self.state = {}
-        #
+        self.state = self._experiment_space[
+            [
+                _
+                for _ in self._experiment_space.columns
+                if _ in ["exp_loc_0", "exp_loc_1"] # will pick up new unique index here
+            ]
+        ].values.T
 
+        # then we won't need these two steps
+        function_idx = [0, 1, 2, 3] 
+        self.state = np.vstack([function_idx, self.state])
+        print(self._experiment_space)
+        print(self.state)
+        print()
         return self.state, reward, done, info
 
     def _build_net(self):
+
+
         pass
 
     def reset(self):
@@ -253,7 +263,7 @@ class MentalEnv(Env):
         )
         self.function_connection = False
         # TODO: Initialize state to Input (get ID for this input to query in .step())
-        state = np.zeros((4, self.max_steps))
+        state = np.zeros((3, self.max_steps))
         return state
 
     def render(self, mode="human"):

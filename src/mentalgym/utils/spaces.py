@@ -130,7 +130,13 @@ def refresh_experiment_container(
     # The final output has a row for every input and out node,
     #   and every node is in a proper location.
 
-    output_df = pd.concat([function_df, location_df], axis=1, ignore_index=True)
+    output_df = pd.concat(
+        [
+            function_df, 
+            location_df
+        ], 
+        axis=1
+    )
     
     return output_df
 

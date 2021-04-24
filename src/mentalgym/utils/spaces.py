@@ -6,7 +6,9 @@ space, and the built in Gym spaces.
 import numpy as np
 import pandas as pd
 from mentalgym.constants import experiment_space_fields
-from mentalgym.types import FunctionSet, ExperimentSpace
+from mentalgym.functions import atomic_functions
+from mentalgym.types import FunctionSet
+from mentalgym.utils.function import dataset_to_functions
 from mentalgym.utils.validation import is_function
 from numpy.typing import ArrayLike
 from typing import Callable, Optional
@@ -163,7 +165,6 @@ def refresh_experiment_container(
 
     return output_df
 
-# TODO: This needs to enforce scraping only the existent fields in the composed function
 def append_to_experiment(
     experiment_space_container: pd.DataFrame,
     function_bank: pd.DataFrame,
@@ -291,42 +292,9 @@ def experiment_space_eq(
     cont_new_ind_b = cont_new_ind_b.sort_values(['type', 'id'])
     return cont_new_ind_a.equals(cont_new_ind_b)
 
-
-def space_to_iterable(
-    space: pd.DataFrame
-) -> FunctionSet:
-    """Deconstructs a space of functions.
-
-    Parameters
-    ----------
-    space: pd.DataFrame
-        Either an experiment space container or a function bank.
-
-    Returns
-    -------
-    function_set: FunctionSet
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> from mentalgym.utils.spaces import space_to_iterable
-    >>> function_space = pd.DataFrame(
-    ...     data = {
-    ...         'id': ['bob','janice','dilly','dally','beans'],
-    ...         'living': [True,True,True,True,True],
-    ...         'extra': ['a','b','c','d','e'],
-    ...         'information': ['a','b','c','d','e'],
-    ...         'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
-    ...         'score_complexity': [0.01, 100, 10, 20, 50]
-    ...     }
-    ... )
-    >>> function_set = space_to_iterable(function_space)
-    >>> function_set[0]
-    {'id': 'bob', 'living': True, 'extra': 'a', 'information': 'a', 'score_accuracy': 0.95, 'score_complexity': 0.01}
-    >>> function_set[1]['score_accuracy']
-    0.7
-    """
-    return space.to_dict(orient = 'records')
+####################################################################
+#            Utilities for working with function spaces.           #
+####################################################################
 
 
 def prune_function_set(
@@ -335,7 +303,7 @@ def prune_function_set(
     population_size: int,
     random_state: Optional[int] = None
 ) -> FunctionSet:
-    """Prunes a function set
+    """Prunes a function set.
 
     This draws `n` samples from the function set.
     All elements not drawn are marked as 'dead' and the original,
@@ -362,7 +330,6 @@ def prune_function_set(
     --------
     >>> import pandas as pd
     >>> from mentalgym.utils.spaces import (
-    ...     space_to_iterable,
     ...     prune_function_set
     ... )
     >>> from mentalgym.utils.sampling import softmax_score_sample
@@ -376,7 +343,7 @@ def prune_function_set(
     ...         'score_complexity': [0.01, 100, 10, 20, 50]
     ...     }
     ... )
-    >>> function_set = space_to_iterable(function_space)
+    >>> function_set = function_space.to_dict(orient = 'records')
     >>> pruned_set = prune_function_set(
     ...     function_set,
     ...     softmax_score_sample,
@@ -400,9 +367,62 @@ def prune_function_set(
         'living'
     ] = False
     # Cast the data back to records.
-    return space_to_iterable(function_bank)
+    return function_bank.to_dict(orient = 'records')
 
-def state_from_space(experiment_space_container):
-    """Creates a state representation from a container.
+
+def build_default_function_space(
+    dataset: pd.DataFrame,
+    target: Optional[str] = None
+) -> FunctionSet:
+    """Creates a default Function Set for the Function Bank.
+
+    This builds a default function set, beginning with an input
+    dataset. This will add on any atomic functions and returns an
+    iterable of Function objects.
+
+    Parameters
+    ----------
+    dataset: pd.DataFrame
+        A modeling dataset.
+    target: Optional[str] = None
+        If left blank this will assume the final column is the target.
+
+    Returns
+    -------
+    default_set: FunctionSet
+        An iterable of input, output, and default atomic functions.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> from sklearn.datasets import make_classification
+    >>> X, y = make_classification(
+    ...     n_informative=2,
+    ...     n_redundant=1,
+    ...     n_repeated=0,
+    ...     n_features=3,
+    ...     random_state=42
+    ... )
+    >>> testing_df = pd.DataFrame(
+    ...     X,
+    ...     columns=[
+    ...         "column_0",
+    ...         "column_1",
+    ...         "column_2"
+    ...     ]
+    ... ).assign(output=y)
     """
-    pass
+    # Get the input / output functions.
+    io_functions = dataset_to_functions(dataset, target)
+    # Get the atomic functions.
+    io_functions += atomic_functions
+    # Drop the locations generated by the dataset to functions.
+    io_functions = pd.DataFrame(io_functions).drop(
+        [
+            _ for _
+            in dataset.columns
+            if _.startswith('exp_loc')
+        ],
+        axis = 1
+    ).to_dict(orient = 'records')
+    return io_functions

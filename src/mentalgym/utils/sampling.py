@@ -66,8 +66,8 @@ def softmax_score_sample(
     ...         'meaningless': ['a','b','c','d','e'],
     ...         'extra': ['a','b','c','d','e'],
     ...         'information': ['a','b','c','d','e'],
-    ...         'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
-    ...         'score_complexity': [0.01, 100, 10, 20, 50]
+    ...         'score_accuracy': [[0.95], [0.7], [0.6], [0.5], [0.6]],
+    ...         'score_complexity': [[0.01, 0.05], [100], np.nan, [20], [50]]
     ...     }
     ... )
     >>> softmax_score_sample(scoring_output, 4, 0)
@@ -82,7 +82,7 @@ def softmax_score_sample(
     # Pull out the scoring dataset column names.
     score_col = [_ for _ in x.columns if _.startswith('score_')]
     # Downselect to the keep columns.
-    scoring_data = x[score_col]
+    scoring_data = x[score_col].applymap(np.mean)
     # Fill the NaN scaled scores with the mean
     imputer = SimpleImputer()
     imputed_scores = imputer.fit_transform(scoring_data)

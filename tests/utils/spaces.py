@@ -7,16 +7,16 @@ import numpy as np
 import pandas as pd
 import pytest
 from mentalgym.utils.data import function_bank
-
 from mentalgym.utils.spaces import (
     append_to_experiment,
     experiment_space_eq,
-    #experiment_space_from_container,
     prune_function_set,
     refresh_experiment_container,
-    space_to_iterable
+    build_default_function_space
 )
+from mentalgym.utils.function import dataset_to_functions
 from mentalgym.utils.sampling import softmax_score_sample
+from sklearn.datasets import make_classification
 
 metadata_df = pd.DataFrame(
     data = {
@@ -98,7 +98,10 @@ test_banks = [
     function_bank.assign(
         exp_loc_1=[50., 50., 50., 200., 50., 200., 50., 75.],
         exp_loc_2=[100., 100., 100., 300., 100., 300., 100., 100.]
-    ),
+    )[[
+        'i', 'id', 'type', 'input', 'object', 'exp_loc_0',
+        'exp_loc_1', 'exp_loc_2', 'living', 'score_default'
+    ]]
 ]
 test_append_sets = zip(
     test_inputs,
@@ -112,13 +115,9 @@ test_append_sets = zip(
 def test_append_to_experiment(kwargs, expected_container):
     container = refresh_experiment_container(expected_container, **kwargs)
     # Have sets of composed nodes here.
-    composed_funcs = expected_container.query(
+    composed_iter = expected_container.query(
         'type in ["composed","atomic"]'
-    )
-    composed_iter = [
-        row.to_dict() for
-        ind, row in composed_funcs.iterrows()
-    ]
+    ).to_dict(orient = 'records')
     actual_container = append_to_experiment(
         experiment_space_container = container,
         function_bank = expected_container,
@@ -199,169 +198,17 @@ def test_experiment_space_eq(a,b,result):
     assert experiment_space_eq(a, b) == result, err_msg
 
 
-test_inputs = [
-    function_bank.drop('object',axis=1),
-    pd.DataFrame(
-        data = {
-            'id': ['bob','janice','dilly','dally','beans'],
-            'living': [True,True,True,True,True],
-            'extra': ['a','b','c','d','e'],
-            'information': ['a','b','c','d','e'],
-            'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
-            'score_complexity': [0.01, 100, 10, 20, 50]
-        }
-    )
-]
+function_space = pd.DataFrame(
+    data = {
+        'id': ['bob','janice','dilly','dally','beans'],
+        'living': [True,True,True,True,True],
+        'extra': ['a','b','c','d','e'],
+        'information': ['a','b','c','d','e'],
+        'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
+        'score_complexity': [0.01, 100, 10, 20, 50]
+    }
+).to_dict(orient = 'records')
 
-test_outputs = [
-    [
-        {
-            'i': -1,
-            'id': 'column_0',
-            'type': 'source',
-            'input': None,
-            'exp_loc_0': 0.0,
-            'exp_loc_1': 0.0
-        },
-        {
-            'i': -1,
-            'id': 'column_1',
-            'type': 'source',
-            'input': None,
-            'exp_loc_0': 50.0,
-            'exp_loc_1': 0.0
-        },
-        {
-            'i': -1,
-            'id': 'column_2',
-            'type': 'source',
-            'input': None,
-            'exp_loc_0': 100.0,
-            'exp_loc_1': 0.0
-        },
-        {
-            'i': -1,
-            'id': 'output',
-            'type': 'sink',
-            'input': None,
-            'exp_loc_0': 0.0,
-            'exp_loc_1': 100.0
-        },
-        {
-            'i': 2,
-            'id': 'steve',
-            'type': 'composed',
-            'input': ['column_0'],
-            'exp_loc_0': 25.0,
-            'exp_loc_1': 50.0
-        },
-        {
-            'i': 3,
-            'id': 'bob',
-            'type': 'composed',
-            'input': ['column_0', 'column_1'],
-            'exp_loc_0': 50.0,
-            'exp_loc_1': 75.0
-        },
-        {
-            'i': 0,
-            'id': 'ReLU',
-            'type': 'atomic',
-            'input': None,
-            'exp_loc_0': np.nan,
-            'exp_loc_1': np.nan
-        },
-        {
-            'i': 1,
-            'id': 'Dropout',
-            'type': 'atomic',
-            'input': None,
-            'exp_loc_0': np.nan,
-            'exp_loc_1': np.nan
-        }],
-    [
-        {
-            'id': 'bob',
-            'living': True,
-            'extra': 'a',
-            'information': 'a',
-            'score_accuracy': 0.95,
-            'score_complexity': 0.01
-        },
-        {
-            'id': 'janice',
-            'living': True,
-            'extra': 'b',
-            'information': 'b',
-            'score_accuracy': 0.7,
-            'score_complexity': 100.0
-        },
-        {
-            'id': 'dilly',
-            'living': True,
-            'extra': 'c',
-            'information': 'c',
-            'score_accuracy': 0.6,
-            'score_complexity': 10.0
-        },
-        {
-            'id': 'dally',
-            'living': True,
-            'extra': 'd',
-            'information': 'd',
-            'score_accuracy': 0.5,
-            'score_complexity': 20.0
-        },
-        {
-            'id': 'beans',
-            'living': True,
-            'extra': 'e',
-            'information': 'e',
-            'score_accuracy': 0.6,
-            'score_complexity': 50.0
-        }
-    ]
-]
-
-test_sets = zip(test_inputs, test_outputs)
-
-@pytest.mark.parametrize('test_input, expected_output', test_sets)
-def test_space_to_iterable(test_input, expected_output):
-    actual_output = space_to_iterable(test_input)
-    err_msg = f"""Space to Iterable Error:
-    When attempting to convert a space to an iterable the expected
-    output did not match.
-
-    Expected
-    --------
-
-    {expected_output}
-
-    Actual
-    ------
-
-    {actual_output}
-    """
-    
-    assert pd.DataFrame(
-        actual_output
-    ).equals(
-        pd.DataFrame(expected_output)
-    ), err_msg
-
-
-function_space = space_to_iterable(
-    pd.DataFrame(
-        data = {
-            'id': ['bob','janice','dilly','dally','beans'],
-            'living': [True,True,True,True,True],
-            'extra': ['a','b','c','d','e'],
-            'information': ['a','b','c','d','e'],
-            'score_accuracy': [0.95, 0.7, 0.6, 0.5, 0.6],
-            'score_complexity': [0.01, 100, 10, 20, 50]
-        }
-    )
-)
 
 test_sets = [
     (
@@ -383,3 +230,121 @@ test_sets = [
 def test_prune_function_set(kwargs, expected_results):
     actual_results = prune_function_set(**kwargs)
     assert actual_results==expected_results
+
+
+test_inputs = [
+    {
+        'n_features': 3,
+        'n_informative': 2,
+        'n_redundant': 1,
+        'target': 'y'
+    },
+    {
+        'n_features': 4,
+        'n_informative': 2,
+        'n_redundant': 1,
+        'target': '0'
+    },
+    {
+        'n_features': 5,
+        'n_informative': 2,
+        'n_redundant': 1,
+        'target': '1'
+    }
+]
+
+test_outputs = [
+    [
+        {
+            'id': '0',
+            'type': 'source',
+            'input': None,
+            'i': np.nan,
+            'living': np.nan,
+            'object': np.nan,
+            'score_default': np.nan
+        },
+        {
+            'id': '1',
+            'type': 'source',
+            'input': None,
+            'i': np.nan,
+            'living': np.nan,
+            'object': np.nan,
+            'score_default': np.nan
+        },
+        {
+            'id': '2',
+            'type': 'source',
+            'input': None,
+            'i': np.nan,
+            'living': np.nan,
+            'object': np.nan,
+            'score_default': np.nan
+        },
+        {
+            'id': 'y',
+            'type': 'sink',
+            'input': None,
+            'i': np.nan,
+            'living': np.nan,
+            'object': np.nan,
+            'score_default': np.nan
+        },
+        {
+            'id': 'ReLU',
+            'type': 'atomic',
+            'input': None,
+            'i': -2.0,
+            'living': True,
+            'object': AtomicFunction(),
+            'score_default': deque([0], maxlen=100)
+        },
+        {
+            'id': 'Dropout',
+            'type': 'atomic',
+            'input': None,
+            'i': -2.0,
+            'living': True,
+            'object': AtomicFunction(),
+            'score_default': deque([0], maxlen=100)
+        }
+    ],
+    [
+        {'id': '0', 'type': 'sink', 'input': None},
+        {'id': '1', 'type': 'source', 'input': None},
+        {'id': '2', 'type': 'source', 'input': None},
+        {'id': '3', 'type': 'source', 'input': None},
+        {'id': 'y', 'type': 'source', 'input': None}
+    ],
+    [
+        {'id': '0', 'type': 'source', 'input': None},
+        {'id': '1', 'type': 'sink', 'input': None},
+        {'id': '2', 'type': 'source', 'input': None},
+        {'id': '3', 'type': 'source', 'input': None},
+        {'id': '4', 'type': 'source', 'input': None},
+        {'id': 'y', 'type': 'source', 'input': None}
+    ]
+]
+
+test_sets = zip(test_inputs, test_outputs)
+
+@pytest.mark.parametrize('kwargs, expected_output', test_sets)
+def test_build_default_function_space(kwargs, expected_output):
+    t = kwargs.pop('target')
+    X, y = make_classification(**kwargs)
+    df = pd.DataFrame(
+        build_default_function_space(
+            pd.DataFrame(X).assign(y=y).rename(
+                columns = {_: str(_) for _ in range(X.shape[1])}
+            ),
+            target = t
+        )
+    )
+
+
+
+
+
+
+

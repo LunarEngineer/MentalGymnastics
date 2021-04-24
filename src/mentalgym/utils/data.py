@@ -5,71 +5,9 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
     refresh_experiment_container
 )
+from mentalgym.functions import atomic_functions
+from mentalgym.utils.function import dataset_to_functions
 from sklearn.datasets import make_classification
-from typing import Optional
-import numpy as np
-
-####################################################################
-#                  Tools for working with data                     #
-####################################################################
-def dataset_to_functions(
-    dataset: pd.DataFrame,
-    target: Optional[str] = None
-) -> FunctionSet:
-    """Convert Pandas data to a function set.
-
-    Parameters
-    ----------
-    df: pandas.DataFrame
-        A modeling dataset.
-    target: Optional[str] = None
-        If left blank this will assume the final column is the target.
-
-    Returns
-    -------
-    input_actions: FunctionSet
-        An iterable of dictionaries which represent input and output
-        nodes.
-
-    Examples
-    --------
-    >>> import pandas as pd
-    >>> static_df = pd.DataFrame(
-    >>>     data = {
-    >>>         'A': [1, 2, 3],
-    >>>         'B': [4, 5, 6],
-    >>>         'C': [7, 8, 9]
-    >>>     }
-    >>> )
-    >>> dataset_to_functions(static_df, target = 'A')
-    [{'id': 'A',
-      'type': 'sink',
-      'input': None},
-     {'id': 'B',
-      'type': 'source',
-      'input': None},
-     {'id': 'C',
-      'type': 'source',
-      'input': None}]
-    """
-    # Set a default target if none available
-    if target is None:
-        target = dataset.columns[-1]
-    # Create an empty list
-    output = []
-    # Now, walk through the columns
-    for col, vals in dataset.iteritems():
-        # Create an action
-        # TODO: Dependent on how we're serving the data
-        #   the values might need to be part of the dict.
-        col_dict = {
-            'id': col,
-            'type': 'sink' if col == target else 'source',
-            'input': None
-        }
-        # Add it to the output list
-        output.append(col_dict)
-    return output
 
 ####################################################################
 #                   Create simple testing data                     #
@@ -98,32 +36,6 @@ testing_df = pd.DataFrame(
         "column_2"
     ]
 ).assign(output=y)
-
-####################################################################
-#       Default and Meaningless Testing Atomic Functions           #
-####################################################################
-function_atomic_one = {
-    'i': 0,
-    'id': 'ReLU',
-    'type': 'atomic',
-    'input': None,
-    'object': lambda x: 1,
-    'exp_loc_0': None,
-    'exp_loc_1': None,
-}
-function_atomic_two = {
-    'i': 1,
-    'id': 'Dropout',
-    'type': 'atomic',
-    'object': lambda x: 2,
-    'input': None,
-    'exp_loc_0': None,
-    'exp_loc_1': None,
-}
-atomic_functions = [
-    function_atomic_one,
-    function_atomic_two
-]
 
 ####################################################################
 #                Create simple Experiment Space                    #

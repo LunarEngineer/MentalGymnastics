@@ -131,5 +131,4 @@ def validate_function_set(function_set):
         {sub_str}
         """
         raise Exception(err_msg)
-    # There's more to be done here.
-    raise NotImplementedError
+    # There's more to be done here, but this will work for now.

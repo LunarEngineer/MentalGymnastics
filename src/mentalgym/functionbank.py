@@ -3,95 +3,22 @@ from __future__ import annotations
 
 import json
 from numbers import Number
-import numpy as np
 import os
 import pandas as pd
 
-# TODO: Uncomment / change this when atomic function information more fleshed out.
-# from mentalgym.atomic_functions import base_atomic
-base_atomic = {}
-from collections import deque
+
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.data import dataset_to_functions
 from mentalgym.utils.sampling import softmax_score_sample
-from mentalgym.utils.spaces import prune_function_set, space_to_iterable
+from mentalgym.utils.spaces import (
+    prune_function_set,
+    build_default_function_space
+)
 from mentalgym.utils.validation import validate_function_set
-from numpy.typing import ArrayLike
-from typing import Callable, Iterable, Optional
+from typing import Callable, Optional
 
-####################################################################
-#         These constants are used in the function bank.           #
-####################################################################
-# This is used to create random ID values, this is the length of the
-#   string.
-__FUNCTION_ID_LEN__ = 32
-# These are used with the function id length
-alphabet = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-np_alphabet = np.array(alphabet, dtype="|S1")
-# This is used as the maximum length of the score deques
-__MAX_SCORE_LEN__ = 100
-# TODO: Some day this needs a schema factory. import schema
-function_representation = {}
 
-def make_function(
-        function_object: Optional[Callable] = None,
-        function_type: str = 'composed',
-        function_inputs: Optional[Iterable[str]] = None,
-        function_location: Optional[ArrayLike] = None
-    ) -> Function:
-    """Creates a Function representation.
 
-    This creates a representation of a Function and is used to
-    create a standardized data structure which the gym uses to
-    represent a complex action composed of a series of nested
-    functions. Note that functions can have scores *added* by the 
-    environment
-
-    Parameters
-    ----------
-    function_object: An object, representing a function, that exposes
-        a forward, in addition to saving and loading weights.
-    function_type: str = 'composed'
-        A value in the set {'composed','atomic','input','output}
-    function_inputs: Optional[Iterable[str]] = None
-        This is a list of input function id's which this function
-        expects as input.
-    function_location: Optional[ArrayLike] = None
-        If this is passed then these fields are added to the function
-        and each one is keyed as 'exp_loc_i'.
-
-    Returns
-    -------
-    function_representation: Function
-        This is a Function object, currently a dictionary with a
-        predetermined keyset.
-    """
-    # TODO: Does this need to have a score?
-    function_representation = {
-        'i': -1,
-        'id': "".join(
-            np.random.choice(alphabet, __FUNCTION_ID_LEN__)
-            ),
-        'type': function_type,
-        'input': function_inputs,
-        'living': True,
-        'function': function_object,
-        'score_default': 0 #This is to allow sampling with all functions.
-    }
-    if function_location is not None:
-        function_representation.update(
-            {
-                f'exp_loc_{i}': x for i, x in enumerate(function_location)
-            }
-        )
-    return function_representation
-
-def build_default_function_set(
-    dataset:pd.DataFrame
-) -> FunctionSet:
-    """Creates a default Function Set.
-    """
-    raise NotImplementedError
 
 class FunctionBank():
     """Builds and tracks Functions and their history.
@@ -106,7 +33,8 @@ class FunctionBank():
     The functions are stored internally as an iterable container of
     function representations. This data structure is mirrored to
     disk when calling ._save_bank and refreshed from disk when
-    calling ._load_bank.
+    calling ._load_bank. Any *objects* in the function space are
+    persisted in folders collocated with the function bank.
 
     When this function bank is instantiated it will check to see if
     a function bank exists at the location specified. If there is a
@@ -449,8 +377,8 @@ class FunctionBank():
             n_remaining
         )
         # 5. Turn both those into iterables and *smoosh* them.
-        base_set = space_to_iterable(base_functions)
-        composed_set = space_to_iterable(composed_functions)
+        base_set = base_functions.to_dict(orient = 'index')
+        composed_set = composed_functions.to_dict(orient = 'index')
         # 6. Return the concatenated array.
         return base_set + composed_set
 

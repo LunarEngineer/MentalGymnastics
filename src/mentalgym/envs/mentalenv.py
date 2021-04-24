@@ -9,11 +9,13 @@ from gym import (
 
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import (
-    make_function,
+    # make_function,
     FunctionBank
 )
+
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.data import function_bank
+from mentalgym.utils.function import make_function
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
     refresh_experiment_container,
@@ -250,7 +252,8 @@ class MentalEnv(Env):
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
         # TODO: Uncomment this after function bank implementation.
-        action_index = 2 #round(action[0])
+        # action_index = 2 #round(action[0])
+        action_index = np.random.choice([2,3,4], 1)
         # action_index = np.round(
         #     np.clip(
         #         action[0],
@@ -292,7 +295,8 @@ class MentalEnv(Env):
         functions: pd.DataFrame = self._function_bank.query(
             "i == @action_index"
         )
-        function_set: FunctionSet = functions.to_dict(orient='index')
+        function_set: FunctionSet = functions.to_dict(orient='records')
+        print('!!!!!!!!!!!!!!!! Function Set', function_set)
         # This should never return more than one Function.
         err_msg = f"""Function Error:
         When querying functions with index i == {action_index}
@@ -357,6 +361,7 @@ class MentalEnv(Env):
                 #   completion and build and run the net.
                 if output_df.shape[0]:
                     connected_to_sink = True
+                    
                 input_df = input_df.query('type != "sink"')
                 # TODO:
                 # This might need to be reworked.
@@ -391,6 +396,8 @@ class MentalEnv(Env):
                     function_bank = self._function_bank,
                     composed_functions = [new_function]
                 )
+                if connected_to_sink:
+                    last_id = self._experiment_space.tail(1).id.item()
         if self._verbose:
             debug_message = f"""Function Build:
             Queried Function:\n{fun}
@@ -417,8 +424,11 @@ class MentalEnv(Env):
         # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
+            if not connected_to_sink:
+                last_id = self._experiment_space.tail(1).id.item() # TODO: base last_id on closest to sink later
+                
             # TODO: Bake the net.
-            self._build_net()
+            self._build_net(last_id)
             # Add the completion reward.
             reward += float(linear_completion_reward(
                 self._experiment_space, None, 0.5
@@ -454,12 +464,40 @@ class MentalEnv(Env):
         )
         return np.concatenate([_exp_state, _pad_state]).T
 
-    def _build_net(self):
+    def _recurser(self, exp_space, id):
+        data = exp_space.query('id==@id')
+        # This is a list
+        inputs = data.input.iloc[0]
+
+        if inputs == None:
+            return {}
+
+        return { _ : self._recurser(exp_space, _) for _ in inputs}
+
+    # TODO: finish this
+    # def _recurser_init(self, order_d):
+    #     # input ex: {'steve': {'column_0': {}}}
+        
+    #     # init the pytorch layers
+    #     #   - need: # of inputs to the layer
+    #     #   - need: # of outputs to the layer
+    #     # ex: nn.Linear(n_in, n_out)
+    #     # ex: function.Linear(n_in, n_out)
+    #     # steve's input len == # of keys
+        
+    #     if inputs == {}:
+    #         return 1
+        
+    #     return
+    #     # return recurse(d['inputs'])
+    #     return { _ : self._recurser(exp_space, _) for _ in inputs}
+
+    def _build_net(self, last_id):
         """Builds the experiment space's envisioned net.
         
         Inputs
         ----------
-        Takes in the last step's experiment space.
+        Takes in the last step's experiment space & layer right before the output layer.
 
         Returns
         ----------
@@ -467,8 +505,18 @@ class MentalEnv(Env):
         Updates the metrics for the atomic/composed functions used in the newly composed function.
 
         """
+        
+        order_d = {}
+        order_d[last_id] = self._recurser(self._experiment_space, last_id)
+        
+        # make sure to instantiate the output layer
 
-        # Rearrange the order of the functions from input to output
+        print('ORDERED_D ----------------------', order_d)
+
+        # recurse init(d['input']) till {}
+
+        # Rearrange the order of the functions from output to input
+        
         #   - parse exp space for functions and their inputs
         #   - recurse for composed actions 
         
@@ -492,6 +540,8 @@ class MentalEnv(Env):
 
             # Train the net
                 # Make sure only inputs that are connected go into each layer
+            
+            # Save the weights of the composed function to disk
 
         # Get and update the metrics of the new function
 

@@ -73,7 +73,15 @@ function_composed_two = {
     'exp_loc_0': 50.,
     'exp_loc_1': 75.,
 }
-
+function_composed_three = {
+    'i': 4,
+    'id': 'carl',
+    'type': 'composed',
+    'object': lambda x: 'Carl!',
+    'input': ['steve'],
+    'exp_loc_0': 50.,
+    'exp_loc_1': 75.,
+}
 ####################################################################
 #                  Create simple Function Bank                     #
 ####################################################################
@@ -85,7 +93,8 @@ function_composed_two = {
 
 function_set = [
     function_composed_one,
-    function_composed_two
+    function_composed_two,
+    function_composed_three
 ]
 
 function_set += atomic_functions

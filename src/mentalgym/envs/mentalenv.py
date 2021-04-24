@@ -253,7 +253,7 @@ class MentalEnv(Env):
         #   is in the appropriate range of values.
         # TODO: Uncomment this after function bank implementation.
         # action_index = 2 #round(action[0])
-        action_index = np.random.choice([2,3,4], 1)
+        action_index = np.random.choice([2,3,4], 1)[0]
         # action_index = np.round(
         #     np.clip(
         #         action[0],

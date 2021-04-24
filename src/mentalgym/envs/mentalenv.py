@@ -296,7 +296,7 @@ class MentalEnv(Env):
             "i == @action_index"
         )
         function_set: FunctionSet = functions.to_dict(orient='records')
-        print('!!!!!!!!!!!!!!!! Function Set', function_set)
+#        print('!!!!!!!!!!!!!!!! Function Set', function_set)
         # This should never return more than one Function.
         err_msg = f"""Function Error:
         When querying functions with index i == {action_index}
@@ -511,7 +511,7 @@ class MentalEnv(Env):
         
         # make sure to instantiate the output layer
 
-        print('ORDERED_D ----------------------', order_d)
+#        print('ORDERED_D ----------------------', order_d)
 
         # recurse init(d['input']) till {}
 

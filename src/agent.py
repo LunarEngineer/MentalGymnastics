@@ -17,7 +17,7 @@ class MentalAgent:
         # Instantiate environment
         self.env = mentalgym.envs.MentalEnv(1, 
                                             max_steps=hparams["max_steps"], 
-                                            verbose=True)
+                                            verbose=False)
 
         self.num_episodes = hparams["num_episodes"]
         self.max_steps = hparams["max_steps"]

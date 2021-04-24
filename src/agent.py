@@ -4,6 +4,7 @@ import numpy as np
 import mentalgym
 import mentalgym.envs
 import mentalgym.functionbank
+from mentalgym.utils.data import testing_df
 
 # import gym
 from stable_baselines3 import A2C
@@ -15,7 +16,7 @@ from stable_baselines3.common.env_checker import check_env
 class MentalAgent:
     def __init__(self, hparams):
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(1, 
+        self.env = mentalgym.envs.MentalEnv(testing_df, 
                                             max_steps=hparams["max_steps"], 
                                             verbose=False)
 

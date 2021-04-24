@@ -5,6 +5,7 @@ bank.
 """
 from typing import Callable
 import pandas as pd
+import pytest
 import tempfile
 from mentalgym import FunctionBank
 from sklearn.datasets import make_classification
@@ -19,6 +20,7 @@ def make_data(**kwargs):
     df = pd.DataFrame(
         X
     ).assign(y=y)
+    return df
 
 
 test_case_1 = {
@@ -50,7 +52,7 @@ test_sets = [
     test_case_2
 ]
 
-def test_init(
+def init_tester(
     dir,
     **kwargs
 ) -> FunctionBank:
@@ -101,9 +103,9 @@ def test_init(
     assert mask, err_msg
 
     #_function_manifest
-    
 
-def test_function_bank(dir, inputs):
+@pytest.mark.parametrize('inputs', test_sets)
+def test_function_bank(inputs):
     """Test the FunctionBank.
     
     This is a set of integration tests.
@@ -112,23 +114,21 @@ def test_function_bank(dir, inputs):
     ----------
 
     """
-    
 
     # Create a temporary directory so everything goes away afterwards
+    # Spin up a new action bank using the temp directory.
     with tempfile.TemporaryDirectory() as d:
-        # Spin up a new action bank using the temp directory.
-        function_bank = test_function_bank(
-            d,
-            inputs
-        )
         # 1. Check to ensure the init functioned correctly
-        assert ab._function_bank_directory == d, err_msg
+        function_bank = init_tester(
+            d,
+            **inputs['input']
+        )
         # 2. Check to ensure that the default set of actions
         #   are created
-        default = function_bank._query('type=="atomic"')
-        err_msg = """Action Bank Init Error:
-        The default set of actions was created incorrectly.
-        Expected value: {}
-        Actual value: {}
-        """
-        assert ab._action_manifest == default
+        # default = function_bank._query('type=="atomic"')
+        # err_msg = """Action Bank Init Error:
+        # The default set of actions was created incorrectly.
+        # Expected value: {}
+        # Actual value: {}
+        # """
+        # assert ab._action_manifest == default

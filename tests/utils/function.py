@@ -55,6 +55,7 @@ test_outputs = [
     ]
 ]
 
+
 test_sets = zip(test_inputs, test_outputs)
 
 @pytest.mark.parametrize('kwargs, expected_output', test_sets)

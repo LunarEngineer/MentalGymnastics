@@ -6,6 +6,7 @@ data could be collated.
 import numpy as np
 import pandas as pd
 import pytest
+from mentalgym.functions import AtomicFunction
 from mentalgym.utils.data import function_bank
 from mentalgym.utils.spaces import (
     append_to_experiment,
@@ -15,7 +16,7 @@ from mentalgym.utils.spaces import (
     build_default_function_space
 )
 from mentalgym.utils.function import (
-    dataset_to_functions
+    dataset_to_functions,
 )
 from mentalgym.utils.sampling import softmax_score_sample
 from sklearn.datasets import make_classification

@@ -18,7 +18,6 @@ from mentalgym.utils.validation import validate_function_set
 from typing import Callable, Optional
 
 
-
 class FunctionBank():
     """Builds and tracks Functions and their history.
 
@@ -105,13 +104,14 @@ class FunctionBank():
         fields 'scores', which contains an array with
         `buffer_length` values.
 
-
     Parameters
     ----------
     modeling_data: pd.DataFrame
         This is the modeling dataset. This is used both to store
         information on the modeling data and to ensure that the
         function bank isn't used with another dataset.
+    target: Optional[str] = None
+        This is the column name 
     function_bank_directory: str = '.function_bank'
         The directory to store / load the function bank from.
     dataset_scraper_function: Optional[Callable] = None
@@ -210,7 +210,6 @@ class FunctionBank():
         #   nodes and atomic and composed functions are read from
         #   disk if present.
         self._function_manifest = self._build_bank()
-        raise NotImplementedError
 
     ################################################################
     # These following functions are used to persist the function   #
@@ -243,10 +242,10 @@ class FunctionBank():
             self._function_bank_directory,
             '.manifest'
         )
-        # This function will build a default json document if one
-        #   does not exist
+        # This function will build a default manifest of functions
+        #   and save it locally, if it does not exist.
         if not os.path.exists(manifest_file):
-            build_default_function_set(self._data)
+            build_default_function_space(self._data, self._target)
             self._save_bank()
         # Read in the manifest
         with open(manifest_file,'r') as f:

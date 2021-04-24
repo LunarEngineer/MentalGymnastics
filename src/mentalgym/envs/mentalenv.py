@@ -292,6 +292,11 @@ class MentalEnv(Env):
         ############################################################
         # Use the action index to query the function bank and get
         #   the Function representation.
+        status_message = f"""wtf:
+        i == {action_index}
+        function bank:\n{function_bank}
+        """
+        print(status_message)
         functions: pd.DataFrame = self._function_bank.query(
             "i == @action_index"
         )

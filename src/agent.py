@@ -52,7 +52,7 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
-    hparams["num_episodes"] = 2
+    hparams["num_episodes"] = 1
     hparams["max_steps"] = 10
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99

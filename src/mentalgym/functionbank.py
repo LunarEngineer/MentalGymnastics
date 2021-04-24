@@ -19,7 +19,6 @@ from typing import Callable, Optional
 
 
 
-
 class FunctionBank():
     """Builds and tracks Functions and their history.
 

@@ -451,6 +451,32 @@ class MentalEnv(Env):
         return np.concatenate([_exp_state, _pad_state]).T
 
     def _build_net(self):
+
+        # Takes in the experiment space/iterable of functions
+        
+        # Rearrange the order of the functions from input to output
+        
+        # Instantiate the net according to arrangement
+            # Atomic actions: use torch functions
+            # Composed actions: pull previously trained weights for these actions?
+
+        # Train the net
+            # Make sure only inputs that are connected go into each layer
+
+        # Get and update the metrics of the new function
+
+        # Save the new function to the experiment space
+            # composed_funcs = function_bank.query('type=="composed"')
+            # >>> composed_iter = [
+            # ...    row.to_dict() for
+            # ...    ind, row in composed_funcs.iterrows()
+            # ... ]
+            # >>> append_to_experiment(
+            # ...     container,
+            # ...     function_bank,
+            # ...     composed_iter
+            # ... )
+
         pass
 
     def reset(self):

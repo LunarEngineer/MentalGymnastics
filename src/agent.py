@@ -15,7 +15,12 @@ from stable_baselines3.common.env_checker import check_env
 class MentalAgent:
     def __init__(self, hparams):
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(1,verbose=True)
+        self.env = mentalgym.envs.MentalEnv(1, 
+                                            max_steps=hparams["max_steps"], 
+                                            verbose=True)
+
+        self.num_episodes = hparams["num_episodes"]
+        self.max_steps = hparams["max_steps"]
 
         #  Check custom environment and output additional warnings if needed
         check_env(self.env)
@@ -28,12 +33,20 @@ class MentalAgent:
             verbose=1,
             gamma=hparams["gamma"],
             learning_rate=hparams["alpha_start"],
+            n_steps=5
         )
 
     #                         policy_kwargs)
 
     def train(self, hparams):
-        self.model.learn(total_timesteps=1000)
+        """ Train the RL agent.
+        
+        self.model.n_steps: number of env steps per update
+        total_timesteps: number of times the agent will update, which should be self.num_episodes * self.max_steps        
+        environment steps needed to achieve the total_timesteps: total_timesteps * self.model.n_steps """
+
+        self.model.learn(total_timesteps=self.max_steps*self.num_episodes)
+        
 
 
 if __name__ == "__main__":

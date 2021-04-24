@@ -1,70 +1,131 @@
 """Holds testing for the function bank.
 
-This lays out simple test cases which can be used to test the function bank.
+This lays out simple test cases which can be used to test the function
+bank.
 """
+from typing import Callable
+import pandas as pd
 import tempfile
 from mentalgym import FunctionBank
-from mentalgym.utils.data import atomic_functions
+from sklearn.datasets import make_classification
 
-################
-#  Mock Data   #
-################
-# The first set of actions are *inputs* in the dataset.
-# These are represented as input nodes in the experiment
-#   space / canvas. These are non-placable actions that
-#   the environment starts with. This should be replaced
-#   with a 'read_dataset' function that can make these
-#   dicts for input datasets.
-data_input_one = {
-    'id': 'column_0',
-    'type': 'source',
-    'input': None
+
+err_msg_header = "Function Bank:"
+
+def make_data(**kwargs):
+    X, y = make_classification(
+        **kwargs
+    )
+    df = pd.DataFrame(
+        X
+    ).assign(y=y)
+
+
+test_case_1 = {
+    'dir': '',
+    'init': {
+        'modeling_data': make_data(
+            n_features = 3,
+            n_informative = 2,
+            n_redundant = 1
+        ),
+        'target': 'y',
+        'population_size': 10
+    }
 }
-data_input_two = {
-    'id': 'column_1',
-    'type': 'source',
-    'input': None
+test_case_2 = {
+    'init': {
+        'modeling_data': make_data(
+            n_features = 4,
+            n_informative = 2,
+            n_redundant = 1
+        ),
+        'target': '0',
+        'population_size': 5
+    }
 }
-# The second set of actions are *composed* actions
-# These are created by agents during episodes.
-action_one = {
-    'id': 'steve',
-    'type': 'composed',
-    'input': ['column_0']
-}
-action_two = {
-    'id': 'bob',
-    'type': 'composed',
-    'input': ['column_0', 'column_1']
-}
-# Action manifest
-action_manifest = atomic_functions + [
-    data_input_one,
-    data_input_two,
-    action_one,
-    action_two
+
+test_sets = [
+    test_case_1,
+    test_case_2
 ]
 
-err_msg_header = "Action Bank "
+def test_init(
+    dir,
+    **kwargs
+) -> FunctionBank:
+    function_bank = FunctionBank(
+        **kwargs,
+        function_bank_directory = dir
+    )
 
-def test_action_bank(d, ab):
-    """Test the action bank."""
-    err_msg = f"""Action Bank Init Error:
-    _action_bank_directory property not set correctly.
-    Expected value: {d}
-    Actual value: {ab._action_bank_directory}
+    err_msg = f"""Function Bank Init Error:
+    _dataset_scraper_function method is not callable.
     """
+    assert isinstance(
+        function_bank._dataset_scraper_function,
+        Callable
+    ), err_msg
 
+    err_msg = f"""Function Bank Init Error:
+    _sampling_function method is not callable.
+    """
+    assert isinstance(
+        function_bank._sampling_function,
+        Callable
+    ), err_msg
+
+    err_msg = f"""Function Bank Init Error:
+    _pruning_function method is not callable.
+    """
+    assert isinstance(
+        function_bank._pruning_function,
+        Callable
+    ), err_msg
+
+    err_msg = f"""Function Bank Init Error:
+    _function_bank_directory property not set correctly.
+    """
+    assert function_bank._function_bank_directory == dir
+
+    err_msg = f"""Function Bank Init Error:
+    _population_size property not set correctly.
+    """
+    mask = function_bank._population_size == kwargs['population_size']
+    assert mask, err_msg
+
+    err_msg = f"""Function Bank Init Error:
+    _function_id property not set correctly.
+    """
+    mask = function_bank._function_id == 0
+    assert mask, err_msg
+
+    #_function_manifest
+    
+
+def test_function_bank(dir, inputs):
+    """Test the FunctionBank.
+    
+    This is a set of integration tests.
+
+    Parameters
+    ----------
+
+    """
+    
+
+    # Create a temporary directory so everything goes away afterwards
     with tempfile.TemporaryDirectory() as d:
         # Spin up a new action bank using the temp directory.
-        action_bank = FunctionBank(
-            action_bank_directory = d
+        function_bank = test_function_bank(
+            d,
+            inputs
         )
         # 1. Check to ensure the init functioned correctly
-        assert ab._action_bank_directory == d, err_msg
+        assert ab._function_bank_directory == d, err_msg
         # 2. Check to ensure that the default set of actions
         #   are created
-        default = action_bank._query('type=="atomic"')
+        default = function_bank._query('type=="atomic"')
         err_msg = """Action Bank Init Error:
         The default set of actions was created incorrectly.
         Expected value: {}

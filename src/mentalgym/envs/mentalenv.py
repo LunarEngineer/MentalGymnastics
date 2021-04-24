@@ -386,9 +386,10 @@ class MentalEnv(Env):
                     k: v for k, v in built_function.items()
                     if k in experiment_space_fields
                 }
-                self._function_bank = self._function_bank.append(
-                    new_function,
-                    ignore_index=True
+                self._experiment_space = append_to_experiment(
+                    experiment_space_container = self._experiment_space,
+                    function_bank = self._function_bank,
+                    composed_functions = [new_function]
                 )
         if self._verbose:
             debug_message = f"""Function Build:
@@ -411,6 +412,9 @@ class MentalEnv(Env):
             self._function_bank
         )
         # Check to see if it's time to call it a day.
+        # TODO: make an exception for composed functions
+        # if composed function is the first dropped function (and it connects to the output),
+        # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
             # TODO: Bake the net.
@@ -451,31 +455,50 @@ class MentalEnv(Env):
         return np.concatenate([_exp_state, _pad_state]).T
 
     def _build_net(self):
-
-        # Takes in the experiment space/iterable of functions
+        """Builds the experiment space's envisioned net.
         
+        Inputs
+        ----------
+        Takes in the last step's experiment space.
+
+        Returns
+        ----------
+        Adds the newly tested composed function to the function bank.
+        Updates the metrics for the atomic/composed functions used in the newly composed function.
+
+        """
+
         # Rearrange the order of the functions from input to output
+        #   - parse exp space for functions and their inputs
+        #   - recurse for composed actions 
         
-        # Instantiate the net according to arrangement
-            # Atomic actions: use torch functions
-            # Composed actions: pull previously trained weights for these actions?
+        
+        # Option: WAN
 
-        # Train the net
-            # Make sure only inputs that are connected go into each layer
+            # Instantiate the net according to arrangement
+                # Intermediate functions: use Vahe's torch functions
+                # Composed functions: 
+                #   - pull Vahe's torch layer 
+                #   - initiate all function weights to shared, 
+                #     random value [-1, 0.5, 1] -- I forgot the real WAN values...
+
+        # Option: Not WAN
+
+            # Instantiate the net according to arrangement
+                # Intermediate functions: use Vahe's torch functions
+                # Composed functions: 
+                #   - pull Vahe's torch layer
+                #   - get saved weights for composed function
+
+            # Train the net
+                # Make sure only inputs that are connected go into each layer
 
         # Get and update the metrics of the new function
 
-        # Save the new function to the experiment space
-            # composed_funcs = function_bank.query('type=="composed"')
-            # >>> composed_iter = [
-            # ...    row.to_dict() for
-            # ...    ind, row in composed_funcs.iterrows()
-            # ... ]
-            # >>> append_to_experiment(
-            # ...     container,
-            # ...     function_bank,
-            # ...     composed_iter
-            # ... )
+        # Save the new function to the function bank
+
+        # TODO: represent intermediate functions in a simple to use manner while 
+        # still persisting the info to build them from atomic functions
 
         pass
 

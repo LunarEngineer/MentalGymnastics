@@ -244,10 +244,10 @@ class FunctionBank():
             self._function_bank_directory,
             '.manifest'
         )
-        # This function will build a default json document if one
-        #   does not exist
+        # This function will build a default manifest of functions
+        #   and save it locally, if it does not exist.
         if not os.path.exists(manifest_file):
-            build_default_function_set(self._data)
+            build_default_function_space(self._data)
             self._save_bank()
         # Read in the manifest
         with open(manifest_file,'r') as f:

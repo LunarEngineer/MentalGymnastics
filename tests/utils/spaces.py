@@ -14,7 +14,9 @@ from mentalgym.utils.spaces import (
     refresh_experiment_container,
     build_default_function_space
 )
-from mentalgym.utils.function import dataset_to_functions
+from mentalgym.utils.function import (
+    dataset_to_functions
+)
 from mentalgym.utils.sampling import softmax_score_sample
 from sklearn.datasets import make_classification
 

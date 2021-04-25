@@ -20,6 +20,7 @@ def make_data(**kwargs):
     df = pd.DataFrame(
         X
     ).assign(y=y)
+    df.columns = [str(_) for _ in df.columns]
     return df
 
 
@@ -121,7 +122,7 @@ def test_function_bank(inputs):
         # 1. Check to ensure the init functioned correctly
         function_bank = init_tester(
             d,
-            **inputs['input']
+            **inputs['init']
         )
         # 2. Check to ensure that the default set of actions
         #   are created

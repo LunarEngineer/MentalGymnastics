@@ -165,6 +165,7 @@ class FunctionBank():
     def __init__(
         self,
         modeling_data: pd.DataFrame,
+        target: Optional[str] = None,
         function_bank_directory: str = ".function_bank",
         dataset_scraper_function: Optional[Callable] = None,
         sampling_function: Optional[Callable] = None,
@@ -201,6 +202,7 @@ class FunctionBank():
         self._function_bank_directory = function_bank_directory
         self._population_size = population_size
         self._data = modeling_data
+        self._target = target
         # This function id is incremented with every function made.
         self._function_id = 0
         ############################################################
@@ -245,7 +247,10 @@ class FunctionBank():
         # This function will build a default manifest of functions
         #   and save it locally, if it does not exist.
         if not os.path.exists(manifest_file):
-            build_default_function_space(self._data, self._target)
+            self._function_manifest = build_default_function_space(
+                self._data,
+                self._target
+            )
             self._save_bank()
         # Read in the manifest
         with open(manifest_file,'r') as f:
@@ -264,10 +269,17 @@ class FunctionBank():
             self._function_bank_directory,
             '.manifest'
         )
+        # Pull out the 'object', because it cannot be represented
+        #   as
+        _writable = pd.DataFrame(self._function_manifest)
+        print(_writable.columns)
+        obj = _writable[['id', 'object']]
+        _writable.drop('object', axis = 1, inplace = True)
+        rec_iter = _writable.to_dict(orient='records')
         # This writes self._function_manifest to json
         # Determine if this is appending.
         with open(manifest_file, 'w') as f:
-            f.write(json.dumps(self._function_manifest))
+            f.write(json.dumps(rec_iter))
 
     def query(
         self,

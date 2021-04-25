@@ -1,4 +1,6 @@
+import torch.nn as nn
 from torch import Tensor
+
 class AtomicFunction():
     def forward(self, input: Tensor) -> Tensor:
         return nn.Linear.forward(input)

@@ -1,9 +1,7 @@
-import torch
-from torch import Tensor
 import torch.nn as nn
-import numpy as np
-import time
-from .atomic import AtomicFunction
+
+from torch import Tensor
+from ._atomic import AtomicFunction
 
 
 class ReLU(nn.ReLU, AtomicFunction):

@@ -272,8 +272,8 @@ class FunctionBank():
         # Pull out the 'object', because it cannot be represented
         #   as
         _writable = pd.DataFrame(self._function_manifest)
-        print(_writable.columns)
-        obj = _writable[['id', 'object']]
+        score_col = [_ for _ in _writable.columns if _.startswith('score')]
+        # objs = _writable[['id', 'object', *[_ for _ in ]]]
         _writable.drop('object', axis = 1, inplace = True)
         rec_iter = _writable.to_dict(orient='records')
         # This writes self._function_manifest to json

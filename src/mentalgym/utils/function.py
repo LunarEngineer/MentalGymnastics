@@ -2,9 +2,13 @@ import numpy as np
 import pandas as pd
 from collections import deque
 from mentalgym.types import Function, FunctionSet
+from mentalgym.functions.atomic._atomic import AtomicFunction
+from mentalgym.functions.composed import ComposedFunction
 from numpy.random import default_rng
 from numpy.typing import ArrayLike
-from typing import Callable, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional, Type, Union
+
+FunctionObject = Union[Type[AtomicFunction], Type[ComposedFunction]]
 
 def dataset_to_functions(
     dataset: pd.DataFrame,
@@ -57,9 +61,11 @@ def dataset_to_functions(
         # TODO: Dependent on how we're serving the data
         #   the values might need to be part of the dict.
         col_dict = {
+            'i': -1,
             'id': col,
             'type': 'sink' if col == target else 'source',
-            'input': None
+            'input': None,
+            'living': True
         }
         # Add it to the output list
         output.append(col_dict)
@@ -96,7 +102,10 @@ def make_id(
 
 
 def make_function(
-    function_object: Optional[Callable] = None,
+    function_index: Optional[int] = -1,
+    function_id: Optional[str] = None,
+    function_object: Optional[FunctionObject] = None,
+    function_hyperparameters: Optional[Dict[str, Any]] = None,
     function_type: str = 'composed',
     function_inputs: Optional[Iterable[str]] = None,
     function_location: Optional[ArrayLike] = None,
@@ -113,19 +122,26 @@ def make_function(
 
     Parameters
     ----------
+    function_index: Optional[int] = -1
+        This represents the index location within the function bank.
+    function_id: Optional[str] = None
+        An optional 'name' representation for the function.
     function_object: Optional[Callable] = None
         An object, representing a function, that exposes a forward,
         in addition to saving and loading weights.
+    function_hyperparameters: Optional[Dict[str, Any]] = None
+        If this is passed then this will be used as the hyperparameters
+        for the function object when it is instantiated.
     function_type: str = 'composed'
         A value in the set {'composed','atomic','input','output}
     function_inputs: Optional[Iterable[str]] = None
         This is a list of input function id's which this function
         expects as input.
-    function_index: Optional[int] = -1
-        This represents the index location within the function bank.
     function_location: Optional[ArrayLike] = None
         If this is passed then these fields are added to the function
         and each one is keyed as 'exp_loc_i'.
+        This is used in the Experiment Space, not in the Function
+        Bank.
     max_score_length: Optional[int] = 100
         This creates a deque to hold scores for *this* function.
 
@@ -135,19 +151,27 @@ def make_function(
         This is a Function object, currently a dictionary with a
         predetermined keyset.
     """
+    # Set some defaults
+    if function_id is None:
+        function_id = make_id(seed=seed)
+    if function_hyperparameters is None:
+        function_hyperparameters = {}
+
     function_representation = {
-        'i': -1,
-        'id': make_id(seed=seed),
+        'i': function_index,
+        'id': function_id,
         'type': function_type,
         'input': function_inputs,
         'living': True,
         'object': function_object,
+        'hyperparameters': function_hyperparameters,
         'score_default': deque([0],maxlen=max_score_len) #This is to allow sampling with all functions.
     }
     if function_location is not None:
         function_representation.update(
             {
-                f'exp_loc_{i}': x for i, x in enumerate(function_location)
+                f'exp_loc_{i}': x for i, x
+                in enumerate(function_location)
             }
         )
     return function_representation

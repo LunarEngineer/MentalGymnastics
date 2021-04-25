@@ -1,4 +1,6 @@
+import json
 import os
+import torch
 
 class ComposedFunction():
     def __init__(self, fn_path):

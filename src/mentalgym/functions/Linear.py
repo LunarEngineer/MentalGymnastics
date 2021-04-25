@@ -3,10 +3,10 @@ from torch import Tensor
 import torch.nn as nn
 import numpy as np
 import time
-import AtomicFunction
 
+from .atomic import AtomicFunction
 
-class Linear(AtomicFunction.AtomicFunction):
+class Linear(AtomicFunction):
     def __init__(self, in_features: int, out_features: int,
                  bias: bool = True) -> None:
         super().__init__()

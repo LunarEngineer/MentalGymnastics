@@ -78,7 +78,7 @@ function_composed_three = {
     'id': 'carl',
     'type': 'composed',
     'object': lambda x: 'Carl!',
-    'input': ['steve'],
+    'input': ['steve', 'bob', 'column_1'],
     'exp_loc_0': 50.,
     'exp_loc_1': 75.,
 }

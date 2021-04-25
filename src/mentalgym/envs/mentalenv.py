@@ -99,6 +99,8 @@ class MentalEnv(Env):
         This instantiates a function bank and an experiment space.
         """
         super(MentalEnv, self).__init__()
+
+        dataset.columns = [str(_) for _ in dataset.columns]
         ############################################################
         #                 Store Hyperparameters                    #
         ############################################################
@@ -217,6 +219,8 @@ class MentalEnv(Env):
             Random seed: {seed}
             """
             print(status_message)
+        
+        # self.tree = None
 
     def step(
         self,
@@ -253,7 +257,14 @@ class MentalEnv(Env):
         #   is in the appropriate range of values.
         # TODO: Uncomment this after function bank implementation.
         # action_index = 2 #round(action[0])
-        action_index = np.random.choice([2,3,4], 1)[0]
+        # action_index = np.random.choice([2,3,4], 1)[0]
+        if self._step == 1:
+            action_index = 2 # steve
+        if self._step == 2:
+            action_index = 3 # bob
+        if self._step == 3:
+            action_index = 4 # carl
+
         # action_index = np.round(
         #     np.clip(
         #         action[0],
@@ -292,16 +303,11 @@ class MentalEnv(Env):
         ############################################################
         # Use the action index to query the function bank and get
         #   the Function representation.
-        status_message = f"""wtf:
-        i == {action_index}
-        function bank:\n{function_bank}
-        """
-        print(status_message)
         functions: pd.DataFrame = self._function_bank.query(
             "i == @action_index"
         )
         function_set: FunctionSet = functions.to_dict(orient='records')
-        print('!!!!!!!!!!!!!!!! Function Set', function_set)
+
         # This should never return more than one Function.
         err_msg = f"""Function Error:
         When querying functions with index i == {action_index}
@@ -343,14 +349,14 @@ class MentalEnv(Env):
             action_radius = 200 # TODO: Testing data, remove later.
             # Build a KD tree from the locations of the nodes in the
             #   experiment space.
-            tree = cKDTree(
+            self.tree = cKDTree(
                 self._experiment_space[
                     self._loc_fields
                 ].values
             )
-            # idx = tree.query_ball_point((action[1], action[2]), action[3])
+            # idx = self.tree.query_ball_point((action[1], action[2]), action[3])
             # Query the KD Tree for all points within the radius.
-            idx = tree.query_ball_point(
+            idx = self.tree.query_ball_point(
                 action_location,
                 action_radius
             )
@@ -387,7 +393,7 @@ class MentalEnv(Env):
                 #   keep the callables in the experiment space, or abstract
                 #   them to a separate data structure. Advantages and disadvantages either way.
                 built_function = make_function(
-                    lambda x: x,
+                    lambda x:  x, # change to atomic/composed function object; ex: fun['object']
                     "intermediate",
                     input_df.id.to_list(),
                     action_location
@@ -430,6 +436,14 @@ class MentalEnv(Env):
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
             if not connected_to_sink:
+                # self.tree = cKDTree(
+                # self._experiment_space[
+                #     self._loc_fields
+                # ].values
+                # )
+                
+                # last_id = self.tree.query([[100.0,0.0]],k=1)[0]
+                # print('--------------------------- last id', last_id)
                 last_id = self._experiment_space.tail(1).id.item() # TODO: base last_id on closest to sink later
                 
             # TODO: Bake the net.
@@ -476,6 +490,8 @@ class MentalEnv(Env):
 
         if inputs == None:
             return {}
+        
+        # self._experiment_space['id']['object'].init()
 
         return { _ : self._recurser(exp_space, _) for _ in inputs}
 
@@ -516,7 +532,41 @@ class MentalEnv(Env):
         
         # make sure to instantiate the output layer
 
-        print('ORDERED_D ----------------------', order_d)
+        # print('ORDERED_D ----------------------', order_d)
+
+        # print(self._experiment_space.columns)
+
+        # # init the layer
+        # self.layer1 = nn.Linear(n_in, n_out)
+        # # setting the weights
+        # self.layer1.weights = load('weights.pt')
+
+        # self.model = nn.ModuleList([])
+        # self.model.append(steve(1, max(1/2, 16)))  # arbitrary output
+        # self.model.append(bob(2, 1))    # input == prev_output
+        # self.model.append(carl(?, 1))
+
+
+        # self.layer1 = nn.Linear(n_in, n_out)
+        # self.layer1a = nn.Linear(n_in, n_out)
+        # self.layer2 = nn.Linear(n_out*2, final_out)
+
+        # z = self.layer1(x)
+        # y = self.layer1a(x)
+        # out = self.layer2(y+z)
+
+        # for i in range(len(self.model)):
+        #     self.model[i](x)
+
+        #     s_out = steve(col0)
+
+        #     b_out = bob(col0,col1)
+
+        #     carl(s_out, b_out, col1)
+
+        # self.model.append(output(1, 1))
+        
+        # self._experiment_space.id['object'].item() # 
 
         # recurse init(d['input']) till {}
 
@@ -579,6 +629,9 @@ class MentalEnv(Env):
         self._state_length = n_io + self.max_steps
         # Then build the state.
         state = self.build_state()
+
+        self.tree = None
+
         if self._verbose:
             debug_message = f"""Environment Reset:
             Current Step: {self._step}

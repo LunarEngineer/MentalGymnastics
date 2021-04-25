@@ -4,6 +4,7 @@ import numpy as np
 import mentalgym
 import mentalgym.envs
 import mentalgym.functionbank
+from mentalgym.utils.data import testing_df
 
 # import gym
 from stable_baselines3 import A2C
@@ -15,7 +16,7 @@ from stable_baselines3.common.env_checker import check_env
 class MentalAgent:
     def __init__(self, hparams):
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(1, 
+        self.env = mentalgym.envs.MentalEnv(testing_df, 
                                             max_steps=hparams["max_steps"], 
                                             verbose=True)
 
@@ -30,10 +31,10 @@ class MentalAgent:
         self.model = A2C(
             "MlpPolicy",
             self.env,
-            verbose=1,
+            verbose=0,
             gamma=hparams["gamma"],
             learning_rate=hparams["alpha_start"],
-            n_steps=5
+            n_steps=1
         )
 
     #                         policy_kwargs)
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
     hparams["num_episodes"] = 1
-    hparams["max_steps"] = 10
+    hparams["max_steps"] = 3
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99
     hparams["alpha_start"] = 0.001

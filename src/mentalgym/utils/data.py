@@ -91,14 +91,11 @@ function_composed_three = {
 #   within which it's instantiated, and reads the input and output
 #   from the refreshed experiment container.
 
-function_set = [
+function_set = atomic_functions + [
     function_composed_one,
     function_composed_two,
     function_composed_three
 ]
-
-
-function_set += atomic_functions
 
 function_bank = append_to_experiment(
     base_container,

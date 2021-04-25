@@ -6,7 +6,7 @@ data could be collated.
 import numpy as np
 import pandas as pd
 import pytest
-from mentalgym.functions import AtomicFunction
+from mentalgym.functions.atomic._atomic import AtomicFunction
 from mentalgym.utils.data import function_bank
 from mentalgym.utils.spaces import (
     append_to_experiment,

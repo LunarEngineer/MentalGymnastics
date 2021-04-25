@@ -5,6 +5,7 @@ import json
 from numbers import Number
 import os
 import pandas as pd
+import pickle
 
 
 from mentalgym.types import Function, FunctionSet
@@ -203,8 +204,7 @@ class FunctionBank():
         self._population_size = population_size
         self._data = modeling_data
         self._target = target
-        # This function id is incremented with every function made.
-        self._function_id = 0
+        
         ############################################################
         #              This section starts the engine.             #
         ############################################################
@@ -212,6 +212,10 @@ class FunctionBank():
         #   nodes and atomic and composed functions are read from
         #   disk if present.
         self._function_manifest = self._build_bank()
+        # This function id is incremented with every function made.
+        self._function_id = pd.DataFrame(
+            self._function_manifest
+        ).i.max()
 
     ################################################################
     # These following functions are used to persist the function   #
@@ -246,6 +250,7 @@ class FunctionBank():
         )
         # This function will build a default manifest of functions
         #   and save it locally, if it does not exist.
+        # Anything that's not JSON compatible gets pickled in and out.
         if not os.path.exists(manifest_file):
             self._function_manifest = build_default_function_space(
                 self._data,
@@ -253,33 +258,125 @@ class FunctionBank():
             )
             self._save_bank()
         # Read in the manifest
-        with open(manifest_file,'r') as f:
-            function_manifest = json.load(f)
+        function_manifest = pd.read_json(
+            manifest_file
+        )
+        # TODO: If the column order ever gets whack; use this
+        # fm_columns = function_manifest.columns
+        # Here we are going to load any pickled things.
+        # Identify the scoring fields.
+        score_col = [
+            _ for _ in function_manifest.columns
+            if _.startswith('score')
+        ]
+        # This then pulls out all the pickleable fields.
+        pickle_fields = [
+            'object', *[_ for _ in score_col]
+        ]
+        # This turns the pickleable fields into bytes and saves
+        #   them out to disk. This is because they cannot be
+        #   represented in JSON.
+        def load_pickles(x: pd.Series):
+            """Load pickleable items"""
+            # Turn the Series into a dictionary
+            pickle_items = x.to_dict()
+            # Use the popped ID to check for the dir
+            function_folder = os.path.join(
+                self._function_bank_directory,
+                pickle_items.pop('id')
+            )
+            # Then walk through the dictionary and save
+            #   all the items that can't be dumped to JSON.
+            update_dict = {}
+            for k in pickle_items.keys():
+                flname = os.path.join(
+                    function_folder,
+                    f'{k}.pickle'
+                )
+                update_dict[k] = pickle.load(
+                    open(flname,'rb')
+                )
+            return update_dict
+
+        # Use the loading function to get all the pickled data
+        #   back into a list of dicts.
+        f_list = function_manifest[
+            ['id'] + pickle_fields
+        ].apply(load_pickles, 1).to_list()
+        # Dataframify it
+        f_frame = pd.DataFrame(f_list)
+        # Replace the data in the manifest with the unpickled data.
+        function_manifest.loc[:, pickle_fields] = f_frame
+        # Turn it into a Function Set.
+        function_set = function_manifest.to_dict(
+            orient = 'records'
+        )
         # Then, do any validation necessary for those functions
-        assert validate_function_set(function_manifest)
+        validate_function_set(function_set)
         # Finally, give up the goods.
-        return function_manifest
+        return function_set
 
     def _save_bank(self) -> None:
         """Save function bank to local directory.
 
-        Dump the function manifest to disk.
+        This dumps the manifest out to disk; any fields that cannot
+        be represented as JSON will be pickled out. The pickled
+        fields will be changed 'in-situ' to the string 'pickle' to
+        represent that they can be loaded from disk.
         """
+        # This defines the JSON file which holds the manifest.
         manifest_file = os.path.join(
             self._function_bank_directory,
             '.manifest'
         )
-        # Pull out the 'object', because it cannot be represented
-        #   as
+        # This turns the list of functions into something that's
+        #   a little easier to slice and dice.
         _writable = pd.DataFrame(self._function_manifest)
-        score_col = [_ for _ in _writable.columns if _.startswith('score')]
-        # objs = _writable[['id', 'object', *[_ for _ in ]]]
-        _writable.drop('object', axis = 1, inplace = True)
-        rec_iter = _writable.to_dict(orient='records')
-        # This writes self._function_manifest to json
-        # Determine if this is appending.
-        with open(manifest_file, 'w') as f:
-            f.write(json.dumps(rec_iter))
+        # This pulls out the score columns (which are deques)
+        score_col = [
+            _ for _ in _writable.columns
+            if _.startswith('score')
+        ]
+        # This then pulls out all the pickleable fields.
+        pickle_fields = ['object', *[_ for _ in score_col]]
+        # This turns the pickleable fields into bytes and saves
+        #   them out to disk. This is because they cannot be
+        #   represented in JSON.
+        def save_pickles(x: pd.Series):
+            """Save pickleable items"""
+            # Turn the Series into a dictionary
+            pickle_items = x.to_dict()
+            # Use the popped ID to check for the dir
+            function_folder = os.path.join(
+                self._function_bank_directory,
+                pickle_items.pop('id')
+            )
+            # Make it if it doesn't exist
+            os.makedirs(function_folder, exist_ok = True)
+            # Then walk through the dictionary and save
+            #   all the items that can't be dumped to JSON.
+            for k, v in pickle_items.items():
+                flname = os.path.join(
+                    function_folder,
+                    f'{k}.pickle'
+                )
+                pickle.dump(v, open(flname, "wb"))
+                # with open(flname, 'wb') as f:
+                #     pickle.dump(v, f)
+        # Save all the pickleable items out
+        _writable.loc[
+            :, ['id'] + pickle_fields
+        ].apply(save_pickles, 1)
+        # Change all the pickleable fields to 'pickle' so they
+        #   don't lose their position in the dataframe.
+        _writable.loc[
+            :, pickle_fields
+        ] = 'pickle'
+        # Dump it out as json.
+        _writable.to_json(
+            manifest_file,
+            orient = 'records'
+        )
 
     def query(
         self,
@@ -308,7 +405,7 @@ class FunctionBank():
         """
         return self._function_manifest[function_id]
 
-    def _query(self, query_string: Optional[str] = None) -> pd.DataFrame:
+    def query(self, query_string: Optional[str] = None) -> pd.DataFrame:
         """Return filtered function set.
 
         This constructs a Pandas DataFrame from the function manifest,
@@ -369,7 +466,7 @@ class FunctionBank():
                 'atomic'
             ]
         else:
-            # If we're not including the base set then this ogets
+            # If we're not including the base set then this gets
             #   nothing.
             base_set = []
         # This will query for all functions which match the expected
@@ -393,6 +490,7 @@ class FunctionBank():
         return base_set + composed_set
 
     def prune():
+        """Prune """
         # self._prun
         raise NotImplementedError
 

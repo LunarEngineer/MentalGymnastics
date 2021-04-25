@@ -18,7 +18,7 @@ class MentalAgent:
         # Instantiate environment
         self.env = mentalgym.envs.MentalEnv(testing_df, 
                                             max_steps=hparams["max_steps"], 
-                                            verbose=False)
+                                            verbose=True)
 
         self.num_episodes = hparams["num_episodes"]
         self.max_steps = hparams["max_steps"]
@@ -31,10 +31,10 @@ class MentalAgent:
         self.model = A2C(
             "MlpPolicy",
             self.env,
-            verbose=1,
+            verbose=0,
             gamma=hparams["gamma"],
             learning_rate=hparams["alpha_start"],
-            n_steps=5
+            n_steps=1
         )
 
     #                         policy_kwargs)
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
     hparams["num_episodes"] = 1
-    hparams["max_steps"] = 10
+    hparams["max_steps"] = 3
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99
     hparams["alpha_start"] = 0.001

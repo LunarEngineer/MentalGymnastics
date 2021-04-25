@@ -18,13 +18,14 @@ class MentalAgent:
         # Instantiate environment
         self.env = mentalgym.envs.MentalEnv(testing_df, 
                                             max_steps=hparams["max_steps"], 
-                                            verbose=True)
+                                            verbose=hparams['verbose'])
 
         self.num_episodes = hparams["num_episodes"]
         self.max_steps = hparams["max_steps"]
 
         #  Check custom environment and output additional warnings if needed
-        check_env(self.env)
+        if hparams['verbose']:
+            check_env(self.env)
 
         # Create A2C Agent
         #        policy_kwargs = dict(act_fun=tf.nn.tanh, net_arch=[32, 32])
@@ -53,6 +54,7 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
+    hparams["verbose"] = False
     hparams["num_episodes"] = 1
     hparams["max_steps"] = 3
     hparams["hidden_layers"] = (10,)
@@ -64,8 +66,6 @@ if __name__ == "__main__":
     hparams["epsilon_const"] = 20.0
     hparams["epsilon_maintain"] = 0.01
     hparams["buffer_len"] = 100
-    hparams["minibatch_size"] = 8
-    hparams["min_buffer_use_size"] = 5 * hparams["minibatch_size"]
     hparams["num_functions"] = 8
     hparams["num_active_fns_init"] = 3
 

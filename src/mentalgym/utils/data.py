@@ -1,6 +1,7 @@
 """Contains data and data utilities for the environment."""
+import tempfile
 import pandas as pd
-from mentalgym.types import FunctionSet
+from mentalgym.types import FunctionBank, FunctionSet
 from mentalgym.utils.spaces import (
     append_to_experiment,
     refresh_experiment_container
@@ -99,8 +100,20 @@ function_set = atomic_functions + [
     function_composed_three
 ]
 
+
 function_bank = append_to_experiment(
     base_container,
     pd.DataFrame(function_set),
     function_set
 )
+
+# with tempfile.TemporaryDirectory() as d:
+# real_function_bank = FunctionBank(
+#     modeling_data,
+#     target = None,
+#     function_bank_directory: str = d
+#     dataset_scraper_function: Optional[Callable] = None
+#     sampling_function: Optional[Callable] = None
+#     pruning_function: Optional[Callable] = None
+#     population_size
+# )

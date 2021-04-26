@@ -9,7 +9,7 @@ import gym
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
-from mentalgym.utils.data import function_bank
+#from mentalgym.utils.data import function_bank
 from mentalgym.utils.function import make_function
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
@@ -226,6 +226,7 @@ class MentalEnv(gym.Env):
         # This is defaulted to False and updated later on if we snap
         #   the output.
         connected_to_sink = False
+
         ############################################################
         #                     Function Parsing                     #
         #                                                          #
@@ -242,12 +243,12 @@ class MentalEnv(gym.Env):
         #     action_index = 3 # bob
         # if self._step == 3:
         #     action_index = 4 # carl
+#        action_index = int(
+#            np.round(np.clip(action[0], 0, 1))  # function_bank.idxmax()
+#        )
 
-        action_index = int(
-            np.round(np.clip(action[0], 0, 1))  # function_bank.idxmax()
-        )
-        # print(self._function_bank)
-        action_index = 0
+        action_index = 0 # Temporarily hard-code action to drop Linear
+
         # This extracts the function location from the action.
         # This 'clips' the action location to the interior of the
         #   experiment space. It is already a float array, so nothing
@@ -256,8 +257,10 @@ class MentalEnv(gym.Env):
             action[1:-1], self.experiment_space_min, self.experiment_space_max
         )
         # This extracts the function radius from the action.
-        # This is already a float array, no further parsing required.
-        action_radius = 100  # np.clip(action[-1], 0, None)
+        # This 'clips' the radius to be non-negative
+#        action_radius = np.clip(action[-1], 0, None)
+
+        action_radius = 100  # Temporarily hard-code radius to include all inputs
 
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
@@ -269,6 +272,7 @@ class MentalEnv(gym.Env):
             \tRadius: {action_radius}
             """
             print(debug_message)
+
         ############################################################
         #                    Function Building                     #
         #                                                          #
@@ -309,6 +313,7 @@ class MentalEnv(gym.Env):
         assert f_type in ["composed", "atomic"], err_msg
         # Dependent on what the Function type is, it will be handled
         #   differently.
+        print("Exp Space:\n", self._experiment_space)
         if f_type == "composed":
             # If it's a composed Function it is just appended to the
             #   experiment container. TODO: Test
@@ -367,8 +372,7 @@ class MentalEnv(gym.Env):
                     function_index=self._function_bank.idxmax()
                     + 1,  # i.max() + 1,
                     function_object=Linear,  # change to atomic/composed function object; ex: fun['object']
-#                    function_type="intermediate",
-                    function_type="atomic",
+                    function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
                     function_location=action_location,
                 )
@@ -633,7 +637,7 @@ class MentalEnv(gym.Env):
         self._step = 0
         # Fill the experiment space.
         self._experiment_space = refresh_experiment_container(
-            function_bank=function_bank,
+            function_bank=self._function_bank,
             min_loc=self.experiment_space_min,
             max_loc=self.experiment_space_max,
         )

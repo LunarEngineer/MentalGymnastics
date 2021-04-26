@@ -101,11 +101,11 @@ function_set = atomic_functions + [
 ]
 
 
-function_bank = append_to_experiment(
-    base_container,
-    pd.DataFrame(function_set),
-    function_set
-)
+#function_bank = append_to_experiment(
+#    base_container,
+#    pd.DataFrame(function_set),
+#    function_set
+#)
 
 # with tempfile.TemporaryDirectory() as d:
 # real_function_bank = FunctionBank(

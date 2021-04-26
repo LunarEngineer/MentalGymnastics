@@ -6,6 +6,7 @@ space, and the built in Gym spaces.
 from collections import deque
 import numpy as np
 import pandas as pd
+#pd.set_option('display.max_columns', None)
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functions import atomic_functions
 from mentalgym.types import FunctionSet
@@ -223,17 +224,34 @@ def append_to_experiment(
         is_function(composed_function, raise_early=True)
 
     # 2) Ensure the function inputs all exist in the bank
-    f_inputs = pd.DataFrame(composed_functions).query('type != "intermediate"')
-    f_queried = function_bank.query('id in {}'.format(f_inputs.id.to_list()))
-    test_mask = f_inputs.id.isin(f_queried.id)
+
+    # Do we have to drop intermediate actions HERE ??
+    print("\n\ncomposed functions:", pd.DataFrame(composed_functions))
+    t = pd.DataFrame(composed_functions).input.dropna().to_list()
+    print("\nC.F. To List:", t)
+#    raise
+    f_inputs = [input_node for input_nodes in t for input_node in input_nodes]
+    print("f_inputs:", f_inputs)
+
+#    f_inputs = pd.DataFrame(composed_functions).query('type != "intermediate"')
+    f_queried = function_bank.query(f'id in {f_inputs}')
+    print("f_queried:\n", f_queried)
+
+#    nodes_not_in_fb = [x for x in f_inputs if x not in f_queried]
+#    print("nodes_not_in_fb:", nodes_not_in_fb)
+    mask = pd.Series(f_inputs).isin(f_queried.id)
+    test_mask = pd.Series(f_inputs)[~mask]
+    print("test_mask:\n", test_mask)
+
     err_msg = f"""Composed Function Error:
     The following id's were not in the Function Bank.
-    {f_inputs[~test_mask]}
+    {test_mask}
     """
-    assert np.all(test_mask), err_msg
+    assert not len(test_mask), err_msg
     # 3) Append the composed functions onto the space.
+    print("ES in spaces.py:\n", experiment_space_container)
     return experiment_space_container.append(
-        f_inputs
+        composed_functions
     )
 
 

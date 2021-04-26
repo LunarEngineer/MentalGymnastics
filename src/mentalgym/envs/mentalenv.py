@@ -553,10 +553,10 @@ class MentalEnv(Env):
         
         net_d = {}
 
-        row = self._experiment_space[
-            ["type", "id"]
-        ].iloc[last_id][0]["type"]
-        print("ROWWWW", row)
+        # row = self._experiment_space[
+        #     ["type", "id"]
+        # ].iloc[last_id][0]["type"]
+        # print("ROWWWW", row)
 
         net_d[last_id] = self._recurser(self._experiment_space, last_id)
         

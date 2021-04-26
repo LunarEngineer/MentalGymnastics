@@ -221,8 +221,9 @@ def append_to_experiment(
     # 1) Ensure the function has the basic requirements
     for composed_function in composed_functions:
         is_function(composed_function, raise_early=True)
+
     # 2) Ensure the function inputs all exist in the bank
-    f_inputs = pd.DataFrame(composed_functions)
+    f_inputs = pd.DataFrame(composed_functions).query('type != "intermediate"')
     f_queried = function_bank.query('id in @f_inputs.id')
     test_mask = f_inputs.id.isin(f_queried.id)
     err_msg = f"""Composed Function Error:

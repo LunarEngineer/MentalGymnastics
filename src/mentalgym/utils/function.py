@@ -100,7 +100,6 @@ def make_id(
     )
     return id
 
-
 def make_function(
     function_index: Optional[int] = -1,
     function_id: Optional[str] = None,

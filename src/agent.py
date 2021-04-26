@@ -56,7 +56,7 @@ if __name__ == "__main__":
     hparams = {}
     hparams["verbose"] = False
     hparams["num_episodes"] = 1
-    hparams["max_steps"] = 10
+    hparams["max_steps"] = 1
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99
     hparams["alpha_start"] = 0.001

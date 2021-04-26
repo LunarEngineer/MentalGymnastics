@@ -37,7 +37,6 @@ __FUNCTION_BANK_KWARGS__ = {
 # TODO: Replace print statements.
 logger = logging.getLogger(__name__)
 
-
 class MentalEnv(Env):
     """A Mental Gymnasium Environment.
 
@@ -138,13 +137,13 @@ class MentalEnv(Env):
         # This is the data structure used by the gym which holds   #
         #   composed functions that have been created over time.   #
         ############################################################
-        # self._function_bank = FunctionBank(
-        #     modeling_data=dataset,
-        #     population_size=number_functions,
-        #     **self._function_bank_kwargs
-        # )
+        self._function_bank = FunctionBank(
+            modeling_data=dataset,
+            population_size=number_functions,
+            **self._function_bank_kwargs
+        )
         # print("HEY", pd.DataFrame(self._function_bank._function_manifest))
-        self._function_bank = function_bank
+        # self._function_bank = function_bank
         ############################################################
         #            Instantiate the Experiment Space              #
         #                                                          #
@@ -220,8 +219,6 @@ class MentalEnv(Env):
             Random seed: {seed}
             """
             print(status_message)
-        
-        # self.tree = None
 
     def step(
         self,
@@ -354,15 +351,15 @@ class MentalEnv(Env):
             # action_radius = 200 # TODO: Testing data, remove later.
             # Build a KD tree from the locations of the nodes in the
             #   experiment space.
-            self.tree = cKDTree(
+            tree = cKDTree(
                 self._experiment_space[
                     self._loc_fields
                 ].values
             )
-            # idx = self.tree.query_ball_point((action[1], action[2]), action[3])
+            # idx = tree.query_ball_point((action[1], action[2]), action[3])
             # Query the KD Tree for all points within the radius.
             
-            idx = self.tree.query_ball_point(
+            idx = tree.query_ball_point(
                 action_location,
                 action_radius
             )
@@ -400,7 +397,7 @@ class MentalEnv(Env):
                 #   them to a separate data structure. Advantages and disadvantages either way.
 
                 built_function = make_function(
-                    function_id=function_set[0]["id"],
+                    # function_id=function_set[0]["id"],
                     function_index= self._function_bank.i.max() + 1,
                     function_object=Linear, # change to atomic/composed function object; ex: fun['object']
                     function_type="intermediate",
@@ -448,20 +445,29 @@ class MentalEnv(Env):
         # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
+            # If we did not explicitly connected to an output
             if not connected_to_sink:
-                # self.tree = cKDTree(
-                # self._experiment_space[
-                #     self._loc_fields
-                # ].values
-                # )
+                tree = cKDTree(
+                    self._experiment_space[
+                        self._loc_fields
+                    ].values
+                )
                 
-                # last_id = self.tree.query([[100.0,0.0]],k=1)[0]
-                # print('--------------------------- last id', last_id)
-                last_id = self._experiment_space.tail(1).id.item() # TODO: base last_id on closest to sink later
-                if last_id == 'output':
-                    return self.build_state(), reward, done, {} # TODO: return the correct things
+                pos = self._experiment_space[self._experiment_space['type'] == 'sink'][self._loc_fields]
+                last_id = tree.query(pos,k=1)[0]
+                
+                # If the net is empty, only has inputs and outputs
+                row = self._experiment_space[
+                    ["type", "id"]
+                ].iloc[last_id]
 
-                self._experiment_space.loc[self._experiment_space['id'] == 'output', 'input'] = last_id
+                print(row)
+                if row["type"].item() == "sink":
+                    return self.build_state(), 0, done, {} 
+                
+                self._experiment_space.loc[self._experiment_space['id'] == 'output', 'input'] = row.id.item()
+                print("HEY", self._experiment_space)
+                raise
                 
             # TODO: Bake the net.
             self._build_net(last_id)
@@ -551,7 +557,6 @@ class MentalEnv(Env):
         # make sure to instantiate the output layer
 
         print('NET_D ----------------------', net_d)
-
 
         # # init the layer
         # self.layer1 = nn.Linear(n_in, n_out)
@@ -645,8 +650,6 @@ class MentalEnv(Env):
         self._state_length = n_io + self.max_steps
         # Then build the state.
         state = self.build_state()
-
-        self.tree = None
 
         if self._verbose:
             debug_message = f"""Environment Reset:

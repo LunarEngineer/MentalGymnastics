@@ -224,7 +224,7 @@ def append_to_experiment(
 
     # 2) Ensure the function inputs all exist in the bank
     f_inputs = pd.DataFrame(composed_functions).query('type != "intermediate"')
-    f_queried = function_bank.query('id in @f_inputs.id')
+    f_queried = function_bank.query('id in {}'.format(f_inputs.id.to_list()))
     test_mask = f_inputs.id.isin(f_queried.id)
     err_msg = f"""Composed Function Error:
     The following id's were not in the Function Bank.

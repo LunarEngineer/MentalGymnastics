@@ -263,15 +263,15 @@ class MentalEnv(Env):
         # if self._step == 3:
         #     action_index = 4 # carl
 
-        # action_index = int(np.round(
-        #     np.clip(
-        #         action[0],
-        #         0,
-        #         1 #function_bank.idxmax()
-        #     )
-        # ))
+        action_index = int(np.round(
+            np.clip(
+                action[0],
+                0,
+                1 #function_bank.idxmax()
+            )
+        ))
         # print(self._function_bank)
-        action_index = 0
+        # action_index = 0
         # This extracts the function location from the action.
         # This 'clips' the action location to the interior of the
         #   experiment space. It is already a float array, so nothing
@@ -305,7 +305,6 @@ class MentalEnv(Env):
         # Use the action index to query the function bank and get
         #   the Function representation.
         function_row: pd.DataFrame = self._function_bank.query(
-            # "i == @action_index"
             'i == {}'.format(action_index)
         )
         function_set: FunctionSet = function_row.to_dict(orient='records')
@@ -398,7 +397,7 @@ class MentalEnv(Env):
 
                 built_function = make_function(
                     # function_id=function_set[0]["id"],
-                    function_index= self._function_bank.i.max() + 1,
+                    function_index= self._function_bank.idxmax() + 1, #i.max() + 1,
                     function_object=Linear, # change to atomic/composed function object; ex: fun['object']
                     function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
@@ -466,8 +465,8 @@ class MentalEnv(Env):
                     return self.build_state(), 0, done, {} 
                 
                 self._experiment_space.loc[self._experiment_space['id'] == 'output', 'input'] = row.id.item()
-                print("HEY", self._experiment_space)
-                raise
+                # print("HEY", self._experiment_space)
+                # raise
                 
             # TODO: Bake the net.
             self._build_net(last_id)

@@ -415,9 +415,7 @@ class MentalEnv(Env):
                     function_bank = self._function_bank,
                     composed_functions = [new_function]
                 )
-                
-                if connected_to_sink:
-                    last_id = self._experiment_space.tail(1).id.item()
+
         if self._verbose:
             debug_message = f"""Function Build:
             Queried Function:\n{fun}
@@ -444,6 +442,7 @@ class MentalEnv(Env):
         # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
+            layer_string = None 
             # If we did not explicitly connected to an output
             if not connected_to_sink:
                 tree = cKDTree(
@@ -454,22 +453,23 @@ class MentalEnv(Env):
                 
                 pos = self._experiment_space[self._experiment_space['type'] == 'sink'][self._loc_fields]
                 last_id = tree.query(pos,k=1)[0]
-                
+
                 # If the net is empty, only has inputs and outputs
                 row = self._experiment_space[
                     ["type", "id"]
                 ].iloc[last_id]
 
-                print(row)
                 if row["type"].item() == "sink":
                     return self.build_state(), 0, done, {} 
                 
                 self._experiment_space.loc[self._experiment_space['id'] == 'output', 'input'] = row.id.item()
-                # print("HEY", self._experiment_space)
-                # raise
-                
+                layer_string = row.id.item()
+            else:
+                print(self._experiment_space)
+                layer_string = self._experiment_space.tail(1).id.item()
+
             # TODO: Bake the net.
-            self._build_net(last_id)
+            self._build_net(layer_string)
             # Add the completion reward.
             reward += float(linear_completion_reward(
                 self._experiment_space, None, 0.5
@@ -508,6 +508,7 @@ class MentalEnv(Env):
         return np.concatenate([_exp_state, _pad_state]).T
 
     def _recurser(self, exp_space, id):
+        print("IDIDIDIDID", id)
         data = exp_space.query('id==@id')
         # This is a list
         inputs = data.input.iloc[0]
@@ -551,6 +552,12 @@ class MentalEnv(Env):
         """
         
         net_d = {}
+
+        row = self._experiment_space[
+            ["type", "id"]
+        ].iloc[last_id][0]["type"]
+        print("ROWWWW", row)
+
         net_d[last_id] = self._recurser(self._experiment_space, last_id)
         
         # make sure to instantiate the output layer

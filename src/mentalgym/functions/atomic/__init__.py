@@ -18,7 +18,7 @@ atomic_functions = [
         function_id = 'ReLU',
         function_object = ReLU,
         function_type = 'atomic'
-    ),
+    )
 ]
 
 __all__ = [

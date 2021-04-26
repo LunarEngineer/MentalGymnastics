@@ -14,7 +14,7 @@ from sklearn.datasets import make_classification
 ####################################################################
 # This dataset will be used as a testing dataset for the Gym.
 X, y = make_classification(
-    n_samples=100000,
+    n_samples=10,
     n_features=3,
     n_informative=2,
     n_redundant=1,

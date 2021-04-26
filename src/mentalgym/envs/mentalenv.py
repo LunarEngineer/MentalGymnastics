@@ -24,7 +24,7 @@ from mentalgym.utils.spaces import (
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 from typing import Optional
-
+from mentalgym.functions.atomic import Linear
 
 __FUNCTION_BANK_KWARGS__ = {
     "function_bank_directory",
@@ -143,6 +143,7 @@ class MentalEnv(Env):
         #     population_size=number_functions,
         #     **self._function_bank_kwargs
         # )
+        # print("HEY", pd.DataFrame(self._function_bank._function_manifest))
         self._function_bank = function_bank
         ############################################################
         #            Instantiate the Experiment Space              #
@@ -256,22 +257,24 @@ class MentalEnv(Env):
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
         # TODO: Uncomment this after function bank implementation.
-        # action_index = 2 #round(action[0])
+        # action_index = -1 #round(action[0])
         # action_index = np.random.choice([2,3,4], 1)[0]
-        if self._step == 1:
-            action_index = 2 # steve
-        if self._step == 2:
-            action_index = 3 # bob
-        if self._step == 3:
-            action_index = 4 # carl
+        # if self._step == 1:
+        #     action_index = 2 # steve
+        # if self._step == 2:
+        #     action_index = 3 # bob
+        # if self._step == 3:
+        #     action_index = 4 # carl
 
-        # action_index = np.round(
+        # action_index = int(np.round(
         #     np.clip(
         #         action[0],
         #         0,
-        #         function_bank.idxmax()
+        #         1 #function_bank.idxmax()
         #     )
-        # )
+        # ))
+        # print(self._function_bank)
+        action_index = 0
         # This extracts the function location from the action.
         # This 'clips' the action location to the interior of the
         #   experiment space. It is already a float array, so nothing
@@ -283,7 +286,8 @@ class MentalEnv(Env):
         )
         # This extracts the function radius from the action.
         # This is already a float array, no further parsing required.
-        action_radius = action[-1]
+        action_radius = 100 #np.clip(action[-1], 0, None)
+
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
             debug_message = f"""Action Parse:
@@ -303,10 +307,11 @@ class MentalEnv(Env):
         ############################################################
         # Use the action index to query the function bank and get
         #   the Function representation.
-        functions: pd.DataFrame = self._function_bank.query(
-            "i == @action_index"
+        function_row: pd.DataFrame = self._function_bank.query(
+            # "i == @action_index"
+            'i == {}'.format(action_index)
         )
-        function_set: FunctionSet = functions.to_dict(orient='records')
+        function_set: FunctionSet = function_row.to_dict(orient='records')
 
         # This should never return more than one Function.
         err_msg = f"""Function Error:
@@ -346,7 +351,7 @@ class MentalEnv(Env):
             # If it's an atomic Function it is added as an
             #   'intermediate' and then constructed appropriately
             #   in the build_net.
-            action_radius = 200 # TODO: Testing data, remove later.
+            # action_radius = 200 # TODO: Testing data, remove later.
             # Build a KD tree from the locations of the nodes in the
             #   experiment space.
             self.tree = cKDTree(
@@ -356,6 +361,7 @@ class MentalEnv(Env):
             )
             # idx = self.tree.query_ball_point((action[1], action[2]), action[3])
             # Query the KD Tree for all points within the radius.
+            
             idx = self.tree.query_ball_point(
                 action_location,
                 action_radius
@@ -392,21 +398,28 @@ class MentalEnv(Env):
                 #   we simply need a method to distinguish them. We can
                 #   keep the callables in the experiment space, or abstract
                 #   them to a separate data structure. Advantages and disadvantages either way.
+
                 built_function = make_function(
-                    lambda x:  x, # change to atomic/composed function object; ex: fun['object']
-                    "intermediate",
-                    input_df.id.to_list(),
-                    action_location
+                    function_id=function_set[0]["id"],
+                    function_index= self._function_bank.i.max() + 1,
+                    function_object=Linear, # change to atomic/composed function object; ex: fun['object']
+                    function_type="intermediate",
+                    function_inputs=input_df.id.to_list(),
+                    function_location=action_location
                 )
+                
+                locs = [x for x in built_function.keys() if x.startswith('exp_loc')]
                 new_function = {
                     k: v for k, v in built_function.items()
-                    if k in experiment_space_fields
+                    if k in experiment_space_fields + locs
                 }
+
                 self._experiment_space = append_to_experiment(
                     experiment_space_container = self._experiment_space,
                     function_bank = self._function_bank,
                     composed_functions = [new_function]
                 )
+                
                 if connected_to_sink:
                     last_id = self._experiment_space.tail(1).id.item()
         if self._verbose:
@@ -445,6 +458,10 @@ class MentalEnv(Env):
                 # last_id = self.tree.query([[100.0,0.0]],k=1)[0]
                 # print('--------------------------- last id', last_id)
                 last_id = self._experiment_space.tail(1).id.item() # TODO: base last_id on closest to sink later
+                if last_id == 'output':
+                    return self.build_state(), reward, done, {} # TODO: return the correct things
+
+                self._experiment_space.loc[self._experiment_space['id'] == 'output', 'input'] = last_id
                 
             # TODO: Bake the net.
             self._build_net(last_id)
@@ -468,6 +485,8 @@ class MentalEnv(Env):
             -----------------\n{state}
             """
             print(debug_message)
+        print("\n\nSTEP NUM", self._step)
+        print(self._experiment_space)
         return state, reward, done, info
 
     def build_state(self) -> ArrayLike:
@@ -487,13 +506,12 @@ class MentalEnv(Env):
         data = exp_space.query('id==@id')
         # This is a list
         inputs = data.input.iloc[0]
-
         if inputs == None:
             return {}
         
         # self._experiment_space['id']['object'].init()
 
-        return { _ : self._recurser(exp_space, _) for _ in inputs}
+        return { _ : (self._recurser(exp_space, _), len(inputs)) for _ in inputs}
 
     # TODO: finish this
     # def _recurser_init(self, order_d):
@@ -527,14 +545,13 @@ class MentalEnv(Env):
 
         """
         
-        order_d = {}
-        order_d[last_id] = self._recurser(self._experiment_space, last_id)
+        net_d = {}
+        net_d[last_id] = self._recurser(self._experiment_space, last_id)
         
         # make sure to instantiate the output layer
 
-        # print('ORDERED_D ----------------------', order_d)
+        print('NET_D ----------------------', net_d)
 
-        # print(self._experiment_space.columns)
 
         # # init the layer
         # self.layer1 = nn.Linear(n_in, n_out)
@@ -545,7 +562,6 @@ class MentalEnv(Env):
         # self.model.append(steve(1, max(1/2, 16)))  # arbitrary output
         # self.model.append(bob(2, 1))    # input == prev_output
         # self.model.append(carl(?, 1))
-
 
         # self.layer1 = nn.Linear(n_in, n_out)
         # self.layer1a = nn.Linear(n_in, n_out)

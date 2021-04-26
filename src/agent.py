@@ -47,7 +47,7 @@ class MentalAgent:
         total_timesteps: number of times the agent will update, which should be self.num_episodes * self.max_steps        
         environment steps needed to achieve the total_timesteps: total_timesteps * self.model.n_steps """
 
-        self.model.learn(total_timesteps=self.max_steps*self.num_episodes)
+        self.model.learn(total_timesteps=self.max_steps)
         
 
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     hparams = {}
     hparams["verbose"] = False
     hparams["num_episodes"] = 1
-    hparams["max_steps"] = 3
+    hparams["max_steps"] = 10
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99
     hparams["alpha_start"] = 0.001

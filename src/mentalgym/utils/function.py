@@ -167,6 +167,7 @@ def make_function(
         'hyperparameters': function_hyperparameters,
         'score_default': deque([0],maxlen=max_score_len) #This is to allow sampling with all functions.
     }
+
     if function_location is not None:
         function_representation.update(
             {

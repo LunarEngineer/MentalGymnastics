@@ -16,7 +16,8 @@ from stable_baselines3.common.env_checker import check_env
 class MentalAgent:
     def __init__(self, hparams):
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(testing_df, 
+        self.env = mentalgym.envs.MentalEnv(testing_df,
+                                            number_functions=hparams["number_functions"],
                                             max_steps=hparams["max_steps"], 
                                             verbose=hparams['verbose'])
 
@@ -56,7 +57,9 @@ if __name__ == "__main__":
     hparams = {}
     hparams["verbose"] = False
     hparams["num_episodes"] = 1
+    hparams["number_functions"] = 8
     hparams["max_steps"] = 1
+    hparams["seed"] = None
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99
     hparams["alpha_start"] = 0.001

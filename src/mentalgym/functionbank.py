@@ -212,12 +212,154 @@ class FunctionBank():
         #   nodes and atomic and composed functions are read from
         #   disk if present.
         self._function_manifest = self._build_bank()
-        # This function id is incremented with every function made.
-        self._function_id = pd.DataFrame(
-            self._function_manifest
-        ).i.max()
 
-    ################################################################
+    def query(self, query_string: Optional[str] = None) -> pd.DataFrame:
+        """Return filtered function set.
+
+        This constructs a Pandas DataFrame from the function manifest,
+        filters it according to the query_str parameter, and returns
+        the subset.
+
+        Parameters
+        ----------
+        query_str: Optional[str] = None
+            An empty string by default, this is a query string
+            that meets the format used by pandas .query method.
+
+        Returns
+        -------
+        filtered_function_set: pandas.DataFrame
+            This is the function manifest, filtered by a query string
+
+        Examples
+        --------
+        >>> # Here is code that makes a default manifest which
+        >>> #   has an 'accuracy' feature in the dataset and
+        >>> #   contains an function with an id of 'steve'.
+        >>> # There are *three* functions in this set, two of
+        >>> #   which have accuracy over 50%
+        >>> ab = FunctionBank()
+        >>> act = ab._query('id=="LinearRelu"')
+
+        >>> isinstance(act,pd.DataFrame)
+        True
+        >>> act.nrow
+        1
+        >>> act_set = ab._query('accuracy')
+        >>> act_set.nrow
+        2
+        """
+        function_frame = pd.DataFrame.from_dict(self._function_manifest)
+        return function_frame.query(query_string)
+
+    def sample(self, n, include_base: bool = False):
+        """Return n favorable actions.
+
+        If `include_base` is set to True this will also return
+        input, output, and atomic actions as counted among the n.
+        This should be called at the beginning of episodes.
+
+        The input, output, and atomic should be persisted.
+        """
+        # 1. Turn the function manifest into a DataFrame.
+        function_bank = pd.DataFrame(
+            self._function_manifest
+        )
+        # 2. Query the dataset.
+        if include_base:
+            # If we're including the base set then this gets input,
+            #   output, and atomic.
+            base_set = [
+                'input',
+                'output',
+                'atomic'
+            ]
+        else:
+            # If we're not including the base set then this gets
+            #   nothing.
+            base_set = []
+        # This will query for all functions which match the expected
+        #   types in the base_set list.
+        base_functions = function_bank.query(
+            'type in @base_set'
+        )
+        # 3. How many functions still need to be returned?
+        n_remaining = n - base_functions.shape[0]
+        # 4. Get that many composed functions.
+        # Because all functions come with score_default this will
+        #   automatically
+        composed_functions = self._sampling_function(
+            function_bank.query('type == "composed"'),
+            n_remaining
+        )
+        # 5. Turn both those into iterables and *smoosh* them.
+        base_set = base_functions.to_dict(orient = 'index')
+        composed_set = composed_functions.to_dict(orient = 'index')
+        # 6. Return the concatenated array.
+        return base_set + composed_set
+
+    def prune():
+        """Prune """
+        # self._prun
+        raise NotImplementedError
+
+    def idxmax(self):
+        """return max index"""
+        # This is pseudocode that needs to be tested
+        return pd.DataFrame(self._function_manifest).i.max()
+
+    def append(self, function:Function):
+        """Appends a function to the bank."""
+        # Pseudo code: add something to the manifest.
+        raise NotImplementedError
+        # What doctoring needs to be done to the function?
+        self._function_manifest.append(function)
+
+    def score(
+        self,
+        experiment_space: FunctionSet,
+        score: Number,
+        score_name: str = 'default',
+    ):
+        """Add scoring information to the bank
+
+        This adds scoring information to the function bank.
+
+        """
+        # Experiment space function representations contain an id.
+        # We are going to grab that id, because it matches the id
+        #   here, and we're going to increment the deques for
+        #   those functions. If those deques do not exist, they
+        #   are made.
+        ids = pd.DataFrame(experiment_space).id
+        function_space = pd.DataFrame(self._function_manifest)
+        # Check for the scoring function column. If it doesn't
+        #   exist, make one.
+        # for id in ids:
+        #     if 
+        # if score_name in self._scores:
+
+        # Get all the score deqeues
+        pd.DataFrame(
+            self._function_manifest
+        ).query(
+
+        )
+        score_deques = [
+            _[score_name]
+            for _ in self._function_manifest
+            if[]
+            ]
+        for function in experiment_space:
+            # The experiment space representation of a function has
+            #   at least the function id. That's good enough.
+            function['id']
+        raise NotImplementedError
+
+
+    
+
+################################################################
     # These following functions are used to persist the function   #
     #   bank. These are used to read / write from the storage      #
     #   location, which by default is the local directory where    #
@@ -228,7 +370,7 @@ class FunctionBank():
     ) -> FunctionSet:
         """Build function bank.
 
-        Read a json document to build the function manifest.
+        Reads a json document to build the function manifest.
         If one does not exist a default manifest will be created.
         The passed dataset ensures that input / output are created
         and validated correctly.
@@ -377,176 +519,3 @@ class FunctionBank():
             manifest_file,
             orient = 'records'
         )
-
-    def query(
-        self,
-        function_id: str,
-    ) -> Function:
-        """Return function information.
-
-        This returns a Function representation for the function
-        identified by the function id.
-
-        Parameters
-        ----------
-        function_id: str
-            The string identifier for the function.
-
-        Returns
-        -------
-        function: Function
-
-        Examples
-        --------
-        >>> steve = FunctionBank()
-        >>> steve.query('functionid')
-        >>> # TODO: Meaningful output
-        Representationoffunction
-        """
-        return self._function_manifest[function_id]
-
-    def query(self, query_string: Optional[str] = None) -> pd.DataFrame:
-        """Return filtered function set.
-
-        This constructs a Pandas DataFrame from the function manifest,
-        filters it according to the query_str parameter, and returns
-        the subset.
-
-        Parameters
-        ----------
-        query_str: Optional[str] = None
-            An empty string by default, this is a query string
-            that meets the format used by pandas .query method.
-
-        Returns
-        -------
-        filtered_function_set: pandas.DataFrame
-            This is the function manifest, filtered by a query string
-
-        Examples
-        --------
-        >>> # Here is code that makes a default manifest which
-        >>> #   has an 'accuracy' feature in the dataset and
-        >>> #   contains an function with an id of 'steve'.
-        >>> # There are *three* functions in this set, two of
-        >>> #   which have accuracy over 50%
-        >>> ab = FunctionBank()
-        >>> act = ab._query('id=="steve"')
-        >>> isinstance(act,pd.DataFrame)
-        True
-        >>> act.nrow
-        1
-        >>> act_set = ab._query('accuracy>0.5')
-        >>> act_set.nrow
-        2
-        """
-        function_frame = pd.DataFrame.from_dict(self._function_manifest)
-        return function_frame.query(query_string)
-
-    def sample(self, n, include_base: bool = False):
-        """Return n favorable actions.
-
-        If `include_base` is set to True this will also return
-        input, output, and atomic actions as counted among the n.
-        This should be called at the beginning of episodes.
-
-        The input, output, and atomic should be persisted.
-        """
-        # 1. Turn the function manifest into a DataFrame.
-        function_bank = pd.DataFrame(
-            self._function_manifest
-        )
-        # 2. Query the dataset.
-        if include_base:
-            # If we're including the base set then this gets input,
-            #   output, and atomic.
-            base_set = [
-                'input',
-                'output',
-                'atomic'
-            ]
-        else:
-            # If we're not including the base set then this gets
-            #   nothing.
-            base_set = []
-        # This will query for all functions which match the expected
-        #   types in the base_set list.
-        base_functions = function_bank.query(
-            'type in @base_set'
-        )
-        # 3. How many functions still need to be returned?
-        n_remaining = n - base_functions.shape[0]
-        # 4. Get that many composed functions.
-        # Because all functions come with score_default this will
-        #   automatically
-        composed_functions = self._sampling_function(
-            function_bank.query('type == "composed"'),
-            n_remaining
-        )
-        # 5. Turn both those into iterables and *smoosh* them.
-        base_set = base_functions.to_dict(orient = 'index')
-        composed_set = composed_functions.to_dict(orient = 'index')
-        # 6. Return the concatenated array.
-        return base_set + composed_set
-
-    def prune():
-        """Prune """
-        # self._prun
-        raise NotImplementedError
-
-    def idxmax(self):
-        """return max index"""
-        # This is pseudocode that needs to be tested
-        return pd.DataFrame(self._function_manifest).i.max()
-
-    def append(self, function:Function):
-        """Appends a function to the bank."""
-        # Pseudo code: add something to the manifest.
-        raise NotImplementedError
-        # What doctoring needs to be done to the function?
-        self._function_manifest.append(function)
-
-    def score(
-        self,
-        experiment_space: FunctionSet,
-        score: Number,
-        score_name: str = 'default',
-    ):
-        """Add scoring information to the bank
-
-        This adds scoring information to the function bank.
-
-        """
-        # Experiment space function representations contain an id.
-        # We are going to grab that id, because it matches the id
-        #   here, and we're going to increment the deques for
-        #   those functions. If those deques do not exist, they
-        #   are made.
-        ids = pd.DataFrame(experiment_space).id
-        function_space = pd.DataFrame(self._function_manifest)
-        # Check for the scoring function column. If it doesn't
-        #   exist, make one.
-        # for id in ids:
-        #     if 
-        # if score_name in self._scores:
-
-        # Get all the score deqeues
-        pd.DataFrame(
-            self._function_manifest
-        ).query(
-
-        )
-        score_deques = [
-            _[score_name]
-            for _ in self._function_manifest
-            if[]
-            ]
-        for function in experiment_space:
-            # The experiment space representation of a function has
-            #   at least the function id. That's good enough.
-            function['id']
-        raise NotImplementedError
-
-
-    
-

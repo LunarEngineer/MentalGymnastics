@@ -9,6 +9,7 @@ class Linear(AtomicFunction):
                  bias: bool = True) -> None:
         super().__init__()
         nn.Linear.__init__(self, in_features, out_features, bias)
+        self.class_name = 'Linear'
 
     def reset_parameters(self) -> None:
         nn.Linear.reset_parameters(self)

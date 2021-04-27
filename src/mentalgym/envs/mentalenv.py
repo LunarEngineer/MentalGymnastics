@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 import pandas as pd
+pd.set_option('display.max_columns', None)
 import gym
 
 from mentalgym.constants import experiment_space_fields
@@ -129,7 +130,6 @@ class MentalEnv(gym.Env):
             population_size=number_functions,
             **self._function_bank_kwargs,
         )
-        # print("HEY", pd.DataFrame(self._function_bank._function_manifest))
         # self._function_bank = function_bank
         ############################################################
         #            Instantiate the Experiment Space              #
@@ -260,7 +260,7 @@ class MentalEnv(gym.Env):
         # This 'clips' the radius to be non-negative
 #        action_radius = np.clip(action[-1], 0, None)
 
-        action_radius = 100  # Temporarily hard-code radius to include all inputs
+        action_radius = 1 # Temporarily hard-code radius to include all inputs
 
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
@@ -313,7 +313,7 @@ class MentalEnv(gym.Env):
         assert f_type in ["composed", "atomic"], err_msg
         # Dependent on what the Function type is, it will be handled
         #   differently.
-        print("Exp Space:\n", self._experiment_space)
+
         if f_type == "composed":
             # If it's a composed Function it is just appended to the
             #   experiment container. TODO: Test
@@ -334,6 +334,7 @@ class MentalEnv(gym.Env):
             # Query the KD Tree for all points within the radius.
 
             idx = tree.query_ball_point(action_location, action_radius)
+
             # If any indices are returned it's a valid action
             if len(idx):
                 # This uses the returned indices to subset the
@@ -342,12 +343,7 @@ class MentalEnv(gym.Env):
                 #   to output. This checks for output, removes it,
                 input_df = self._experiment_space.iloc[idx]
                 output_df = input_df.query('type == "sink"')
-                # If the output was connected, then we will trigger
-                #   completion and build and run the net.
-                if output_df.shape[0]:
-                    connected_to_sink = True
-
-                input_df = input_df.query('type != "sink"')
+ 
                 # TODO:
                 # This might need to be reworked.
                 # What does this functionality need to do?
@@ -366,7 +362,7 @@ class MentalEnv(gym.Env):
                 #   we simply need a method to distinguish them. We can
                 #   keep the callables in the experiment space, or abstract
                 #   them to a separate data structure. Advantages and disadvantages either way.
-
+                input_df = input_df.query('type != "sink"')
                 built_function = make_function(
                     # function_id=function_set[0]["id"],
                     function_index=self._function_bank.idxmax()
@@ -390,8 +386,15 @@ class MentalEnv(gym.Env):
                     function_bank=self._function_bank,
                     composed_functions=[new_function],
                 )
-                print("new function:", new_function)
-                print("ES:\n", self._experiment_space)
+
+                # If the output was connected, then we will trigger
+                #   completion and build and run the net.
+                if output_df.shape[0]:
+                    connected_to_sink = True
+
+                    self._experiment_space.loc[
+                        self._experiment_space["type"] == "sink", "input"
+                    ] = self._experiment_space.tail(1).id.item()
 
         if self._verbose:
             debug_message = f"""Function Build:
@@ -439,12 +442,12 @@ class MentalEnv(gym.Env):
                 (self._experiment_space.type == "source")
                 | (self._experiment_space.type == "sink")
             ).all()
+
             if net_empty:
                 return state, 0, done, info
 
             # Net must have at least one intermediate node
             if not connected_to_sink:
-
                 # Create an experiment space w/o source or sink nodes
                 intermediate_es = self._experiment_space[
                     self._experiment_space.type != "source"
@@ -461,25 +464,19 @@ class MentalEnv(gym.Env):
                 ][self._loc_fields]
 
                 # Find row index of closest intermediate function to sink node
-                last_index = tree.query(sink_loc, k=1)[0]
+                trunc_last_index = tree.query(sink_loc, k=1)[1][0]
+                last_id = intermediate_es.iloc[trunc_last_index].id
+                self._experiment_space.loc[
+                    self._experiment_space["type"] == "sink", "input"
+                ] = last_id
 
-#                row = self._experiment_space[["type", "id"]].iloc[last_id]
-
-                #                if row["type"].item() == "sink":
-                #                    return self.build_state(), 0, done, {}
-
-#                self._experiment_space.loc[
-#                    self._experiment_space["id"] == "output", "input"
-#                ] = row.id.item()
-#                layer_string = row.id.item()
             else:
-#                layer_string = self._experiment_space.tail(1).id.item()
                 # last row in dataframe should be function connected to sink
-                last_index = self._experiment_space.index[-1]
+                last_id = self._experiment_space.tail(1).id.item()
 
             # TODO: Bake the net.
-#            self._build_net(layer_string)
-            self._build_net(last_index)
+            self._build_net(last_id)
+
             # Add the completion reward.
             reward += float(
                 linear_completion_reward(self._experiment_space, None, 0.5)
@@ -506,10 +503,7 @@ class MentalEnv(gym.Env):
         print("\n")
 
         if inputs == None:
-            return {}
-
-        # self._experiment_space['id']['object'].init()
-
+            return 1
         return {_: (self._recurser(exp_space, _), len(inputs)) for _ in inputs}
 
     # TODO: finish this
@@ -530,7 +524,7 @@ class MentalEnv(gym.Env):
     #     # return recurse(d['inputs'])
     #     return { _ : self._recurser(exp_space, _) for _ in inputs}
 
-    def _build_net(self, last_index):
+    def _build_net(self, last_id):
         """Builds the experiment space's envisioned net.
 
         Inputs
@@ -543,16 +537,13 @@ class MentalEnv(gym.Env):
         Updates the metrics for the atomic/composed functions used in the newly composed function.
 
         """
-
+        print("Exp Space @ Build Net:\n", self._experiment_space)
         net_d = {}
-        last_id = self._experiment_space['id'][last_index]
-
-        # row = self._experiment_space[
-        #     ["type", "id"]
-        # ].iloc[last_id][0]["type"]
-        # print("ROWWWW", row)
+        self._experiment_space = self._experiment_space.fillna(np.nan).replace([np.nan], [None])
 
         net_d[last_id] = self._recurser(self._experiment_space, last_id)
+
+        # self._experiment_space['id']['object'].init()
 
         # make sure to instantiate the output layer
 

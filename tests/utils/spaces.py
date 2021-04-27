@@ -6,9 +6,11 @@ data could be collated.
 import numpy as np
 import pandas as pd
 import pytest
+import tempfile
 from collections import deque
+from mentalgym.functionbank import FunctionBank
 from mentalgym.functions.atomic._atomic import AtomicFunction
-from mentalgym.utils.data import function_bank
+from mentalgym.utils.data import testing_df
 from mentalgym.utils.spaces import (
     append_to_experiment,
     experiment_space_eq,
@@ -22,10 +24,14 @@ from mentalgym.utils.function import (
 from mentalgym.utils.sampling import softmax_score_sample
 from sklearn.datasets import make_classification
 
+with tempfile.TemporaryDirectory() as d:
+    function_bank = FunctionBank(testing_df)
+    experiment_space = refresh_experiment_container(function_bank)
+
 metadata_df = pd.DataFrame(
     data = {
         'i': [-1, -1, -1, -1],
-        'id': ['column_0', 'column_1', 'column_2', 'output'],
+        'id': ['0', '1', '2', 'y'],
         'type': ['source', 'source', 'source', 'sink'],
         'input': [None, None, None, None],
         'object': [None, None, None, None]
@@ -63,7 +69,7 @@ test_container_sets = zip(
 @pytest.mark.parametrize('kwargs,locations',test_container_sets)
 def test_refresh_experiment_container(kwargs,locations):
     """Tests refreshing the experiment space"""
-    actual_container = refresh_experiment_container(function_bank,**kwargs)
+    actual_container = refresh_experiment_container(function_bank, **kwargs)
     expected_container = pd.concat(
         [
             metadata_df,
@@ -98,14 +104,15 @@ test_space_outputs = [
 
 
 test_banks = [
-    function_bank,
-    function_bank.assign(
-        exp_loc_1=[50., 50., 50., 200., 50., 200., 50., 75.],
-        exp_loc_2=[100., 100., 100., 300., 100., 300., 100., 100.]
-    )[[
-        'i', 'id', 'type', 'input', 'object', 'exp_loc_0',
-        'exp_loc_1', 'exp_loc_2', 'living', 'score_default'
-    ]]
+    function_bank.query('i>-5'),
+    function_bank.query('i>-5')
+    # experiment_space.assign(
+    #     exp_loc_1=[50., 50., 50., 200., 50., 200., 50., 75.],
+    #     exp_loc_2=[100., 100., 100., 300., 100., 300., 100., 100.]
+    # )[[
+    #     'i', 'id', 'type', 'input', 'object', 'exp_loc_0',
+    #     'exp_loc_1', 'exp_loc_2', 'living', 'score_default'
+    # ]]
 ]
 test_append_sets = zip(
     test_inputs,

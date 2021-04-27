@@ -1,7 +1,6 @@
 """Contains the function bank class and supporting code."""
 from __future__ import annotations
 
-import json
 from numbers import Number
 import os
 import pandas as pd
@@ -9,7 +8,7 @@ import pickle
 
 
 from mentalgym.types import Function, FunctionSet
-from mentalgym.utils.data import dataset_to_functions
+from mentalgym.utils.function import dataset_to_functions
 from mentalgym.utils.sampling import softmax_score_sample
 from mentalgym.utils.spaces import (
     prune_function_set,
@@ -136,10 +135,8 @@ class FunctionBank():
 
     Methods
     -------
-    query(): Needs testing, finish documentation
-        Returns information for queried functions
-    _query(): Needs testing, finished documentation
-        Calls .query on the Pandas representation of the functions.
+    query(): pd.DataFrame
+        Overloads Pandas .query on the internal function bank.
     sample(): Needs testing, finished documentation
         Returns a sample of functions.
         Using this to build the set of functions is equivalent to shaping
@@ -238,7 +235,7 @@ class FunctionBank():
         >>> #   contains an function with an id of 'steve'.
         >>> # There are *three* functions in this set, two of
         >>> #   which have accuracy over 50%
-        >>> ab = FunctionBank()
+        >>> from men
         >>> act = ab._query('id=="LinearRelu"')
 
         >>> isinstance(act,pd.DataFrame)
@@ -252,7 +249,12 @@ class FunctionBank():
         function_frame = pd.DataFrame.from_dict(self._function_manifest)
         return function_frame.query(query_string)
 
-    def sample(self, n, include_base: bool = False):
+    def sample(
+        self,
+        n: int = False,
+        include_base: bool = False,
+        random_state: Optional[int] = None
+    ):
         """Return n favorable actions.
 
         If `include_base` is set to True this will also return
@@ -287,11 +289,14 @@ class FunctionBank():
         n_remaining = n - base_functions.shape[0]
         # 4. Get that many composed functions.
         # Because all functions come with score_default this will
-        #   automatically
+        #   automatically work.
+        print(pd.DataFrame(self._function_manifest))
         composed_functions = self._sampling_function(
-            function_bank.query('type == "composed"'),
-            n_remaining
+            x = function_bank.query('type == "composed"'),
+            n = n_remaining,
+            random_state = random_state
         )
+        print(composed_functions)
         # 5. Turn both those into iterables and *smoosh* them.
         base_set = base_functions.to_dict(orient = 'index')
         composed_set = composed_functions.to_dict(orient = 'index')
@@ -357,9 +362,7 @@ class FunctionBank():
         raise NotImplementedError
 
 
-    
-
-################################################################
+    ################################################################
     # These following functions are used to persist the function   #
     #   bank. These are used to read / write from the storage      #
     #   location, which by default is the local directory where    #
@@ -370,7 +373,6 @@ class FunctionBank():
     ) -> FunctionSet:
         """Build function bank.
 
-        Reads a json document to build the function manifest.
         If one does not exist a default manifest will be created.
         The passed dataset ensures that input / output are created
         and validated correctly.
@@ -514,7 +516,6 @@ class FunctionBank():
         _writable.loc[
             :, pickle_fields
         ] = 'pickle'
-        # Dump it out as json.
         _writable.to_json(
             manifest_file,
             orient = 'records'

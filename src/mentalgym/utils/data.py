@@ -1,13 +1,8 @@
 """Contains data and data utilities for the environment."""
 import tempfile
 import pandas as pd
-from mentalgym.types import FunctionBank, FunctionSet
-from mentalgym.utils.spaces import (
-    append_to_experiment,
-    refresh_experiment_container
-)
-from mentalgym.functions import atomic_functions
-from mentalgym.utils.function import dataset_to_functions
+from mentalgym.functionbank import FunctionBank
+# from mentalgym.utils.function import dataset_to_functions
 from sklearn.datasets import make_classification
 
 ####################################################################
@@ -44,11 +39,13 @@ testing_df = pd.DataFrame(
 # This base container has the input and output elements of the
 # testing dataset within it.
 
-base_container = refresh_experiment_container(
-    pd.DataFrame(dataset_to_functions(testing_df))
-)
+# base_container = refresh_experiment_container(
+#     pd.DataFrame(dataset_to_functions(testing_df))
+# )
 
 
+class Empty():
+    pass
 
 ####################################################################
 #                Simple Composed Function Example                  #
@@ -63,7 +60,7 @@ function_composed_one = {
     'id': 'steve',
     'type': 'composed',
     'input': ['column_0'],
-    'object': lambda x: 'Steve!',
+    'object': Empty,
     'exp_loc_0': 25.,
     'exp_loc_1': 50.,
 }
@@ -71,7 +68,7 @@ function_composed_two = {
     'i': 3,
     'id': 'bob',
     'type': 'composed',
-    'object': lambda x: 'Bob!',
+    'object': Empty,
     'input': ['column_0', 'column_1'],
     'exp_loc_0': 50.,
     'exp_loc_1': 75.,
@@ -80,11 +77,20 @@ function_composed_three = {
     'i': 4,
     'id': 'carl',
     'type': 'composed',
-    'object': lambda x: 'Carl!',
+    'object': Empty,
     'input': ['steve', 'bob', 'column_1'],
     'exp_loc_0': 50.,
     'exp_loc_1': 75.,
 }
+
+
+function_set = [
+    function_composed_one,
+    function_composed_two,
+    function_composed_three
+]
+
+
 ####################################################################
 #                  Create simple Function Bank                     #
 ####################################################################
@@ -92,28 +98,10 @@ function_composed_three = {
 #   atomic, and composed functions. It reads the atomic from the
 #   mentalgym.atomic module, reads the composed from the directory
 #   within which it's instantiated, and reads the input and output
-#   from the refreshed experiment container.
-
-function_set = atomic_functions + [
-    function_composed_one,
-    function_composed_two,
-    function_composed_three
-]
-
-
-function_bank = append_to_experiment(
-    base_container,
-    pd.DataFrame(function_set),
-    function_set
-)
-
-# with tempfile.TemporaryDirectory() as d:
-# real_function_bank = FunctionBank(
-#     modeling_data,
-#     target = None,
-#     function_bank_directory: str = d
-#     dataset_scraper_function: Optional[Callable] = None
-#     sampling_function: Optional[Callable] = None
-#     pruning_function: Optional[Callable] = None
-#     population_size
-# )
+#   from the refreshed experiment container. Using a temp directory
+#   helps with cleanup afterwards.
+with tempfile.TemporaryDirectory() as d:
+    function_bank = FunctionBank(
+        modeling_data = testing_df,
+        function_bank_directory = d
+    )

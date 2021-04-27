@@ -7,6 +7,8 @@ from mentalgym.constants import (
 )
 from typing import Any, Dict, Iterable
 
+from mentalgym.types import Function
+
 
 def is_function(
     item: Any,
@@ -132,3 +134,56 @@ def validate_function_set(function_set):
         """
         raise Exception(err_msg)
     # There's more to be done here, but this will work for now.
+
+# TODO: ADD DOCS AND TESTING
+def function_eq(
+    function_a: Function,
+    function_b: Function,
+    raise_early: bool = False
+):
+    """Tests to determine if function A and function B are equal.
+
+    parameters
+    ----------
+    function_a: Function
+        A function representation
+    function_b: Function
+        A function representation
+    raise_early: bool = False
+    """
+    # Checks to see if two functions equal each other
+    ################################################################
+    #                         Preprocessing                        #
+    ################################################################
+    _function_a = pd.DataFrame(
+        [function_a]
+    ).fillna(0).to_dict(
+        orient = 'records'
+    )[0]
+    _function_b = pd.DataFrame(
+        [function_b]
+    ).fillna(0).to_dict(
+        orient = 'records'
+    )[0]
+    # 1) Ensures the sets of two keys are equal
+    keys_eq = set(function_a) == set(function_b)
+    if not keys_eq:
+        if raise_early:
+            err_msg = f"""Function Equality Error:
+            Function A Key Set: {set(function_a)}
+            Function B Key Set: {set(function_b)}
+            """
+            raise Exception(err_msg)
+        return False
+    # 2) Checks, value for value, to make sure the sets of values
+    #   are identical.
+    for k, v in function_a.items():
+        if _function_a[k] != _function_b[k]:
+            if raise_early:
+                err_msg = f"""Function Equality Error - Key: {k}
+                Function A Value: {function_a[k]}
+                Function B Value: {function_b[k]}
+                """
+                raise Exception(err_msg)
+            return False
+    return True

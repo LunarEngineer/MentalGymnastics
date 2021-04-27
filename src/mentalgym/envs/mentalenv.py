@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 import pandas as pd
-pd.set_option('display.max_columns', None)
+# pd.set_option('display.max_columns', None)
 import gym
 
 from mentalgym.constants import experiment_space_fields
@@ -243,11 +243,10 @@ class MentalEnv(gym.Env):
         #     action_index = 3 # bob
         # if self._step == 3:
         #     action_index = 4 # carl
-#        action_index = int(
-#            np.round(np.clip(action[0], 0, 1))  # function_bank.idxmax()
-#        )
 
-        action_index = 0 # Temporarily hard-code action to drop Linear
+        action_index = int(
+            np.round(np.clip(action[0], 0, self._function_bank.idxmax()))
+        )
 
         # This extracts the function location from the action.
         # This 'clips' the action location to the interior of the
@@ -258,9 +257,7 @@ class MentalEnv(gym.Env):
         )
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
-#        action_radius = np.clip(action[-1], 0, None)
-
-        action_radius = 1 # Temporarily hard-code radius to include all inputs
+        action_radius = np.clip(action[-1], 0, None)
 
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
@@ -365,9 +362,8 @@ class MentalEnv(gym.Env):
                 input_df = input_df.query('type != "sink"')
                 built_function = make_function(
                     # function_id=function_set[0]["id"],
-                    function_index=self._function_bank.idxmax()
-                    + 1,  # i.max() + 1,
-                    function_object=Linear,  # change to atomic/composed function object; ex: fun['object']
+                    function_index=self._function_bank.idxmax() + 1,  # i.max() + 1,
+                    function_object=self._function_bank.query('i=={}'.format(action_index)).object.item(),  
                     function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
                     function_location=action_location,
@@ -381,6 +377,7 @@ class MentalEnv(gym.Env):
                     for k, v in built_function.items()
                     if k in experiment_space_fields + locs
                 }
+
                 self._experiment_space = append_to_experiment(
                     experiment_space_container=self._experiment_space,
                     function_bank=self._function_bank,
@@ -504,6 +501,8 @@ class MentalEnv(gym.Env):
 
         if inputs == None:
             return 1
+        
+        
         return {_: (self._recurser(exp_space, _), len(inputs)) for _ in inputs}
 
     # TODO: finish this
@@ -539,8 +538,9 @@ class MentalEnv(gym.Env):
         """
         print("Exp Space @ Build Net:\n", self._experiment_space)
         net_d = {}
-        self._experiment_space = self._experiment_space.fillna(np.nan).replace([np.nan], [None])
 
+        # comment out if function bank only has 'None' in inputs
+        self._experiment_space = self._experiment_space.fillna(np.nan).replace([np.nan], [None])
         net_d[last_id] = self._recurser(self._experiment_space, last_id)
 
         # self._experiment_space['id']['object'].init()

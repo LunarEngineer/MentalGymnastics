@@ -28,6 +28,8 @@ with tempfile.TemporaryDirectory() as d:
     function_bank = FunctionBank(testing_df)
     experiment_space = refresh_experiment_container(function_bank)
 
+pd.options.display.max_columns = 100
+
 metadata_df = pd.DataFrame(
     data = {
         'i': [-1, -1, -1, -1],
@@ -103,35 +105,19 @@ test_space_outputs = [
 ]
 
 
-test_banks = [
-    function_bank.query('i>-5'),
-    function_bank.query('i>-5')
-    # experiment_space.assign(
-    #     exp_loc_1=[50., 50., 50., 200., 50., 200., 50., 75.],
-    #     exp_loc_2=[100., 100., 100., 300., 100., 300., 100., 100.]
-    # )[[
-    #     'i', 'id', 'type', 'input', 'object', 'exp_loc_0',
-    #     'exp_loc_1', 'exp_loc_2', 'living', 'score_default'
-    # ]]
-]
-test_append_sets = zip(
-    test_inputs,
-    test_banks
-)
-
 @pytest.mark.parametrize(
-    'kwargs, expected_container',
-    test_append_sets
+    'kwargs',
+    test_inputs
 )
-def test_append_to_experiment(kwargs, expected_container):
-    container = refresh_experiment_container(expected_container, **kwargs)
+def test_append_to_experiment(kwargs):
+    container = refresh_experiment_container(function_bank, **kwargs)
     # Have sets of composed nodes here.
-    composed_iter = expected_container.query(
+    composed_iter = function_bank.query(
         'type in ["composed","atomic"]'
     ).to_dict(orient = 'records')
     actual_container = append_to_experiment(
         experiment_space_container = container,
-        function_bank = expected_container,
+        function_bank = function_bank,
         composed_functions = composed_iter
     )
     err_msg = f"""Frame Validation Error:
@@ -143,12 +129,17 @@ def test_append_to_experiment(kwargs, expected_container):
     ---------
     Expected:
     ---------
-    {expected_container}
+    {pd.DataFrame(function_bank._function_manifest)}
     """
-    assert experiment_space_eq(
-        actual_container,
-        expected_container
+    assert actual_container.id.equals(
+        pd.DataFrame(
+            function_bank._function_manifest
+        ).id
     ), err_msg
+    # assert experiment_space_eq(
+    #     actual_container,
+    #     expected_container
+    # ), err_msg
 
 
 eq_sets = [

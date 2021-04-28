@@ -17,7 +17,7 @@ from mentalgym.utils.spaces import (
     refresh_experiment_container,
     append_to_experiment,
 )
-from mentalgym.functions.atomic import Linear, ReLU
+from mentalgym.functions.atomic import Linear, ReLU, Dropout
 from mentalgym.constants import intermediate_i
 
 
@@ -371,8 +371,11 @@ class MentalEnv(gym.Env):
                     else:
                         sum_of_inputs += inp_dict["output_size"]
                 
+                # TODO: Move these hardcoded numbers to constants.py
                 if function_class == ReLU:
                     self.function_parameters = {"output_size": sum_of_inputs, "input_size": sum_of_inputs}
+                elif function_class == Dropout:
+                    self.function_parameters = {"p": 0.5, "output_size": sum_of_inputs, "input_size": sum_of_inputs}
                 elif function_class == Linear:
                     self.function_parameters = {"output_size": 256, "input_size": sum_of_inputs}
                 

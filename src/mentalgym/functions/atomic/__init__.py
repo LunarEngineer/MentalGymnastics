@@ -1,6 +1,7 @@
 from ._atomic import AtomicFunction
 from .Linear import Linear
 from .relu import ReLU
+from .Dropout import Dropout
 
 # Here we are going to make a Function Set for the Atomic functions.
 # The id's are numerically descending.
@@ -18,12 +19,19 @@ atomic_functions = [
         function_id = 'ReLU',
         function_object = ReLU,
         function_type = 'atomic'
+    ),
+    dict(
+        function_index = 2,
+        function_id = 'Dropout',
+        function_object = Dropout,
+        function_type = 'atomic'
     )
 ]
 
 __all__ = [
-    'AtomicFunction'
+    'AtomicFunction',
     'Linear',
     'RelU',
+    'Dropout',
     'atomic_functions'
 ]

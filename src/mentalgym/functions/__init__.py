@@ -2,7 +2,8 @@ from .atomic import (
     atomic_functions,
     AtomicFunction,
     Linear,
-    ReLU
+    ReLU,
+    Dropout
 )
 
 from .composed import ComposedFunction
@@ -14,7 +15,7 @@ from .intermediate import IntermediateFunction
 
 __all__ = [
     'atomic_functions',
-    'AtomicFunction'
+    'AtomicFunction',
     'ComposedFunction',
     'IntermediateFunction'
 ]

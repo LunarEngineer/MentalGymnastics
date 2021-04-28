@@ -17,7 +17,11 @@ from mentalgym.utils.spaces import (
     refresh_experiment_container,
     append_to_experiment,
 )
-from mentalgym.functions.atomic import Linear
+from mentalgym.functions.atomic import Linear, ReLU, Dropout
+from mentalgym.constants import intermediate_i
+from mentalgym.utils.data import testing_df
+
+import torch.nn as nn
 
 
 __FUNCTION_BANK_KWARGS__ = {
@@ -257,6 +261,7 @@ class MentalEnv(gym.Env):
         )
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
+        # action_radius = 100
         action_radius = np.clip(action[-1], 0, None)
 
         # Verbose logging here for development and troubleshooting.
@@ -359,14 +364,46 @@ class MentalEnv(gym.Env):
                 #   we simply need a method to distinguish them. We can
                 #   keep the callables in the experiment space, or abstract
                 #   them to a separate data structure. Advantages and disadvantages either way.
+                function_class = self._function_bank.query('i=={}'.format(action_index)).object.item()
                 input_df = input_df.query('type != "sink"')
+                input_hparams = input_df.hyperparameters.to_list()
+                sum_of_inputs = 0
+
+                for inp_dict in input_hparams:
+                    if not len(inp_dict):
+                        sum_of_inputs += 1
+                    else:
+                        sum_of_inputs += inp_dict["output_size"]
+                
+                # TODO: Move these hardcoded numbers to constants.py
+                if function_class == ReLU:
+                    self.function_parameters = {"output_size": sum_of_inputs, "input_size": sum_of_inputs}
+                elif function_class == Dropout:
+                    self.function_parameters = {"p": 0.5, "output_size": sum_of_inputs, "input_size": sum_of_inputs}
+                elif function_class == Linear:
+                    self.function_parameters = {"output_size": 256, "input_size": sum_of_inputs}
+
+                if function_class == ReLU:
+                    self.net_init.append(nn.ReLU())
+                elif function_class == Linear:
+                    self.net_init.append(nn.Linear(self.function_parameters["input_size"],
+                                                self.function_parameters["output_size"]))
+                elif function_class == Dropout:
+                    self.net_init.append(nn.Dropout(self.function_parameters["p"]))
+
+#################
+# Note: See if we can build compuation graph HERE.
+# Need to import dataset and assign the inputs (and possibly batch them)
+#################
+                
                 built_function = make_function(
                     # function_id=function_set[0]["id"],
-                    function_index=self._function_bank.idxmax() + 1,  # i.max() + 1,
-                    function_object=self._function_bank.query('i=={}'.format(action_index)).object.item(),  
+                    function_index=intermediate_i,
+                    function_object=function_class,
                     function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
                     function_location=action_location,
+                    function_hyperparameters=self.function_parameters
                 )
 
                 locs = [
@@ -434,6 +471,7 @@ class MentalEnv(gym.Env):
         # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
+            print("self.net_init:", self.net_init)
             # Check if net is empty, and if so return 0 reward
             net_empty = (
                 (self._experiment_space.type == "source")
@@ -489,20 +527,35 @@ class MentalEnv(gym.Env):
         )
         return np.concatenate([_exp_state, _pad_state]).T
 
+    # Alternate Recurser
+    # def _recurser(self, exp_space, id):
+        # data = exp_space.query("id==@id")
+        # inputs = data.input.iloc[0]  # list of all inputs to that particular id
+        # flag = False
+        # if inputs == None:
+            # return True
+
+        # Linear(column0, column1)
+        # x = n
+        # x = self.nn.init[0](column0, column1)
+        
+        # if flag:
+        # return {_: (self._recurser(exp_space, _)) for _ in inputs}
+
+
     def _recurser(self, exp_space, id):
         data = exp_space.query("id==@id")
-        print("\n")
-        print("exp_space:\n", exp_space)
-        print("id:", id)
-        print("data:\n", data)
+        # print("\n")
+        # print("exp_space:\n", exp_space)
+        # print("id:", id)
+        # print("data:\n", data)
         inputs = data.input.iloc[0]  # list of all inputs to that particular id
-        print("inputs:", inputs)
-        print("\n")
+        # print("inputs:", inputs)
+        # print("\n")
 
         if inputs == None:
             return 1
-        
-        
+
         return {_: (self._recurser(exp_space, _), len(inputs)) for _ in inputs}
 
     # TODO: finish this
@@ -624,6 +677,8 @@ class MentalEnv(gym.Env):
         This creates an empty canvas for the experiment space
         consisting of nothing but input and output nodes.
         """
+        self.net_init = nn.ModuleList([])
+        self.function_parameters = dict()
         # Reset the step counter
         self._step = 0
         # Fill the experiment space.

@@ -8,7 +8,7 @@ import pickle
 
 
 from mentalgym.types import Function, FunctionSet
-from mentalgym.utils.function import dataset_to_functions
+from mentalgym.utils.function import dataset_to_functions, make_function
 from mentalgym.utils.sampling import softmax_score_sample
 from mentalgym.utils.spaces import (
     prune_function_set,
@@ -326,14 +326,29 @@ class FunctionBank():
         """
         # Pseudo code: add something to the manifest.
         # What doctoring needs to be done to the function?
-        if isinstance(function, Function):
+        if isinstance(function, dict):
             function_set = [function]
         else:
             function_set = function
         # 1) Assert that every function *is* a function
-        # 2) Enforce name and data type
-        validate_function_set()
-        self._function_manifest.append(function)
+        validate_function_set(function_set)
+        # 2) *Make* all the functions
+        curated_function_set = []
+        for i, func in enumerate(function_set):
+            curated_function_set.append(
+                make_function(
+                    function_index = self.idxmax() + i + 1,
+                    function_id = None,
+                    function_object = func['object'],
+                    function_hyperparameters = func['hyperparameters'],
+                    function_type = 'composed',
+                    function_inputs = func['input'],
+                    max_score_len = 100
+                )
+            )
+            i += 1
+        print(pd.DataFrame(curated_function_set))
+        self._function_manifest.append(curated_function_set)
 
     def score(
         self,

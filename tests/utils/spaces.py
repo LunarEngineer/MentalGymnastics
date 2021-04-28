@@ -20,7 +20,6 @@ from mentalgym.utils.spaces import (
     build_default_function_space
 )
 from mentalgym.utils.function import (
-    dataset_to_functions,
     make_function,
 )
 from mentalgym.utils.sampling import softmax_score_sample
@@ -38,7 +37,8 @@ metadata_df = pd.DataFrame(
         'id': ['0', '1', '2', 'y'],
         'type': ['source', 'source', 'source', 'sink'],
         'input': [None, None, None, None],
-        'object': [None, None, None, None]
+        'object': [None, None, None, None],
+        'hyperparameters': [{}, {}, {}, {}]
     }
 )
 
@@ -100,6 +100,7 @@ test_composed_outputs = [
         'type': ['source', 'source', 'source', 'sink', 'intermediate'],
         'input': [None, None, None, None, ['1']],
         'object': [None, None, None, None, None],
+        'hyperparameters': [{}, {}, {}, {}, {}],
         'exp_loc_0': np.array([0., 50., 100., 0., 1.]),
         'exp_loc_1': np.array([0., 0., 0., 100., 1.]),
     }),
@@ -109,6 +110,7 @@ test_composed_outputs = [
         'type': ['source', 'source', 'source', 'sink', 'intermediate'],
         'input': [None, None, None, None, ['1', '2']],
         'object': [None, None, None, None, None],
+        'hyperparameters': [{}, {}, {}, {}, {}],
         'exp_loc_0': np.array([0., 50., 100., 0., 1.]),
         'exp_loc_1': np.array([50., 50., 50., 200., 1.]),
         'exp_loc_2': np.array([100., 100., 100., 300., 2.])

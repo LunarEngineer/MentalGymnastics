@@ -8,7 +8,7 @@ from mentalgym import FunctionBank
 from mentalgym.constants import intermediate_i
 from mentalgym.utils.function import make_function
 from mentalgym.utils.validation import function_eq
-from mentalgym.functions.atomic import Linear, ReLU
+from mentalgym.functions.atomic import Linear, ReLU, Dropout
 from sklearn.datasets import make_classification
 from typing import Callable
 import numpy as np
@@ -48,7 +48,8 @@ test_case_1 = {
         {'i': -1, 'id': '2', 'type': 'source', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': np.nan, 'hyperparameters': None},
         {'i': -1, 'id': 'y', 'type': 'sink', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': np.nan, 'hyperparameters': None},
         {'i': 0, 'id': 'Linear', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Linear, 'hyperparameters': {}},
-        {'i': 1, 'id': 'ReLU', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': ReLU, 'hyperparameters': {}}
+        {'i': 1, 'id': 'ReLU', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': ReLU, 'hyperparameters': {}},
+        {'i': 2, 'id': 'Dropout', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Dropout, 'hyperparameters': {}}
     ],
     'query': {
         'query_str': 'i == 0',
@@ -74,14 +75,14 @@ test_case_1 = {
         ],
         'expected_results': pd.DataFrame(
             {
-                'i': [-1, -1, -1, -1, 0, 1, 2, 3],
-                'id': ['0', '1', '2', 'y', 'Linear', 'ReLU', 'steve', 'bob'],
-                'type': ['source', 'source', 'source', 'sink', 'atomic', 'atomic', 'composed', 'composed'],
-                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
-                'living': [True, True, True, True, True, True, True, True],
-                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
-                'object': [np.nan, np.nan, np.nan, np.nan, Linear, ReLU, None, None],
-                'hyperparameters': [None, None, None, None, {}, {}, {}, {}]
+                'i': [-1, -1, -1, -1, 0, 1, 2, 3, 4],
+                'id': ['0', '1', '2', 'y', 'Linear', 'ReLU', 'Dropout', 'steve', 'bob'],
+                'type': ['source', 'source', 'source', 'sink', 'atomic', 'atomic', 'atomic', 'composed', 'composed'],
+                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
+                'living': [True, True, True, True, True, True, True, True, True],
+                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
+                'object': [np.nan, np.nan, np.nan, np.nan, Linear, ReLU, Dropout, None, None],
+                'hyperparameters': [None, None, None, None, {}, {}, {}, {}, {}]
             }
         )
     },
@@ -113,7 +114,8 @@ test_case_2 = {
         {'i': -1, 'id': '3', 'type': 'source', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': np.nan, 'hyperparameters': None},
         {'i': -1, 'id': 'y', 'type': 'source', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': np.nan, 'hyperparameters': None},
         {'i': 0, 'id': 'Linear', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Linear, 'hyperparameters': {}},
-        {'i': 1, 'id': 'ReLU', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': ReLU, 'hyperparameters': {}}
+        {'i': 1, 'id': 'ReLU', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': ReLU, 'hyperparameters': {}},
+        {'i': 2, 'id': 'Dropout', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Dropout, 'hyperparameters': {}}
     ],
     'expected_dir': None,
     'query': {
@@ -140,14 +142,14 @@ test_case_2 = {
         ],
         'expected_results': pd.DataFrame(
             {
-                'i': [-1, -1, -1, -1, -1, 0, 1, 2, 3],
-                'id': ['0', '1', '2', '3', 'y', 'Linear', 'ReLU', 'steve', 'bob'],
-                'type': ['sink', 'source', 'source', 'source', 'source', 'atomic', 'atomic', 'composed', 'composed'],
-                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
-                'living': [True, True, True, True, True, True, True, True, True],
-                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
-                'object': [np.nan, np.nan, np.nan, np.nan, np.nan, Linear, ReLU, None, None],
-                'hyperparameters': [None, None, None, None, None, {}, {}, {}, {}]
+                'i': [-1, -1, -1, -1, -1, 0, 1, 2, 3, 4],
+                'id': ['0', '1', '2', '3', 'y', 'Linear', 'ReLU', 'Dropout', 'steve', 'bob'],
+                'type': ['sink', 'source', 'source', 'source', 'source', 'atomic', 'atomic', 'atomic', 'composed', 'composed'],
+                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
+                'living': [True, True, True, True, True, True, True, True, True, True],
+                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
+                'object': [np.nan, np.nan, np.nan, np.nan, np.nan, Linear, ReLU, Dropout, None, None],
+                'hyperparameters': [None, None, None, None, None, {}, {}, {}, {}, {}]
             }
         )
     },
@@ -335,6 +337,11 @@ def append_tester(
     """
     actual_results = function_bank.append(function_set)
     actual_df = pd.DataFrame(function_bank._function_manifest)
+    expected_df = pd.DataFrame(expected_results)
+    col_disp = ''
+    for c in actual_df:
+        if not actual_df[c].equals(expected_df[c]):
+            col_disp += f'\n\tColumn: {c}\nActual: {actual_df[c].values}\nExpected: {expected_df[c].values}'
     err_msg = f"""Function Space Append Error:
 
     The expected bank, post append, did not match the actual bank.
@@ -345,6 +352,8 @@ def append_tester(
     Actual Data
     -----------\n{actual_df}
 
+    Column Disparities
+    ------------------\n{col_disp}
     """
     assert actual_df.equals(pd.DataFrame(expected_results)), err_msg
     return actual_results

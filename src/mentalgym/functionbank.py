@@ -335,10 +335,14 @@ class FunctionBank():
         # 2) *Make* all the functions
         curated_function_set = []
         for i, func in enumerate(function_set):
+            if 'id' in func:
+                f_id = func['id']
+            else:
+                f_id = None
             curated_function_set.append(
                 make_function(
                     function_index = self.idxmax() + i + 1,
-                    function_id = None,
+                    function_id = f_id,
                     function_object = func['object'],
                     function_hyperparameters = func['hyperparameters'],
                     function_type = 'composed',
@@ -347,8 +351,12 @@ class FunctionBank():
                 )
             )
             i += 1
-        print(pd.DataFrame(curated_function_set))
-        self._function_manifest.append(curated_function_set)
+
+        self._function_manifest = pd.DataFrame(
+            self._function_manifest
+        ).append(
+            curated_function_set
+        ).to_dict(orient='records')
 
     def score(
         self,

@@ -17,7 +17,7 @@ import pytest
 import tempfile
 
 from mentalgym.types import FunctionSet
-
+pd.options.display.max_columns = 100
 
 err_msg_header = "Function Bank:"
 
@@ -72,7 +72,18 @@ test_case_1 = {
                 function_location = [1, 1, 2]
             )
         ],
-        'expected_results': 0
+        'expected_results': pd.DataFrame(
+            {
+                'i': [-1, -1, -1, -1, 0, 1, 2, 3],
+                'id': ['0', '1', '2', 'y', 'Linear', 'ReLU', 'steve', 'bob'],
+                'type': ['source', 'source', 'source', 'sink', 'atomic', 'atomic', 'composed', 'composed'],
+                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
+                'living': [True, True, True, True, True, True, True, True],
+                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
+                'object': [np.nan, np.nan, np.nan, np.nan, Linear, ReLU, None, None],
+                'hyperparameters': [None, None, None, None, {}, {}, {}, {}]
+            }
+        )
     },
     'sample': {
         'kwargs': {
@@ -127,7 +138,18 @@ test_case_2 = {
                 function_location = [1, 1, 2]
             )
         ],
-        'expected_results': 0
+        'expected_results': pd.DataFrame(
+            {
+                'i': [-1, -1, -1, -1, -1, 0, 1, 2, 3],
+                'id': ['0', '1', '2', '3', 'y', 'Linear', 'ReLU', 'steve', 'bob'],
+                'type': ['sink', 'source', 'source', 'source', 'source', 'atomic', 'atomic', 'composed', 'composed'],
+                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
+                'living': [True, True, True, True, True, True, True, True, True],
+                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
+                'object': [np.nan, np.nan, np.nan, np.nan, np.nan, Linear, ReLU, None, None],
+                'hyperparameters': [None, None, None, None, None, {}, {}, {}, {}]
+            }
+        )
     },
     'sample': {
         'kwargs': {
@@ -160,7 +182,6 @@ def init_tester(
         **kwargs,
         function_bank_directory = dir
     )
-
     err_msg = f"""Function Bank Init Error:
     _dataset_scraper_function method is not callable.
     """
@@ -168,7 +189,7 @@ def init_tester(
         function_bank._dataset_scraper_function,
         Callable
     ), err_msg
-
+    # Sampling
     err_msg = f"""Function Bank Init Error:
     _sampling_function method is not callable.
     """
@@ -176,7 +197,7 @@ def init_tester(
         function_bank._sampling_function,
         Callable
     ), err_msg
-
+    # pruning
     err_msg = f"""Function Bank Init Error:
     _pruning_function method is not callable.
     """
@@ -184,12 +205,12 @@ def init_tester(
         function_bank._pruning_function,
         Callable
     ), err_msg
-
+    # dir
     err_msg = f"""Function Bank Init Error:
     _function_bank_directory property not set correctly.
     """
     assert function_bank._function_bank_directory == dir
-
+    # pop size
     err_msg = f"""Function Bank Init Error:
     _population_size property not set correctly.
     """
@@ -278,7 +299,6 @@ def query_tester(function_bank, query_str, expected_results):
     ).to_dict(
         orient='records'
     )[0]
-    pd.options.display.max_columns = 100
     err_msg = f"""Function Space Query Error:
 
     There is an error between the expected structure and the actual
@@ -314,20 +334,19 @@ def append_tester(
         The dictionary representation of the expected results.
     """
     actual_results = function_bank.append(function_set)
-    actual_df = pd.DataFrame._function_manifest
-    err_msg = f"""Function Space Query Error:
+    actual_df = pd.DataFrame(function_bank._function_manifest)
+    err_msg = f"""Function Space Append Error:
 
-    There is an error between the expected structure and the actual
-    on the physical disk.
+    The expected bank, post append, did not match the actual bank.
 
     Original Data
-    -------------\n{pd.DataFrame(function_set)}
+    -------------\n{pd.DataFrame(expected_results)}
 
     Actual Data
     -----------\n{actual_df}
 
     """
-    assert actual_df.equals(pd.DataFrame(function_set)), err_msg
+    assert actual_df.equals(pd.DataFrame(expected_results)), err_msg
     return actual_results
 
 def sample_tester(function_bank, kwargs, expected_results):

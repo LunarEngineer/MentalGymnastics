@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torch.functional as F
 from torch import Tensor
 from ._atomic import AtomicFunction
 

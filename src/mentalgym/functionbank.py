@@ -15,7 +15,7 @@ from mentalgym.utils.spaces import (
     build_default_function_space
 )
 from mentalgym.utils.validation import validate_function_set
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 
 class FunctionBank():
@@ -283,20 +283,23 @@ class FunctionBank():
         # This will query for all functions which match the expected
         #   types in the base_set list.
         base_functions = function_bank.query(
-            'type in @base_set'
+            f'type in {base_set}'
         )
         # 3. How many functions still need to be returned?
         n_remaining = n - base_functions.shape[0]
         # 4. Get that many composed functions.
         # Because all functions come with score_default this will
         #   automatically work.
-        print(pd.DataFrame(self._function_manifest))
+        print(function_bank.query('type == "composed"'))
+        print("back here when composed functions")
+        raise
         composed_functions = self._sampling_function(
             x = function_bank.query('type == "composed"'),
             n = n_remaining,
             random_state = random_state
         )
         print(composed_functions)
+        raise
         # 5. Turn both those into iterables and *smoosh* them.
         base_set = base_functions.to_dict(orient = 'index')
         composed_set = composed_functions.to_dict(orient = 'index')
@@ -313,11 +316,23 @@ class FunctionBank():
         # This is pseudocode that needs to be tested
         return pd.DataFrame(self._function_manifest).i.max()
 
-    def append(self, function:Function):
-        """Appends a function to the bank."""
+    def append(self, function: Union[FunctionSet, Function]):
+        """Appends a function or functions to the bank.
+
+        Parameters
+        ----------
+        function: Union[FunctionSet, Function]
+            This is either a function or iterable of functions.
+        """
         # Pseudo code: add something to the manifest.
-        raise NotImplementedError
         # What doctoring needs to be done to the function?
+        if isinstance(function, Function):
+            function_set = [function]
+        else:
+            function_set = function
+        # 1) Assert that every function *is* a function
+        # 2) Enforce name and data type
+        validate_function_set()
         self._function_manifest.append(function)
 
     def score(

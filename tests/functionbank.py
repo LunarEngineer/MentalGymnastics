@@ -5,6 +5,8 @@ bank.
 """
 from collections import deque
 from mentalgym import FunctionBank
+from mentalgym.constants import intermediate_i
+from mentalgym.utils.function import make_function
 from mentalgym.utils.validation import function_eq
 from mentalgym.functions.atomic import Linear, ReLU
 from sklearn.datasets import make_classification
@@ -53,6 +55,25 @@ test_case_1 = {
         'expected_results': {'i': 0, 'id': 'Linear', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Linear, 'hyperparameters': {}}
     },
     'expected_dir': None,
+    'append': {
+        "composed_set": [
+            make_function(
+                function_index = intermediate_i,
+                function_id = 'steve',
+                function_inputs = ['1'],
+                function_type = 'intermediate',
+                function_location = [1, 1]
+            ),
+            make_function(
+                function_index = intermediate_i,
+                function_id = 'bob',
+                function_inputs = ['1', '2'],
+                function_type = 'intermediate',
+                function_location = [1, 1, 2]
+            )
+        ],
+        'expected_results': 0
+    },
     'sample': {
         'kwargs': {
             "n": 2,
@@ -89,6 +110,25 @@ test_case_2 = {
         'expected_results': {'i': 1, 'id': 'ReLU', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': ReLU, 'hyperparameters': {}}
     },
     'expected_dir': None,
+    'append': {
+        "composed_set": [
+            make_function(
+                function_index = intermediate_i,
+                function_id = 'steve',
+                function_inputs = ['1'],
+                function_type = 'intermediate',
+                function_location = [1, 1]
+            ),
+            make_function(
+                function_index = intermediate_i,
+                function_id = 'bob',
+                function_inputs = ['1', '2'],
+                function_type = 'intermediate',
+                function_location = [1, 1, 2]
+            )
+        ],
+        'expected_results': 0
+    },
     'sample': {
         'kwargs': {
             "n": 2,
@@ -257,6 +297,39 @@ def query_tester(function_bank, query_str, expected_results):
     if not function_eq(expected_results, actual_results,raise_early=True):
         raise Exception(err_msg)
 
+def append_tester(
+    function_bank: FunctionBank,
+    function_set: FunctionSet,
+    expected_results
+) -> FunctionBank:
+    """Tests the Function Bank append method.
+
+    Parameters
+    ----------
+    function_bank: FunctionBank
+        This is the Function Bank object, which can be queried.
+    kwargs: Dict[str, Any]
+        The keyword arguments 
+    expected_results: Dict[str, Any]
+        The dictionary representation of the expected results.
+    """
+    actual_results = function_bank.append(function_set)
+    actual_df = pd.DataFrame._function_manifest
+    err_msg = f"""Function Space Query Error:
+
+    There is an error between the expected structure and the actual
+    on the physical disk.
+
+    Original Data
+    -------------\n{pd.DataFrame(function_set)}
+
+    Actual Data
+    -----------\n{actual_df}
+
+    """
+    assert actual_df.equals(pd.DataFrame(function_set)), err_msg
+    return actual_results
+
 def sample_tester(function_bank, kwargs, expected_results):
     """Tests the *default* sampling method in the Function Bank.
 
@@ -269,7 +342,6 @@ def sample_tester(function_bank, kwargs, expected_results):
     expected_results: Dict[str, Any]
         The dictionary representation of the expected results.
     """
-
     actual_results = function_bank.sample(**kwargs).id
     err_msg = f"""Function Space Sample Error:
 
@@ -314,17 +386,7 @@ def idxmax_tester(function_bank, expected_results):
         The dictionary representation of the expected results.
     """
     raise
-def append_tester(function_bank, expected_results):
-    """Tests the Function Bank append method.
 
-    Parameters
-    ----------
-    function_bank: FunctionBank
-        This is the Function Bank object, which can be queried.
-    expected_results: Dict[str, Any]
-        The dictionary representation of the expected results.
-    """
-    raise
 def score_tester(function_bank, expected_results):
     """Tests the Function Bank score method.
 
@@ -372,6 +434,12 @@ def test_function_bank(inputs):
             inputs['query']['query_str'],
             inputs['query']['expected_results']
         )
+        # 5. Ensure that append is doing the right thing.
+        function_bank = append_tester(
+            function_bank = function_bank,
+            function_set = inputs['append']['composed_set'],
+            expected_results = inputs['append']['expected_results']
+        )
         # 5. Ensure that sample is doing the right thing.
         sample_tester(
             function_bank,
@@ -382,7 +450,5 @@ def test_function_bank(inputs):
         prune_tester()
         # 7. Ensure that idxmax is doing the right thing.
         idxmax_tester()
-        # 8. Ensure that append is doing the right thing.
-        append_tester()
         # 9. Ensure that score is doing the right thing.
         score_tester()

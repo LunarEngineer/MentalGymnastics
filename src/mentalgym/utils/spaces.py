@@ -226,36 +226,76 @@ def append_to_experiment(
     for composed_function in composed_functions:
         is_function(composed_function, raise_early=True)
 
-    # 2) Ensure the function inputs all exist in the bank
-
-    # Do we have to drop intermediate actions HERE ??
-    print("\n\ncomposed functions:", pd.DataFrame(composed_functions))
-    t = pd.DataFrame(composed_functions).input.dropna().to_list()
-    print("\nC.F. To List:", t)
-#    raise
-    f_inputs = [input_node for input_nodes in t for input_node in input_nodes]
-    print("f_inputs:", f_inputs)
-
-#    f_inputs = pd.DataFrame(composed_functions).query('type != "intermediate"')
-    f_queried = function_bank.query(f'id in {f_inputs}')
-    print("f_queried:\n", f_queried)
-
-#    nodes_not_in_fb = [x for x in f_inputs if x not in f_queried]
-#    print("nodes_not_in_fb:", nodes_not_in_fb)
-    mask = pd.Series(f_inputs).isin(f_queried.id)
-    test_mask = pd.Series(f_inputs)[~mask]
-    print("test_mask:\n", test_mask)
+    # 2) Ensure the function inputs all exist in the bank, or are intermediate.
+    all_functions = []
+    bad_functions = []
+    for function in composed_functions:
+        f_id = function['id']
+        f_type = function['type']
+        if f_type == 'intermediate':
+            all_functions.append(function)
+        elif not function_bank.query(f'id == "{f_id}"').empty:
+            all_functions.append(function)
+        else:
+            bad_functions.append(function)
 
     err_msg = f"""Composed Function Error:
-    The following id's were not in the Function Bank.
-    {test_mask}
+    The following functions were either not in the Function Bank, or
+    were not intermediate functions.
+    {pd.DataFrame(bad_functions)}
+
+    ==========
+    Input Data
+    ==========
+
+    composed_functions
+    ------------------\n{pd.DataFrame(composed_functions)}
+
+    bad_functions
+    -------------\n{pd.DataFrame(bad_functions)}
+
+    Current Experiment Space
+    ------------------------\n{experiment_space_container}
     """
-    assert not len(test_mask), err_msg
-    # 3) Append the composed functions onto the space.
-    print("ES in spaces.py:\n", experiment_space_container)
-    return experiment_space_container.append(
-        composed_functions
-    )
+    # 3) Assert that the functions are not empty.
+    assert not len(bad_functions), err_msg
+    # 4) Create a DataFrame from the good functions
+    t = pd.DataFrame(all_functions)
+    # 5) Append the composed functions onto the space.
+    #   Ensure that the composed functions match the original
+    #   datatype and space structure.
+    
+    # Check for name consistency.
+    err_msg = f"""Composed Function Error:
+    The passed functions do not match the structure of the experiment
+    space.
+
+    ==========
+    Input Data
+    ==========
+
+    Columns in new function set
+    ---------------------------\n{t.columns}
+
+    Columns in experiment space
+    ---------------------------\n{experiment_space_container.columns}
+
+    """
+    try:
+        t = t[[_ for _ in experiment_space_container.columns]]
+    except KeyError as e:
+        raise Exception(err_msg)
+    # This walks down the columns
+    type_dict = {
+        c: v.dtype for c, v in experiment_space_container.iteritems()
+    }
+    # Append and reset the index.
+    # This is *not* efficient.
+    # A more efficient representation would be a list of dicts
+    concatenated = experiment_space_container.append(
+        t.astype(type_dict)
+    ).reset_index(drop=True)
+    return concatenated
 
 
 def experiment_space_eq(

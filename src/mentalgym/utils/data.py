@@ -2,7 +2,6 @@
 import tempfile
 import pandas as pd
 from mentalgym.functionbank import FunctionBank
-# from mentalgym.utils.function import dataset_to_functions
 from sklearn.datasets import make_classification
 
 ####################################################################
@@ -42,8 +41,6 @@ testing_df = pd.DataFrame(
 # base_container = refresh_experiment_container(
 #     pd.DataFrame(dataset_to_functions(testing_df))
 # )
-
-
 class Empty():
     pass
 

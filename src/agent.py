@@ -59,9 +59,9 @@ if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
     hparams["verbose"] = False
-    hparams["num_episodes"] = 2
+    hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
-    hparams["max_steps"] = 10
+    hparams["max_steps"] = 2
     hparams["seed"] = None
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99

@@ -3,11 +3,9 @@ from typing import Optional
 import numpy as np
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
-import pandas as pd
-# pd.set_option('display.max_columns', None)
 import gym
 import torch.nn as nn
-
+import pandas as pd
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
@@ -18,9 +16,12 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
 )
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
-from mentalgym.constants import intermediate_i
+from mentalgym.constants import intermediate_i, linear_output_size, dropout_p
 from mentalgym.utils.data import testing_df
 
+
+# Customize pandas DataFrame display width
+# pd.set_option("display.expand_frame_repr", False)
 
 __FUNCTION_BANK_KWARGS__ = {
     "function_bank_directory",
@@ -140,6 +141,7 @@ class MentalEnv(gym.Env):
         #   composed functions that the agent has placed onto the  #
         #   canvas. This is built in reset.                        #
         ############################################################
+        self._episode = -1
         self.state = self.reset()
         ############################################################
         #           Instantiate the Observation Space              #
@@ -156,10 +158,13 @@ class MentalEnv(gym.Env):
         #   * The integer 'function id' representing the integer
         #       index in the function bank.
         #   * The location to emplace the function (minimum 2d)
-        # TODO: Stable baselines recommends this to beflattened, symmetric, and normalized.
+        # TODO: Stable baselines recommends this to be flattened, symmetric,
+        # and normalized.
         # TODO: If we do that we just need to change the parse.
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(1 + self.ndim, self._state_length)
+            low=-np.inf,
+            high=np.inf,
+            shape=(1 + self.ndim, self._state_length),
         )
         ############################################################
         #              Instantiate the Action Space                #
@@ -177,6 +182,7 @@ class MentalEnv(gym.Env):
         self.action_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(self._action_size,)
         )
+
         if self._verbose:
             status_message = f"""Environment Init:
             Episodic Information
@@ -350,7 +356,8 @@ class MentalEnv(gym.Env):
                 #   indices of -1, while atomic get -2? Open for discussion,
                 #   we simply need a method to distinguish them. We can
                 #   keep the callables in the experiment space, or abstract
-                #   them to a separate data structure. Advantages and disadvantages either way.
+                #   them to a separate data structure. Advantages and
+                #   disadvantages either way.
                 function_class = self._function_bank.query(
                     "i=={}".format(action_index)
                 ).object.item()
@@ -364,7 +371,6 @@ class MentalEnv(gym.Env):
                     else:
                         sum_of_inputs += inp_dict["output_size"]
 
-                # TODO: Move these hardcoded numbers to constants.py
                 if function_class == ReLU:
                     self.function_parameters = {
                         "output_size": sum_of_inputs,
@@ -372,13 +378,13 @@ class MentalEnv(gym.Env):
                     }
                 elif function_class == Dropout:
                     self.function_parameters = {
-                        "p": 0.5,
+                        "p": dropout_p,
                         "output_size": sum_of_inputs,
                         "input_size": sum_of_inputs,
                     }
                 elif function_class == Linear:
                     self.function_parameters = {
-                        "output_size": 256,
+                        "output_size": linear_output_size,
                         "input_size": sum_of_inputs,
                     }
 
@@ -398,7 +404,8 @@ class MentalEnv(gym.Env):
 
                 #################
                 # Note: See if we can build computation graph HERE.
-                # Need to import dataset and assign the inputs (and possibly batch them)
+                # Need to import dataset and assign the inputs
+                # (and possibly batch them)
                 #################
 
                 built_function = make_function(
@@ -411,7 +418,9 @@ class MentalEnv(gym.Env):
                 )
 
                 locs = [
-                    x for x in built_function.keys() if x.startswith("exp_loc")
+                    x
+                    for x in built_function.keys()
+                    if x.startswith("exp_loc")
                 ]
                 new_function = {
                     k: v
@@ -450,7 +459,9 @@ class MentalEnv(gym.Env):
         #   rewards and whether or not to build and run the graph. #
         ############################################################
         # Return a minor reward if there are *any* nodes added.
-        reward = connection_reward(self._experiment_space, self._function_bank)
+        reward = connection_reward(
+            self._experiment_space, self._function_bank
+        )
 
         # Default values here, or pass some info?
         info = {}
@@ -471,7 +482,10 @@ class MentalEnv(gym.Env):
         # Check to see if it's time to call it a day.
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
-            print("\nFinal Net:", self.net_init)
+            print("\n\nEPISODE:", self._episode)
+            print("\nFinal Experiment Space:\n", self._experiment_space)
+            print("\nFinal Net:\n", self.net_init)
+
             # Check if net is empty, and if so return 0 reward
             net_empty = (
                 (self._experiment_space.type == "source")
@@ -482,7 +496,8 @@ class MentalEnv(gym.Env):
                 return state, 0, done, info
 
             # TODO: make an exception for composed functions
-            # if composed function is the first dropped function (and it connects to the output),
+            # if composed function is the first dropped function
+            # (and it connects to the output),
             # then the episode will end right away...
 
             # Net must have at least one intermediate node
@@ -552,14 +567,18 @@ class MentalEnv(gym.Env):
         # print("exp_space:\n", exp_space)
         # print("id:", id)
         # print("data:\n", data)
-        inputs = data.input.iloc[0]  # list of all inputs to that particular id
+        inputs = data.input.iloc[
+            0
+        ]  # list of all inputs to that particular id
         # print("inputs:", inputs)
         # print("\n")
 
         if inputs == None:
             return 1
 
-        return {_: (self._recurser(exp_space, _), len(inputs)) for _ in inputs}
+        return {
+            _: (self._recurser(exp_space, _), len(inputs)) for _ in inputs
+        }
 
     # TODO: finish this
     # def _recurser_init(self, order_d):
@@ -584,27 +603,29 @@ class MentalEnv(gym.Env):
 
         Inputs
         ----------
-        Takes in the last step's experiment space & layer right before the output layer.
+        Takes in the last step's experiment space & layer right before the
+        output layer.
 
         Returns
         ----------
         Adds the newly tested composed function to the function bank.
-        Updates the metrics for the atomic/composed functions used in the newly composed function.
+        Updates the metrics for the atomic/composed functions used in the
+        newly composed function.
 
         """
         net_d = {}
 
         # comment out if function bank only has 'None' in inputs
-        self._experiment_space = self._experiment_space.fillna(np.nan).replace(
-            [np.nan], [None]
-        )
+        self._experiment_space = self._experiment_space.fillna(
+            np.nan
+        ).replace([np.nan], [None])
         net_d[last_id] = self._recurser(self._experiment_space, last_id)
 
         # self._experiment_space['id']['object'].init()
 
         # make sure to instantiate the output layer
 
-#        print("NET_D ----------------------", net_d)
+        #        print("NET_D ----------------------", net_d)
 
         # # init the layer
         # self.layer1 = nn.Linear(n_in, n_out)
@@ -670,8 +691,8 @@ class MentalEnv(gym.Env):
 
         # Save the new function to the function bank
 
-        # TODO: represent intermediate functions in a simple to use manner while
-        # still persisting the info to build them from atomic functions
+        # TODO: represent intermediate functions in a simple to use manner
+        # whilestill persisting the info to build them from atomic functions
 
         pass
 
@@ -685,6 +706,8 @@ class MentalEnv(gym.Env):
         self.function_parameters = dict()
         # Reset the step counter
         self._step = 0
+        # Increment the episode counter
+        self._episode += 1
         # Fill the experiment space.
         self._experiment_space = refresh_experiment_container(
             function_bank=self._function_bank,

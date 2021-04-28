@@ -6,11 +6,11 @@ from scipy.spatial import cKDTree
 import pandas as pd
 # pd.set_option('display.max_columns', None)
 import gym
+import torch.nn as nn
 
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
-#from mentalgym.utils.data import function_bank
 from mentalgym.utils.function import make_function
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
@@ -20,8 +20,6 @@ from mentalgym.utils.spaces import (
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
 from mentalgym.constants import intermediate_i
 from mentalgym.utils.data import testing_df
-
-import torch.nn as nn
 
 
 __FUNCTION_BANK_KWARGS__ = {
@@ -238,16 +236,6 @@ class MentalEnv(gym.Env):
         ############################################################
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
-        # TODO: Uncomment this after function bank implementation.
-        # action_index = -1 #round(action[0])
-        # action_index = np.random.choice([2,3,4], 1)[0]
-        # if self._step == 1:
-        #     action_index = 2 # steve
-        # if self._step == 2:
-        #     action_index = 3 # bob
-        # if self._step == 3:
-        #     action_index = 4 # carl
-
         action_index = int(
             np.round(np.clip(action[0], 0, self._function_bank.idxmax()))
         )
@@ -332,9 +320,8 @@ class MentalEnv(gym.Env):
             # Build a KD tree from the locations of the nodes in the
             #   experiment space.
             tree = cKDTree(self._experiment_space[self._loc_fields].values)
-            # idx = tree.query_ball_point((action[1], action[2]), action[3])
-            # Query the KD Tree for all points within the radius.
 
+            # Query the KD Tree for all points within the radius.
             idx = tree.query_ball_point(action_location, action_radius)
 
             # If any indices are returned it's a valid action
@@ -345,7 +332,7 @@ class MentalEnv(gym.Env):
                 #   to output. This checks for output, removes it,
                 input_df = self._experiment_space.iloc[idx]
                 output_df = input_df.query('type == "sink"')
- 
+
                 # TODO:
                 # This might need to be reworked.
                 # What does this functionality need to do?
@@ -364,7 +351,9 @@ class MentalEnv(gym.Env):
                 #   we simply need a method to distinguish them. We can
                 #   keep the callables in the experiment space, or abstract
                 #   them to a separate data structure. Advantages and disadvantages either way.
-                function_class = self._function_bank.query('i=={}'.format(action_index)).object.item()
+                function_class = self._function_bank.query(
+                    "i=={}".format(action_index)
+                ).object.item()
                 input_df = input_df.query('type != "sink"')
                 input_hparams = input_df.hyperparameters.to_list()
                 sum_of_inputs = 0
@@ -374,36 +363,51 @@ class MentalEnv(gym.Env):
                         sum_of_inputs += 1
                     else:
                         sum_of_inputs += inp_dict["output_size"]
-                
+
                 # TODO: Move these hardcoded numbers to constants.py
                 if function_class == ReLU:
-                    self.function_parameters = {"output_size": sum_of_inputs, "input_size": sum_of_inputs}
+                    self.function_parameters = {
+                        "output_size": sum_of_inputs,
+                        "input_size": sum_of_inputs,
+                    }
                 elif function_class == Dropout:
-                    self.function_parameters = {"p": 0.5, "output_size": sum_of_inputs, "input_size": sum_of_inputs}
+                    self.function_parameters = {
+                        "p": 0.5,
+                        "output_size": sum_of_inputs,
+                        "input_size": sum_of_inputs,
+                    }
                 elif function_class == Linear:
-                    self.function_parameters = {"output_size": 256, "input_size": sum_of_inputs}
+                    self.function_parameters = {
+                        "output_size": 256,
+                        "input_size": sum_of_inputs,
+                    }
 
                 if function_class == ReLU:
                     self.net_init.append(nn.ReLU())
                 elif function_class == Linear:
-                    self.net_init.append(nn.Linear(self.function_parameters["input_size"],
-                                                self.function_parameters["output_size"]))
+                    self.net_init.append(
+                        nn.Linear(
+                            self.function_parameters["input_size"],
+                            self.function_parameters["output_size"],
+                        )
+                    )
                 elif function_class == Dropout:
-                    self.net_init.append(nn.Dropout(self.function_parameters["p"]))
+                    self.net_init.append(
+                        nn.Dropout(self.function_parameters["p"])
+                    )
 
-#################
-# Note: See if we can build compuation graph HERE.
-# Need to import dataset and assign the inputs (and possibly batch them)
-#################
-                
+                #################
+                # Note: See if we can build computation graph HERE.
+                # Need to import dataset and assign the inputs (and possibly batch them)
+                #################
+
                 built_function = make_function(
-                    # function_id=function_set[0]["id"],
                     function_index=intermediate_i,
                     function_object=function_class,
                     function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
                     function_location=action_location,
-                    function_hyperparameters=self.function_parameters
+                    function_hyperparameters=self.function_parameters,
                 )
 
                 locs = [
@@ -463,15 +467,11 @@ class MentalEnv(gym.Env):
             -----------------\n{state}
             """
             print(debug_message)
-        print("\n\nSTEP NUM", self._step)
 
         # Check to see if it's time to call it a day.
-        # TODO: make an exception for composed functions
-        # if composed function is the first dropped function (and it connects to the output),
-        # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
-            print("self.net_init:", self.net_init)
+            print("\nFinal Net:", self.net_init)
             # Check if net is empty, and if so return 0 reward
             net_empty = (
                 (self._experiment_space.type == "source")
@@ -480,6 +480,10 @@ class MentalEnv(gym.Env):
 
             if net_empty:
                 return state, 0, done, info
+
+            # TODO: make an exception for composed functions
+            # if composed function is the first dropped function (and it connects to the output),
+            # then the episode will end right away...
 
             # Net must have at least one intermediate node
             if not connected_to_sink:
@@ -529,19 +533,18 @@ class MentalEnv(gym.Env):
 
     # Alternate Recurser
     # def _recurser(self, exp_space, id):
-        # data = exp_space.query("id==@id")
-        # inputs = data.input.iloc[0]  # list of all inputs to that particular id
-        # flag = False
-        # if inputs == None:
-            # return True
+    # data = exp_space.query("id==@id")
+    # inputs = data.input.iloc[0]  # list of all inputs to that particular id
+    # flag = False
+    # if inputs == None:
+    # return True
 
-        # Linear(column0, column1)
-        # x = n
-        # x = self.nn.init[0](column0, column1)
-        
-        # if flag:
-        # return {_: (self._recurser(exp_space, _)) for _ in inputs}
+    # Linear(column0, column1)
+    # x = n
+    # x = self.nn.init[0](column0, column1)
 
+    # if flag:
+    # return {_: (self._recurser(exp_space, _)) for _ in inputs}
 
     def _recurser(self, exp_space, id):
         data = exp_space.query("id==@id")
@@ -589,18 +592,19 @@ class MentalEnv(gym.Env):
         Updates the metrics for the atomic/composed functions used in the newly composed function.
 
         """
-        print("Exp Space @ Build Net:\n", self._experiment_space)
         net_d = {}
 
         # comment out if function bank only has 'None' in inputs
-        self._experiment_space = self._experiment_space.fillna(np.nan).replace([np.nan], [None])
+        self._experiment_space = self._experiment_space.fillna(np.nan).replace(
+            [np.nan], [None]
+        )
         net_d[last_id] = self._recurser(self._experiment_space, last_id)
 
         # self._experiment_space['id']['object'].init()
 
         # make sure to instantiate the output layer
 
-        print("NET_D ----------------------", net_d)
+#        print("NET_D ----------------------", net_d)
 
         # # init the layer
         # self.layer1 = nn.Linear(n_in, n_out)

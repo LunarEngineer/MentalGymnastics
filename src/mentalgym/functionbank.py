@@ -1,11 +1,11 @@
 """Contains the function bank class and supporting code."""
 from __future__ import annotations
+from collections import deque
 
-from numbers import Number
+import numpy as np
 import os
 import pandas as pd
 import pickle
-
 
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.function import dataset_to_functions, make_function
@@ -15,7 +15,9 @@ from mentalgym.utils.spaces import (
     build_default_function_space
 )
 from mentalgym.utils.validation import validate_function_set
-from typing import Callable, Optional, Union
+from numbers import Number
+from pandas.core.algorithms import isin
+from typing import Callable, Iterable, Optional, Union
 
 
 class FunctionBank():
@@ -215,106 +217,13 @@ class FunctionBank():
     #                                                              #
     # The prune, sample, append, and query methods are used to     #
     #   excise, sample, add, and filter functions in the function  #
+    #   bank. The score function is used to update scores in the   #
     #   bank.                                                      #
     ################################################################
-    def query(self, query_string: Optional[str] = None) -> pd.DataFrame:
-        """Return filtered function set.
-
-        This constructs a Pandas DataFrame from the function manifest,
-        filters it according to the query_str parameter, and returns
-        the subset.
-
-        Parameters
-        ----------
-        query_str: Optional[str] = None
-            An empty string by default, this is a query string
-            that meets the format used by pandas .query method.
-
-        Returns
-        -------
-        filtered_function_set: pandas.DataFrame
-            This is the function manifest, filtered by a query string
-
-        Examples
-        --------
-        >>> from mentalgym.utils.data import testing_df
-        >>> from mentalgym.functionbank import FunctionBank
-        >>> from mentalgym.utils.function import make_function
-        >>> function_bank = FunctionBank(testing_df)
-        >>> function_bank.query('type=="atomic"')
-           i       id    type  input  living score_default                                             object hyperparameters
-        4  0   Linear  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
-        5  1     ReLU  atomic    NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
-        6  2  Dropout  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
-        >>> function_bank.query('i==-1')
-           i        id    type  input  living score_default object hyperparameters
-        0 -1  column_0  source    NaN    True           [0]    NaN            None
-        1 -1  column_1  source    NaN    True           [0]    NaN            None
-        2 -1  column_2  source    NaN    True           [0]    NaN            None
-        3 -1    output    sink    NaN    True           [0]    NaN            None
-        """
-        function_frame = pd.DataFrame.from_dict(self._function_manifest)
-        return function_frame.query(query_string)
-
     def prune():
         """Prune """
-        # self._prun
+        # self._prune
         raise NotImplementedError
-
-    def idxmax(self) -> int:
-        """Return the max index.
-
-        This returns the maximum index of the functions in the bank.
-
-        Returns
-        -------
-        idxmax: int
-            The maximum integer index for composed functions in the
-            function bank.
-
-        Examples
-        --------
-        >>> import pandas as pd
-        >>> from mentalgym.utils.data import testing_df
-        >>> from mentalgym.functionbank import FunctionBank
-        >>> from mentalgym.utils.function import make_function
-        >>> function_bank = FunctionBank(testing_df)
-        >>> composed_functions = [
-        ...     make_function(
-        ...         function_index = -3,
-        ...         function_id = 'steve',
-        ...         function_inputs = ['1'],
-        ...         function_type = 'intermediate',
-        ...         function_location = [1, 1]
-        ...     ),
-        ...     make_function(
-        ...         function_index = -4,
-        ...         function_id = 'bob',
-        ...         function_inputs = ['1', '2'],
-        ...         function_type = 'intermediate',
-        ...         function_location = [1, 1, 2]
-        ...     )
-        ... ]
-        >>> function_bank.idxmax()
-        2
-        >>> function_bank.append(composed_functions)
-        >>> function_bank.idxmax()
-        4
-        """
-        return self.to_df().i.max()
-
-    def to_df(self):
-        """Convenience function to return function df.
-
-        This wraps the internal manifest in a dataframe and returns
-        it. This is just a convenience function.
-
-        Returns
-        -------
-        function_bank_df: pd.DataFrame
-            A DataFrame representation of the function bank.
-        """
-        return pd.DataFrame(self._function_manifest)
 
     def sample(
         self,
@@ -515,11 +424,50 @@ class FunctionBank():
             curated_function_set
         ).to_dict(orient='records')
 
+    def query(self, query_string: Optional[str] = None) -> pd.DataFrame:
+        """Return filtered function set.
+
+        This constructs a Pandas DataFrame from the function manifest,
+        filters it according to the query_str parameter, and returns
+        the subset.
+
+        Parameters
+        ----------
+        query_str: Optional[str] = None
+            An empty string by default, this is a query string
+            that meets the format used by pandas .query method.
+
+        Returns
+        -------
+        filtered_function_set: pandas.DataFrame
+            This is the function manifest, filtered by a query string
+
+        Examples
+        --------
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> function_bank.query('type=="atomic"')
+           i       id    type  input  living score_default                                             object hyperparameters
+        4  0   Linear  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
+        5  1     ReLU  atomic    NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
+        6  2  Dropout  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
+        >>> function_bank.query('i==-1')
+           i        id    type  input  living score_default object hyperparameters
+        0 -1  column_0  source    NaN    True           [0]    NaN            None
+        1 -1  column_1  source    NaN    True           [0]    NaN            None
+        2 -1  column_2  source    NaN    True           [0]    NaN            None
+        3 -1    output    sink    NaN    True           [0]    NaN            None
+        """
+        function_frame = pd.DataFrame.from_dict(self._function_manifest)
+        return function_frame.query(query_string)
+
     def score(
         self,
         function_set: Union[FunctionSet, pd.DataFrame],
-        score: Number,
-        score_name: str = 'default',
+        score: Union[Number, Iterable[Number]],
+        score_name: Union[str, Iterable[str]] = 'default',
     ):
         """Add scoring information to the bank.
 
@@ -532,38 +480,213 @@ class FunctionBank():
         function_set: Union[FunctionSet, pd.DataFrame]
             This is either an iterable of function representations
             or a DataFrame built from that iterable.
+        score: Union[Number, List[Number]]
+            This is a *bigger is better* style score. The current
+            method of scoring involves taking the arithmetic mean
+            of scores for the different scoring functions.
+            That means that if a function 'bob' had scores of
+            * score_accuracy: [.9, .7, .6]
+            * score_complexity: [5, -2,]
+        score_name: Union[str, Iterable[str]] = 'default'
+            These are the names associated with the scores. If more
+            than one score is passed in an iterable this should be
+            an iterable as long as the array of scores.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> composed_functions = [
+        ...     make_function(
+        ...         function_index = -3,
+        ...         function_id = 'steve',
+        ...         function_inputs = ['1'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1]
+        ...     ),
+        ...     make_function(
+        ...         function_index = -4,
+        ...         function_id = 'bob',
+        ...         function_inputs = ['1', '2'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1, 2]
+        ...     )
+        ... ]
+        >>> function_bank.append(composed_functions)
+        >>> function_bank.to_df()
+           i        id      type   input  living score_default                                             object hyperparameters
+        0 -1  column_0    source     NaN    True           [0]                                                NaN            None
+        1 -1  column_1    source     NaN    True           [0]                                                NaN            None
+        2 -1  column_2    source     NaN    True           [0]                                                NaN            None
+        3 -1    output      sink     NaN    True           [0]                                                NaN            None
+        4  0    Linear    atomic     NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
+        5  1      ReLU    atomic     NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
+        6  2   Dropout    atomic     NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
+        7  3     steve  composed     [1]    True           [0]                                               None              {}
+        8  4       bob  composed  [1, 2]    True           [0]                                               None              {}
+        >>> function_bank.score(composed_functions, .6)
         """
-        # Experiment space function representations contain an id.
-        # We are going to grab that id, because it matches the id
-        #   here, and we're going to increment the deques for
-        #   those functions. If those deques do not exist, they
-        #   are made.
-        ids = pd.DataFrame(function_set).id
-        function_space = self.to_df()
-        # Check for the scoring function column. If it doesn't
-        #   exist, make one.
-        # for id in ids:
-        #     if 
-        # if score_name in self._scores:
+        # 0.1) Pretreat the scores:
+        if not isinstance(score, Iterable):
+            _score = [score]
+        else:
+            _score = score
+        # 0.2) Pretreat the score names:
+        if isinstance(score_name, str):
+            _score_name = [score_name]
+        else:
+            _score_name = score_name
+        # 0.3) Ensure they are equal length.
+        err_msg = f"""Function Scoring Error:
 
-        # Get all the score deqeues
-        pd.DataFrame(
-            self._function_manifest
-        ).query(
+        There is an inconsistency between the number of scores and
+        the number of score names.
 
+        Scores: {_score}
+        Score Names: {_score_name}
+        """
+        assert len(_score) == len(_score_name), err_msg
+        # 0.4) Now add 'score_' in front of the score names.
+        _score_name = [f'score_{_}' for _ in _score_name]
+        # 0.5) Ensure that the function set coming in is Pandas style
+        #   filterable.
+        if not isinstance(function_set, pd.DataFrame):
+            function_df = pd.DataFrame(function_set)
+        else:
+            function_df = function_set
+        # 0.6) Ensure that the id column is available.
+        err_msg = f"""Function Scoring Error:
+
+        Scoring requires that the functions to be scored have valid
+        id's. These functions were missing an id column.
+
+        Passed Functions:\n{function_df}
+        """
+        assert 'id' in function_df.columns, err_msg
+        # 1) We only care about the id column; it matches the id in
+        #   the function bank, and so we are going to increment those
+        #   score buffers *in-place*
+        function_ids = function_df.id.to_list()
+        # 2) Subset the function bank dataframe to those rows; since
+        #   the deques are objects they point to locations in memory
+        #   and we can increment them in-place.
+        functionbank = self.to_df()
+        in_fb = functionbank.query(f'id == {function_ids}').id.to_list()
+        # 3) Assert that you got the same number you queried for.
+        err_msg = f"""Function Scoring Error:
+
+        Passed IDs
+        ----------\n{function_ids}
+
+        Found in Function Bank
+        ----------------------\n{in_fb}
+        """
+        assert set(function_ids) == set(in_fb), err_msg
+        # This gets a list of all the scoring columns from the
+        #   function bank.
+        score_cols = [
+            _ for _ in functionbank.columns
+            if _.startswith('score_')
+        ]
+        # This gets the maximum positional index for the column
+        #   a.k.a. column number `n`
+        max_col_ind = int(np.max(
+            [functionbank.columns.get_loc(c) for c in score_cols]
+        ))
+        # This, then, walks through the scoring columns passed.
+        # If the scoring column *already* exists then it is updated
+        #   in place.
+        # This is used to make the deques.
+        n = functionbank.shape[0]
+        for score_col, score in zip(_score_name, _score):
+            # Does the scoring column exist?
+            if score_col not in score_cols:
+                # If not, create it with empty deques.
+                functionbank.insert(
+                    loc = max_col_ind + 1,
+                    column = f'score_{score_col}',
+                    value = [deque([0], maxlen=100) for _ in range(n)]
+                )
+                max_col_ind += 1
+            # This is an n x m DataFrame where n is the number of
+            # functions being scored and m is the number of scoring
+            # functions that already exist. This then pulls the
+            # scoring column out, as a series, and calls apply on it
+            # to update the deques.
+            functionbank.query(
+                f'id == {function_ids}'
+            )[f'score_{score_col}'].apply(
+                lambda x: x.append(score)
+            )
+        # Now, update the manifest.
+        self._function_manifest = functionbank.to_dict(
+            orient='records'
         )
-        score_deques = [
-            _[score_name]
-            for _ in self._function_manifest
-            if[]
-            ]
-        for function in experiment_space:
-            # The experiment space representation of a function has
-            #   at least the function id. That's good enough.
-            function['id']
-        raise NotImplementedError
 
+    ################################################################
+    #                       Helper Functions                       #
+    #                                                              #
+    # These helper functions provide general helpful utility:      #
+    #   idxmax: Return the highest function index                  #
+    #   to_df: Return the function manifest cast to dataframe.     #
+    ################################################################
+    def idxmax(self) -> int:
+        """Return the max index.
 
+        This returns the maximum index of the functions in the bank.
+
+        Returns
+        -------
+        idxmax: int
+            The maximum integer index for composed functions in the
+            function bank.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> composed_functions = [
+        ...     make_function(
+        ...         function_index = -3,
+        ...         function_id = 'steve',
+        ...         function_inputs = ['1'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1]
+        ...     ),
+        ...     make_function(
+        ...         function_index = -4,
+        ...         function_id = 'bob',
+        ...         function_inputs = ['1', '2'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1, 2]
+        ...     )
+        ... ]
+        >>> function_bank.idxmax()
+        2
+        >>> function_bank.append(composed_functions)
+        >>> function_bank.idxmax()
+        4
+        """
+        return self.to_df().i.max()
+
+    def to_df(self):
+        """Convenience function to return function df.
+
+        This wraps the internal manifest in a dataframe and returns
+        it. This is just a convenience function.
+
+        Returns
+        -------
+        function_bank_df: pd.DataFrame
+            A DataFrame representation of the function bank.
+        """
+        return pd.DataFrame(self._function_manifest)
     ################################################################
     # These following functions are used to persist the function   #
     #   bank. These are used to read / write from the storage      #

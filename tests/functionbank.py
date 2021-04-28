@@ -437,19 +437,19 @@ def score_tester(function_bank, kwargs, expected_results):
     expected_results: Dict[str, Any]
         The dictionary representation of the expected results.
     """
-    err_msg = f"""Function Space Sample Error:
+    err_msg = f"""Function Space Scoring Error:
 
-    When sampling the function bank there was a disparity between
-    expected and actual functions returned.
+    When updating scoring information the expected output differed
+    from the actual.
 
     Scoring Arguments
     -----------------\n{kwargs}
 
     Expected Results
-    -----------------\n{function_bank}
+    -----------------\n{}
 
     Actual Results
-    --------------\n{0}
+    --------------\n{function_bank.to_df()}
 
     """
     raise err_msg

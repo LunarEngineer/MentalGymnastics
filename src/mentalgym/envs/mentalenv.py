@@ -541,7 +541,9 @@ class MentalEnv(gym.Env):
             np.nan
         ).replace([np.nan], [None])
 
-        # Create new experiment space with only functions in the net
+        # Create new experiment space with only functions in the net.  This
+        # new data frame will have only intermediate and composite functions,
+        # in reverse order from output to input.
         net_df = pd.DataFrame().reindex(columns=self._experiment_space.columns)
         net_df.loc[0] = self._experiment_space.query('type == "sink"').iloc[0]
         cur_inputs = [net_df.tail(1).input.item()]
@@ -552,11 +554,35 @@ class MentalEnv(gym.Env):
                 inps = net_df.tail(1).input.item()
                 if inps != None:
                     for inp in inps:
-                        if inp not in net_df.id.values:
+                        if inp not in net_df.id.values and self._experiment_space.query('id == @inp').type.values != 'source':
                             cur_inputs.append(inp)
                 cur_inputs.pop(0)
+        net_df = net_df.sort_index(ascending=False)
                 
-        print("\n\nfinal Net (df):\n", net_df)
+        print("\n\nFinal Net (df):\n", net_df)
+
+#        net_list = net_df.sort_index(ascending=False).id.to_list()
+#        print("\nNet Dict:\n", net_dict)
+
+        for ind in range(len(net_df)):
+            function_class = self._function_bank.query(
+                "i=={}".format(-net_df.iloc[ind]['i']-1)
+            ).object.item()
+            if function_class == ReLU:
+                self.net_init.append(nn.ReLU())
+            elif function_class == Linear:
+                self.net_init.append(
+                    nn.Linear(
+                        self.function_parameters["input_size"],
+                        self.function_parameters["output_size"],
+                    )
+                )
+            elif function_class == Dropout:
+                self.net_init.append(
+                    nn.Dropout(self.function_parameters["p"])
+                )
+
+        print("\n\nPyTorch Init:\n", self.net_init)
 
 #        cur_inputs = [self._experiment_space.query('type == "sink"')["input"].item()]
 #        while True:
@@ -577,18 +603,7 @@ class MentalEnv(gym.Env):
 #        ).replace([np.nan], [None])
 #        net_d[last_id] = self._recurser(self._experiment_space, last_id)
 
-#        if function_class == ReLU:
-#            self.net_init.append(nn.ReLU())
-#        elif function_class == Linear:
-#            self.net_init.append(
-#                nn.Linear(
-#                    self.function_parameters["input_size"],
-#                    self.function_parameters["output_size"],
-#                )
-#            )
-#        elif function_class == Dropout:
-#            self.net_init.append(
-#                nn.Dropout(self.function_parameters["p"])
+
 #            )
 #        print("\nFinal Net:\n", self.net_init)
 

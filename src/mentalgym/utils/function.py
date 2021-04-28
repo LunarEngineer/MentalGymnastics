@@ -1,14 +1,11 @@
-import numpy as np
 import pandas as pd
 from collections import deque
-from mentalgym.types import Function, FunctionSet
-from mentalgym.functions.atomic._atomic import AtomicFunction
-from mentalgym.functions.composed import ComposedFunction
+from mentalgym.types import Function, FunctionSet, FunctionObject
+
 from numpy.random import default_rng
 from numpy.typing import ArrayLike
-from typing import Any, Callable, Dict, Iterable, Optional, Type, Union
+from typing import Any, Dict, Iterable, Optional
 
-FunctionObject = Union[Type[AtomicFunction], Type[ComposedFunction]]
 
 def dataset_to_functions(
     dataset: pd.DataFrame,

@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from mentalgym.utils.data import dataset_to_functions
+from mentalgym.utils.function import dataset_to_functions
 
 static_df = pd.DataFrame(
     data = {

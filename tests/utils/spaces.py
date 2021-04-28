@@ -6,9 +6,12 @@ data could be collated.
 import numpy as np
 import pandas as pd
 import pytest
+import tempfile
 from collections import deque
+from mentalgym.constants import intermediate_i
+from mentalgym.functionbank import FunctionBank
 from mentalgym.functions.atomic._atomic import AtomicFunction
-from mentalgym.utils.data import function_bank
+from mentalgym.utils.data import testing_df
 from mentalgym.utils.spaces import (
     append_to_experiment,
     experiment_space_eq,
@@ -17,18 +20,25 @@ from mentalgym.utils.spaces import (
     build_default_function_space
 )
 from mentalgym.utils.function import (
-    dataset_to_functions,
+    make_function,
 )
 from mentalgym.utils.sampling import softmax_score_sample
 from sklearn.datasets import make_classification
 
+with tempfile.TemporaryDirectory() as d:
+    function_bank = FunctionBank(testing_df)
+    experiment_space = refresh_experiment_container(function_bank)
+
+pd.options.display.max_columns = 100
+
 metadata_df = pd.DataFrame(
     data = {
         'i': [-1, -1, -1, -1],
-        'id': ['column_0', 'column_1', 'column_2', 'output'],
+        'id': ['0', '1', '2', 'y'],
         'type': ['source', 'source', 'source', 'sink'],
         'input': [None, None, None, None],
-        'object': [None, None, None, None]
+        'object': [None, None, None, None],
+        'hyperparameters': [{}, {}, {}, {}]
     }
 )
 
@@ -63,7 +73,7 @@ test_container_sets = zip(
 @pytest.mark.parametrize('kwargs,locations',test_container_sets)
 def test_refresh_experiment_container(kwargs,locations):
     """Tests refreshing the experiment space"""
-    actual_container = refresh_experiment_container(function_bank,**kwargs)
+    actual_container = refresh_experiment_container(function_bank, **kwargs)
     expected_container = pd.concat(
         [
             metadata_df,
@@ -83,61 +93,95 @@ def test_refresh_experiment_container(kwargs,locations):
     assert actual_container.equals(expected_container), err_msg
 
 
-test_space_outputs = [
+test_composed_outputs = [
+    pd.DataFrame({
+        'i': np.array([-1, -1, -1, -1, -2]),
+        'id': ['0', '1', '2', 'y', 'steve'],
+        'type': ['source', 'source', 'source', 'sink', 'intermediate'],
+        'input': [None, None, None, None, ['1']],
+        'object': [None, None, None, None, None],
+        'hyperparameters': [{}, {}, {}, {}, {}],
+        'exp_loc_0': np.array([0., 50., 100., 0., 1.]),
+        'exp_loc_1': np.array([0., 0., 0., 100., 1.]),
+    }),
+    pd.DataFrame({
+        'i': np.array([-1, -1, -1, -1, -2]),
+        'id': ['0', '1', '2', 'y', 'bob'],
+        'type': ['source', 'source', 'source', 'sink', 'intermediate'],
+        'input': [None, None, None, None, ['1', '2']],
+        'object': [None, None, None, None, None],
+        'hyperparameters': [{}, {}, {}, {}, {}],
+        'exp_loc_0': np.array([0., 50., 100., 0., 1.]),
+        'exp_loc_1': np.array([50., 50., 50., 200., 1.]),
+        'exp_loc_2': np.array([100., 100., 100., 300., 2.])
+    })
+]
+
+test_input_extensions = [
     {
-        'function_ids': np.array(['column_0', 'column_1', 'column_2', 'output'], dtype='object'),
-        'function_locations': np.array([[0., 0.], [50., 0.], [100., 0.], [0., 100.]]),
-        'function_connections': np.array([False, False, False, False])
+        'exp_loc_0': [0., 50., 100., 0.],
+        'exp_loc_1': [50., 50., 50., 200.]
     },
     {
-        'function_ids': np.array(['column_0', 'column_1', 'column_2', 'output'], dtype='object'),
-        'function_locations': np.array([[0., 50., 100.], [50., 50., 100.], [100., 50., 100.], [0., 200., 300.]]),
-        'function_connections': np.array([False, False, False, False])
+        'exp_loc_0': [0., 50., 100., 0.],
+        'exp_loc_1': [0., 50., 100., 200.],
+        'exp_loc_2': [100., 100., 100., 300.]
     }
 ]
 
-
-test_banks = [
-    function_bank,
-    function_bank.assign(
-        exp_loc_1=[50., 50., 50., 200., 50., 200., 50., 75.],
-        exp_loc_2=[100., 100., 100., 300., 100., 300., 100., 100.]
-    )[[
-        'i', 'id', 'type', 'input', 'object', 'exp_loc_0',
-        'exp_loc_1', 'exp_loc_2', 'living', 'score_default'
-    ]]
+test_composed_functions = [
+    [
+        make_function(
+            function_index = intermediate_i,
+            function_id = 'steve',
+            function_inputs = ['1'],
+            function_type = 'intermediate',
+            function_location = [1, 1]
+        )
+    ],
+    [
+        make_function(
+            function_index = intermediate_i,
+            function_id = 'bob',
+            function_inputs = ['1', '2'],
+            function_type = 'intermediate',
+            function_location = [1, 1, 2]
+        )
+    ]
 ]
-test_append_sets = zip(
-    test_inputs,
-    test_banks
-)
 
 @pytest.mark.parametrize(
-    'kwargs, expected_container',
-    test_append_sets
+    'kwargs, composed_functions, expected_container',
+    zip(test_inputs, test_composed_functions, test_composed_outputs)
 )
-def test_append_to_experiment(kwargs, expected_container):
-    container = refresh_experiment_container(expected_container, **kwargs)
-    # Have sets of composed nodes here.
-    composed_iter = expected_container.query(
-        'type in ["composed","atomic"]'
-    ).to_dict(orient = 'records')
+def test_append_to_experiment(kwargs, composed_functions, expected_container):
+    container = refresh_experiment_container(function_bank, **kwargs)
     actual_container = append_to_experiment(
         experiment_space_container = container,
-        function_bank = expected_container,
-        composed_functions = composed_iter
+        function_bank = function_bank,
+        composed_functions = composed_functions
     )
     err_msg = f"""Frame Validation Error:
-    -------
-    Actual:
-    -------
-    {actual_container}
+    -------------
+    Actual Frame:
+    -------------\n{actual_container}
 
-    ---------
-    Expected:
-    ---------
-    {expected_container}
+    --------------
+    Actual Dtypes:
+    --------------\n{actual_container.dtypes}
+
+    ---------------
+    Expected Frame:
+    ---------------\n{expected_container}
+
+    ----------------
+    Expected Dtypes:
+    ----------------\n{expected_container.dtypes}
     """
+    # assert actual_container.equals(
+    #     expected_container
+    # ), err_msg
+    # print(err_msg)
     assert experiment_space_eq(
         actual_container,
         expected_container

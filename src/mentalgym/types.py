@@ -2,9 +2,13 @@
 
 The types below are used throughout the environment.
 """
-import pandas as pd
+from mentalgym.functions import (
+    AtomicFunction,
+    ComposedFunction
+)
+# from mentalgym.functions.composed import ComposedFunction
 from numpy.typing import ArrayLike
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable, Type, Union
 ####################################################################
 #                          Function Typing                         #
 ####################################################################
@@ -19,7 +23,8 @@ Function = Dict[str, Any]
 #   over.
 FunctionSet = Iterable[Dict[str, Function]]
 # A Function Bank is a Pandas DataFrame
-FunctionBank = pd.DataFrame
+# FunctionBank = pd.DataFrame
+FunctionObject = Union[Type[AtomicFunction], Type[ComposedFunction]]
 ####################################################################
 #                   Observation Space Typing                       #
 ####################################################################

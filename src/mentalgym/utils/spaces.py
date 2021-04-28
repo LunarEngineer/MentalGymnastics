@@ -10,7 +10,10 @@ import pandas as pd
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functions import atomic_functions
 from mentalgym.types import FunctionSet
-from mentalgym.utils.function import dataset_to_functions
+from mentalgym.utils.function import (
+    dataset_to_functions,
+    make_function
+)
 from mentalgym.utils.validation import is_function
 from numpy.typing import ArrayLike
 from typing import Callable, Optional
@@ -51,22 +54,25 @@ def refresh_experiment_container(
 
     Examples
     --------
-    >>> from mentalgym.data import function_bank
+    >>> from mentalgym.utils.data import testing_df
+    >>> from mentalgym.functionbank import FunctionBank
+    >>> function_bank = FunctionBank(testing_df)
     >>> min_loc = [0, 0]
     >>> max_loc = [100, 100]
     >>> refresh_experiment_container(function_bank, min_loc, max_loc)
-       i        id    type input  exp_loc_0  exp_loc_1
-    0 -1  column_0  source  None        0.0        0.0
-    1 -1  column_1  source  None       50.0        0.0
-    2 -1  column_2  source  None      100.0        0.0
-    3 -1    output    sink  None        0.0      100.0
+       i id    type input object hyperparameters  exp_loc_0  exp_loc_1
+    0 -1  0  source  None   None              {}        0.0        0.0
+    1 -1  1  source  None   None              {}       50.0        0.0
+    2 -1  2  source  None   None              {}      100.0        0.0
+    3 -1  y    sink  None   None              {}        0.0      100.0
     >>> min_loc = [0, 50, 100]
     >>> max_loc = [100, 200, 300]
-       i        id    type input  exp_loc_0  exp_loc_1  exp_loc_2
-    0 -1  column_0  source  None        0.0        0.0      100.0
-    1 -1  column_1  source  None       50.0        0.0      100.0
-    2 -1  column_2  source  None      100.0        0.0      100.0
-    3 -1    output    sink  None        0.0      100.0      300.0
+    >>> refresh_experiment_container(function_bank, min_loc, max_loc)
+       i id    type input object hyperparameters  exp_loc_0  exp_loc_1  exp_loc_2
+    0 -1  0  source  None   None              {}        0.0       50.0      100.0
+    1 -1  1  source  None   None              {}       50.0       50.0      100.0
+    2 -1  2  source  None   None              {}      100.0       50.0      100.0
+    3 -1  y    sink  None   None              {}        0.0      200.0      300.0
     """
     # This is to allow using Numpy syntax with the min and max loc
     _min_loc = np.array(min_loc)
@@ -75,11 +81,11 @@ def refresh_experiment_container(
     # This subsets to just those fields.
     input_functions: pd.DataFrame = function_bank.query(
         "type=='source'"
-    )[['id', 'type', 'input']]
+    )[['id', 'type', 'input']].assign(input=None)
     assert input_functions.shape[0] > 0, "No input functions available."
     output_functions: pd.DataFrame = function_bank.query(
         "type=='sink'"
-    )[['id', 'type', 'input']]
+    )[['id', 'type', 'input']].assign(input=None)
     assert output_functions.shape[0] > 0, "No output functions available."
     # This tests to make sure nothing silly came up.
     assert _min_loc.shape == _max_loc.shape, "Min and max location length mismatch."
@@ -119,7 +125,6 @@ def refresh_experiment_container(
         np.ones((num_outputs, np.amax(ndim - 1, 0)))
     ], axis=1)
     output_locations[:, 1:] = _max_loc[1:]
-
     # Now we take the DataFrame representation of the inputs and
     #   outputs, stack them vertically, and add the locations on
     #   as additional columns named exp_loc_0, ..., exp_loc_(n-1)
@@ -135,7 +140,10 @@ def refresh_experiment_container(
     function_df = pd.concat([input_functions, output_functions])
     # This assigns a null Object column to the input.
     function_df = function_df.assign(object=None)
-
+    # This assigns an empty Hyperparameter column to the input.
+    function_df = function_df.assign(
+        hyperparameters=[{} for _ in range(function_df.shape[0])]
+    )
     # The final output has a row for every input and out node,
     #   and every node is in a proper location.
     output_df = pd.concat(
@@ -145,15 +153,12 @@ def refresh_experiment_container(
         ], 
         axis=1
     )
-
     # This assigns a 'Function index' to the input
     output_df.loc[output_df.type.isin(["source", "sink"]), 'i'] = -1
     output_df['i'] = output_df['i'].astype('int')
-
     # This does a final 'reordering' simply for prettiness
     i_column = output_df.pop('i')
     output_df.insert(0, 'i', i_column)
-
     # Then finally do a check to ensure that the expected elements
     #   of the space are there. This is to ensure that if you are
     #   adding elements to the state space willynilly that you have
@@ -164,7 +169,6 @@ def refresh_experiment_container(
     Actual Fields: {output_df.columns}
     """
     assert set(expected_columns) == set(output_df.columns), err_msg
-
     return output_df
 
 def append_to_experiment(
@@ -223,36 +227,76 @@ def append_to_experiment(
     for composed_function in composed_functions:
         is_function(composed_function, raise_early=True)
 
-    # 2) Ensure the function inputs all exist in the bank
-
-    # Do we have to drop intermediate actions HERE ??
-    print("\n\ncomposed functions:", pd.DataFrame(composed_functions))
-    t = pd.DataFrame(composed_functions).input.dropna().to_list()
-    print("\nC.F. To List:", t)
-#    raise
-    f_inputs = [input_node for input_nodes in t for input_node in input_nodes]
-    print("f_inputs:", f_inputs)
-
-#    f_inputs = pd.DataFrame(composed_functions).query('type != "intermediate"')
-    f_queried = function_bank.query(f'id in {f_inputs}')
-    print("f_queried:\n", f_queried)
-
-#    nodes_not_in_fb = [x for x in f_inputs if x not in f_queried]
-#    print("nodes_not_in_fb:", nodes_not_in_fb)
-    mask = pd.Series(f_inputs).isin(f_queried.id)
-    test_mask = pd.Series(f_inputs)[~mask]
-    print("test_mask:\n", test_mask)
+    # 2) Ensure the function inputs all exist in the bank, or are intermediate.
+    all_functions = []
+    bad_functions = []
+    for function in composed_functions:
+        f_id = function['id']
+        f_type = function['type']
+        if f_type == 'intermediate':
+            all_functions.append(function)
+        elif not function_bank.query(f'id == "{f_id}"').empty:
+            all_functions.append(function)
+        else:
+            bad_functions.append(function)
 
     err_msg = f"""Composed Function Error:
-    The following id's were not in the Function Bank.
-    {test_mask}
+    The following functions were either not in the Function Bank, or
+    were not intermediate functions.
+    {pd.DataFrame(bad_functions)}
+
+    ==========
+    Input Data
+    ==========
+
+    composed_functions
+    ------------------\n{pd.DataFrame(composed_functions)}
+
+    bad_functions
+    -------------\n{pd.DataFrame(bad_functions)}
+
+    Current Experiment Space
+    ------------------------\n{experiment_space_container}
     """
-    assert not len(test_mask), err_msg
-    # 3) Append the composed functions onto the space.
-    print("ES in spaces.py:\n", experiment_space_container)
-    return experiment_space_container.append(
-        composed_functions
-    )
+    # 3) Assert that the functions are not empty.
+    assert not len(bad_functions), err_msg
+    # 4) Create a DataFrame from the good functions
+    t = pd.DataFrame(all_functions)
+    # 5) Append the composed functions onto the space.
+    #   Ensure that the composed functions match the original
+    #   datatype and space structure.
+    
+    # Check for name consistency.
+    err_msg = f"""Composed Function Error:
+    The passed functions do not match the structure of the experiment
+    space.
+
+    ==========
+    Input Data
+    ==========
+
+    Columns in new function set
+    ---------------------------\n{t.columns}
+
+    Columns in experiment space
+    ---------------------------\n{experiment_space_container.columns}
+
+    """
+    try:
+        t = t[[_ for _ in experiment_space_container.columns]]
+    except KeyError as e:
+        raise Exception(err_msg)
+    # This walks down the columns
+    type_dict = {
+        c: v.dtype for c, v in experiment_space_container.iteritems()
+    }
+    # Append and reset the index.
+    # This is *not* efficient.
+    # A more efficient representation would be a list of dicts
+    concatenated = experiment_space_container.append(
+        t.astype(type_dict)
+    ).reset_index(drop=True)
+    return concatenated
 
 
 def experiment_space_eq(
@@ -438,8 +482,10 @@ def build_default_function_space(
     for f in io_functions:
         f.update({'score_default': deque([0], maxlen = 100)})
     # Get the atomic functions.
-    io_functions += atomic_functions
+    io_functions += [make_function(**_) for _ in atomic_functions]
     # Drop the locations generated by the dataset to functions.
+    # This is casting the input fields to None explicitly to
+    #   have a homogeneous None.
     io_functions = pd.DataFrame(io_functions).drop(
         [
             _ for _
@@ -447,5 +493,7 @@ def build_default_function_space(
             if _.startswith('exp_loc')
         ],
         axis = 1
-    ).to_dict(orient = 'records')
+    ).assign(input=None).to_dict(orient = 'records')
+    
+
     return io_functions

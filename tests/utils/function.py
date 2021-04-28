@@ -33,25 +33,25 @@ test_inputs = [
 
 test_outputs = [
     [
-        {'id': '0', 'type': 'source', 'input': None},
-        {'id': '1', 'type': 'source', 'input': None},
-        {'id': '2', 'type': 'source', 'input': None},
-        {'id': 'y', 'type': 'sink', 'input': None}
+        {'i': -1, 'id': '0', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '1', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '2', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': 'y', 'type': 'sink', 'input': None, "living": True}
     ],
     [
-        {'id': '0', 'type': 'sink', 'input': None},
-        {'id': '1', 'type': 'source', 'input': None},
-        {'id': '2', 'type': 'source', 'input': None},
-        {'id': '3', 'type': 'source', 'input': None},
-        {'id': 'y', 'type': 'source', 'input': None}
+        {'i': -1, 'id': '0', 'type': 'sink', 'input': None, "living": True},
+        {'i': -1, 'id': '1', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '2', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '3', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': 'y', 'type': 'source', 'input': None, "living": True}
     ],
     [
-        {'id': '0', 'type': 'source', 'input': None},
-        {'id': '1', 'type': 'sink', 'input': None},
-        {'id': '2', 'type': 'source', 'input': None},
-        {'id': '3', 'type': 'source', 'input': None},
-        {'id': '4', 'type': 'source', 'input': None},
-        {'id': 'y', 'type': 'source', 'input': None}
+        {'i': -1, 'id': '0', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '1', 'type': 'sink', 'input': None, "living": True},
+        {'i': -1, 'id': '2', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '3', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': '4', 'type': 'source', 'input': None, "living": True},
+        {'i': -1, 'id': 'y', 'type': 'source', 'input': None, "living": True}
     ]
 ]
 
@@ -62,16 +62,30 @@ test_sets = zip(test_inputs, test_outputs)
 def test_dataset_to_functions(kwargs, expected_output):
     t = kwargs.pop('target')
     X, y = make_classification(**kwargs)
-    assert pd.DataFrame(
+
+    actual_output = pd.DataFrame(
         dataset_to_functions(
             pd.DataFrame(X).assign(y=y).rename(
                 columns = {_: str(_) for _ in range(X.shape[1])}
             ),
             target = t
         )
-    ).equals(
-        pd.DataFrame(expected_output)
     )
+    err_msg = f"""Function Space Query Error:
+
+    There is an error between the expected structure and the actual
+    on the physical disk.
+
+    Original Data
+    -------------\n{pd.DataFrame(expected_output)}
+
+    Actual Data
+    -----------\n{actual_output}
+
+    """
+    assert actual_output.equals(
+        pd.DataFrame(expected_output)
+    ), err_msg
 
 test_inputs = [
     {'id_len': 12, 'seed': 4},

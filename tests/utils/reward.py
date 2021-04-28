@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
+from mentalgym.constants import intermediate_i
 from mentalgym.utils.data import function_bank
+from mentalgym.utils.function import make_function
 from mentalgym.utils.spaces import (
     refresh_experiment_container,
     append_to_experiment
@@ -14,15 +16,27 @@ from mentalgym.utils.reward import (
 from typing import Any, Callable, Dict
 
 container = refresh_experiment_container(function_bank)
-composed_funcs = function_bank.query('type=="composed"')
-composed_iter = [
-    row.to_dict() for
-    ind, row in composed_funcs.iterrows()
+composed_funcs = [
+    make_function(
+        function_index = intermediate_i,
+        function_id = 'steve',
+        function_inputs = ['1'],
+        function_type = 'intermediate',
+        function_location = [1, 1]
+    ),
+    make_function(
+        function_index = intermediate_i,
+        function_id = 'bob',
+        function_inputs = ['1', '2'],
+        function_type = 'intermediate',
+        function_location = [1, 1, 2]
+    )
 ]
+
 extended_container = append_to_experiment(
     container,
     function_bank,
-    composed_iter
+    composed_funcs
 )
 
 
@@ -32,7 +46,7 @@ test_sets = [
         monotonic_reward,
         {
             'experiment_space_container': extended_container,
-            'function_set': composed_iter
+            'function_set': composed_funcs
         },
         np.array([5.27473208e-25])
     ),
@@ -41,7 +55,7 @@ test_sets = [
         connection_reward,
         {
             'experiment_space_container': extended_container,
-            'function_set': composed_iter
+            'function_set': composed_funcs
         },
         np.array([10.])
     ),
@@ -50,7 +64,7 @@ test_sets = [
         connection_reward,
         {
             'experiment_space_container': container,
-            'function_set': composed_iter
+            'function_set': composed_funcs
         },
         np.array([0.])
     ),
@@ -59,7 +73,7 @@ test_sets = [
         linear_completion_reward,
         {
             'experiment_space_container': extended_container,
-            'function_set': composed_iter,
+            'function_set': composed_funcs,
             'score': 0
         },
         np.array([20.])
@@ -69,7 +83,7 @@ test_sets = [
         linear_completion_reward,
         {
             'experiment_space_container': extended_container,
-            'function_set': composed_iter,
+            'function_set': composed_funcs,
             'score': 95
         },
         np.array([9520.])

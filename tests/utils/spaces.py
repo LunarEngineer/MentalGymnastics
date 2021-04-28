@@ -34,7 +34,7 @@ pd.options.display.max_columns = 100
 metadata_df = pd.DataFrame(
     data = {
         'i': [-1, -1, -1, -1],
-        'id': ['0', '1', '2', 'y'],
+        'id': ['column_0', 'column_1', 'column_2', 'output'],
         'type': ['source', 'source', 'source', 'sink'],
         'input': [None, None, None, None],
         'object': [None, None, None, None],
@@ -96,7 +96,7 @@ def test_refresh_experiment_container(kwargs,locations):
 test_composed_outputs = [
     pd.DataFrame({
         'i': np.array([-1, -1, -1, -1, -2]),
-        'id': ['0', '1', '2', 'y', 'steve'],
+        'id': ['column_0', 'column_1', 'column_2', 'output', 'steve'],
         'type': ['source', 'source', 'source', 'sink', 'intermediate'],
         'input': [None, None, None, None, ['1']],
         'object': [None, None, None, None, None],
@@ -106,7 +106,7 @@ test_composed_outputs = [
     }),
     pd.DataFrame({
         'i': np.array([-1, -1, -1, -1, -2]),
-        'id': ['0', '1', '2', 'y', 'bob'],
+        'id': ['column_0', 'column_1', 'column_2', 'output', 'bob'],
         'type': ['source', 'source', 'source', 'sink', 'intermediate'],
         'input': [None, None, None, None, ['1', '2']],
         'object': [None, None, None, None, None],

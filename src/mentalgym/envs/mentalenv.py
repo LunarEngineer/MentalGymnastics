@@ -10,7 +10,6 @@ import gym
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
-#from mentalgym.utils.data import function_bank
 from mentalgym.utils.function import make_function
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
@@ -134,7 +133,6 @@ class MentalEnv(gym.Env):
             population_size=number_functions,
             **self._function_bank_kwargs,
         )
-        # self._function_bank = function_bank
         ############################################################
         #            Instantiate the Experiment Space              #
         #                                                          #
@@ -225,6 +223,8 @@ class MentalEnv(gym.Env):
         ############################################################
         #                       Bookkeeping                        #
         ############################################################
+        # This is to prevent errors below.
+        done = False
         # This iterator is used to let the gym know when to terminate.
         self._step += 1
         # This is defaulted to False and updated later on if we snap
@@ -376,6 +376,8 @@ class MentalEnv(gym.Env):
                         sum_of_inputs += inp_dict["output_size"]
                 
                 # TODO: Move these hardcoded numbers to constants.py
+                # TODO: Instead, can we move them to the init and scrape from kwargs?
+                # That will make it easier to experiment.
                 if function_class == ReLU:
                     self.function_parameters = {"output_size": sum_of_inputs, "input_size": sum_of_inputs}
                 elif function_class == Dropout:
@@ -446,7 +448,10 @@ class MentalEnv(gym.Env):
         #   rewards and whether or not to build and run the graph. #
         ############################################################
         # Return a minor reward if there are *any* nodes added.
-        reward = connection_reward(self._experiment_space, self._function_bank)
+        reward = connection_reward(
+            self._experiment_space,
+            self._function_bank
+        )
 
         # Default values here, or pass some info?
         info = {}
@@ -695,7 +700,9 @@ class MentalEnv(gym.Env):
         self._state_length = n_io + self.max_steps
         # Then build the state.
         state = self.build_state()
-
+        # And save the bank.
+        # TODO: Uncomment this when ready to test it.
+        self._function_bank._save_bank()
         if self._verbose:
             debug_message = f"""Environment Reset:
             Current Step: {self._step}
@@ -705,6 +712,9 @@ class MentalEnv(gym.Env):
 
             Current Observation Space
             -------------------------\n{state}
+
+            Current Function Bank
+            ---------------------\n{self._function_bank.to_df()}
             """
             print(debug_message)
         return state

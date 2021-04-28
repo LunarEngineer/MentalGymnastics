@@ -86,13 +86,16 @@ test_case_1 = {
             }
         )
     },
+    'idxmax': 4,
     'sample': {
         'kwargs': {
-            "n": 2,
+            "n": 1,
             "include_base": False,
             "random_state": 0
         },
-        'expected_sample': pd.Series([], name='id', dtype='object')
+        'expected_sample': pd.DataFrame([
+            {'i': 4, 'id': 'bob', 'type': 'composed', 'input': ['1', '2'], 'living': True, 'score_default': deque([0], maxlen=100), 'object': None, 'hyperparameters': {}}
+        ])
     }
     
 }
@@ -105,7 +108,7 @@ test_case_2 = {
             n_redundant = 1
         ),
         'target': '0',
-        'population_size': 5
+        'population_size': 1
     },
     'expected_set': [
         {'i': -1, 'id': '0', 'type': 'sink', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': np.nan, 'hyperparameters': None},
@@ -153,13 +156,20 @@ test_case_2 = {
             }
         )
     },
+    'idxmax': 4,
     'sample': {
         'kwargs': {
             "n": 2,
             "include_base": True,
             "random_state": 0
         },
-        'expected_sample': pd.Series([1])
+        'expected_sample': pd.DataFrame([
+            {'i': 0, 'id': 'Linear', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Linear, 'hyperparameters': {}},
+            {'i': 1, 'id': 'ReLU', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': ReLU, 'hyperparameters': {}},
+            {'i': 2, 'id': 'Dropout', 'type': 'atomic', 'input': np.nan, 'living': True, 'score_default': deque([0], maxlen=100), 'object': Dropout, 'hyperparameters': {}},
+            {'i': 3, 'id': 'steve', 'type': 'composed', 'input': ['1'], 'living': True, 'score_default': deque([0], maxlen=100), 'object': None, 'hyperparameters': {}},
+            {'i': 4, 'id': 'bob', 'type': 'composed', 'input': ['1', '2'], 'living': True, 'score_default': deque([0], maxlen=100), 'object': None, 'hyperparameters': {}}
+        ])
     }
 }
 
@@ -335,7 +345,7 @@ def append_tester(
     expected_results: Dict[str, Any]
         The dictionary representation of the expected results.
     """
-    actual_results = function_bank.append(function_set)
+    function_bank.append(function_set)
     actual_df = pd.DataFrame(function_bank._function_manifest)
     expected_df = pd.DataFrame(expected_results)
     col_disp = ''
@@ -356,7 +366,28 @@ def append_tester(
     ------------------\n{col_disp}
     """
     assert actual_df.equals(pd.DataFrame(expected_results)), err_msg
-    return actual_results
+
+def idxmax_tester(function_bank, expected_imax):
+    """Tests the idxmax method in the Function Bank.
+
+    Parameters
+    ----------
+    function_bank: FunctionBank
+        This is the Function Bank object, which can be queried.
+    expected_imax: int
+        The expected maximum index.
+    """
+    err_msg = f"""Function Space .idxmax() Error:
+
+    The expected bank maximum index did not match the expected value.
+
+    Expected Index
+    --------------\n{expected_imax}
+
+    Actual Index
+    ------------\n{function_bank.idxmax()}
+    """
+    assert function_bank.idxmax() == expected_imax, err_msg
 
 def sample_tester(function_bank, kwargs, expected_results):
     """Tests the *default* sampling method in the Function Bank.
@@ -370,26 +401,58 @@ def sample_tester(function_bank, kwargs, expected_results):
     expected_results: Dict[str, Any]
         The dictionary representation of the expected results.
     """
-    actual_results = function_bank.sample(**kwargs).id
+    actual_results = function_bank.sample(**kwargs)
+    actual_df = pd.DataFrame(actual_results)
+    expected_df = pd.DataFrame(expected_results)
     err_msg = f"""Function Space Sample Error:
 
-    There is an error between the expected structure and the actual
-    on the physical disk.
-
-    Expected Sample
-    ---------------\n{pd.DataFrame([expected_results])}
+    When sampling the function bank there was a disparity between
+    expected and actual functions returned.
 
     Keyword Arguments
     -----------------\n{kwargs}
 
+    Expected Sample
+    ---------------\n{expected_df}
+
     Actual Sample
-    -----------\n{expected_results}
+    -------------\n{actual_df}
 
     """
     # The values have already been tested, this simply needs to
     #   ensure that the correct set of ID's were returned.
-    if not expected_results.equals(actual_results):
+    if not expected_df.equals(actual_df):
         raise Exception(err_msg)
+
+
+def score_tester(function_bank, kwargs, expected_results):
+    """Tests the Function Bank score method.
+
+    Parameters
+    ----------
+    function_bank: FunctionBank
+        This is the Function Bank object, which can be queried.
+    kwargs: Dict[ str, Any]
+
+    expected_results: Dict[str, Any]
+        The dictionary representation of the expected results.
+    """
+    err_msg = f"""Function Space Sample Error:
+
+    When sampling the function bank there was a disparity between
+    expected and actual functions returned.
+
+    Scoring Arguments
+    -----------------\n{kwargs}
+
+    Expected Results
+    -----------------\n{function_bank}
+
+    Actual Results
+    --------------\n{0}
+
+    """
+    raise err_msg
 
 
 def prune_tester(function_bank, expected_results):
@@ -403,31 +466,6 @@ def prune_tester(function_bank, expected_results):
         The dictionary representation of the expected results.
     """
     raise
-def idxmax_tester(function_bank, expected_results):
-    """Tests the idxmax method in the Function Bank.
-
-    Parameters
-    ----------
-    function_bank: FunctionBank
-        This is the Function Bank object, which can be queried.
-    expected_results: Dict[str, Any]
-        The dictionary representation of the expected results.
-    """
-    raise
-
-def score_tester(function_bank, expected_results):
-    """Tests the Function Bank score method.
-
-    Parameters
-    ----------
-    function_bank: FunctionBank
-        This is the Function Bank object, which can be queried.
-    expected_results: Dict[str, Any]
-        The dictionary representation of the expected results.
-    """
-    raise
-
-
 
 @pytest.mark.parametrize('inputs', test_sets)
 def test_function_bank(inputs):
@@ -463,20 +501,28 @@ def test_function_bank(inputs):
             inputs['query']['expected_results']
         )
         # 5. Ensure that append is doing the right thing.
-        function_bank = append_tester(
+        append_tester(
             function_bank = function_bank,
             function_set = inputs['append']['composed_set'],
             expected_results = inputs['append']['expected_results']
         )
-        # 5. Ensure that sample is doing the right thing.
-        sample_tester(
-            function_bank,
-            inputs['sample']['kwargs'],
-            inputs['sample']['expected_sample']
+        # 6. Ensure that idxmax is doing the right thing.
+        idxmax_tester(
+            function_bank = function_bank,
+            expected_imax = inputs['idxmax']
         )
+        # 7. Ensure that sample is doing the right thing.
+        sample_tester(
+            function_bank = function_bank,
+            kwargs = inputs['sample']['kwargs'],
+            expected_results = inputs['sample']['expected_sample']
+        )
+        # 8. Ensure that score is doing the right thing.
+        score_tester(
+            function_bank
+        )
+        # 7. Prune!
         # 6. Ensure that prune is doing the right thing.
         prune_tester()
-        # 7. Ensure that idxmax is doing the right thing.
-        idxmax_tester()
         # 9. Ensure that score is doing the right thing.
-        score_tester()
+        

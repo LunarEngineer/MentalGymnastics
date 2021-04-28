@@ -105,4 +105,4 @@ def softmax_score_sample(
         replace = False,
         p = s
     )
-    return sampled_ids
+    return list(sampled_ids)

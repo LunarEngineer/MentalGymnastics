@@ -210,6 +210,13 @@ class FunctionBank():
         #   disk if present.
         self._function_manifest = self._build_bank()
 
+    ################################################################
+    #                     Mechanics Definitions                    #
+    #                                                              #
+    # The prune, sample, append, and query methods are used to     #
+    #   excise, sample, add, and filter functions in the function  #
+    #   bank.                                                      #
+    ################################################################
     def query(self, query_string: Optional[str] = None) -> pd.DataFrame:
         """Return filtered function set.
 
@@ -230,39 +237,154 @@ class FunctionBank():
 
         Examples
         --------
-        >>> # Here is code that makes a default manifest which
-        >>> #   has an 'accuracy' feature in the dataset and
-        >>> #   contains an function with an id of 'steve'.
-        >>> # There are *three* functions in this set, two of
-        >>> #   which have accuracy over 50%
-        >>> from men
-        >>> act = ab._query('id=="LinearRelu"')
-
-        >>> isinstance(act,pd.DataFrame)
-        True
-        >>> act.nrow
-        1
-        >>> act_set = ab._query('accuracy')
-        >>> act_set.nrow
-        2
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> function_bank.query('type=="atomic"')
+           i       id    type  input  living score_default                                             object hyperparameters
+        4  0   Linear  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
+        5  1     ReLU  atomic    NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
+        6  2  Dropout  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
+        >>> function_bank.query('i==-1')
+           i        id    type  input  living score_default object hyperparameters
+        0 -1  column_0  source    NaN    True           [0]    NaN            None
+        1 -1  column_1  source    NaN    True           [0]    NaN            None
+        2 -1  column_2  source    NaN    True           [0]    NaN            None
+        3 -1    output    sink    NaN    True           [0]    NaN            None
         """
         function_frame = pd.DataFrame.from_dict(self._function_manifest)
         return function_frame.query(query_string)
+
+    def prune():
+        """Prune """
+        # self._prun
+        raise NotImplementedError
+
+    def idxmax(self) -> int:
+        """Return the max index.
+
+        This returns the maximum index of the functions in the bank.
+
+        Returns
+        -------
+        idxmax: int
+            The maximum integer index for composed functions in the
+            function bank.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> composed_functions = [
+        ...     make_function(
+        ...         function_index = -3,
+        ...         function_id = 'steve',
+        ...         function_inputs = ['1'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1]
+        ...     ),
+        ...     make_function(
+        ...         function_index = -4,
+        ...         function_id = 'bob',
+        ...         function_inputs = ['1', '2'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1, 2]
+        ...     )
+        ... ]
+        >>> function_bank.idxmax()
+        2
+        >>> function_bank.append(composed_functions)
+        >>> function_bank.idxmax()
+        4
+        """
+        return self.to_df().i.max()
+
+    def to_df(self):
+        """Convenience function to return function df.
+
+        This wraps the internal manifest in a dataframe and returns
+        it. This is just a convenience function.
+
+        Returns
+        -------
+        function_bank_df: pd.DataFrame
+            A DataFrame representation of the function bank.
+        """
+        return pd.DataFrame(self._function_manifest)
 
     def sample(
         self,
         n: int = False,
         include_base: bool = False,
         random_state: Optional[int] = None
-    ):
-        """Return n favorable actions.
+    ) -> FunctionSet:
+        """Return up to n favorable actions.
 
-        If `include_base` is set to True this will also return
-        input, output, and atomic actions as counted among the n.
-        This should be called at the beginning of episodes.
+        If `include_base` is set to True this will also start with
+        the base input, output, and atomic actions prior to sampling
+        actions, meaning that if your input dataset has 100 input
+        features and you request `n = 3` you will get 103 Function
+        representations returned.
 
-        The input, output, and atomic should be persisted.
+        You can only sample as many composed functions as *exist*
+        and so if you only have two composed functions ('steve' and
+        'bob') in the function bank and you pass an n of 5 you will
+        get 2 functions returned.
+
+        Parameters
+        ----------
+        n: int
+            The maximum number of actions to sample.
+        include_base: bool
+            Whether or not to frontload the inputs / outputs / etc...
+        random_state: Optional[int] = None
+            Pass a seed for repeatability.
+
+        Returns
+        -------
+        sampled_functions: FunctionSet
+            This is an iterable of Function representations
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> composed_functions = [
+        ...     make_function(
+        ...         function_index = -3,
+        ...         function_id = 'steve',
+        ...         function_inputs = ['1'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1]
+        ...     ),
+        ...     make_function(
+        ...         function_index = -4,
+        ...         function_id = 'bob',
+        ...         function_inputs = ['1', '2'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1, 2]
+        ...     )
+        ... ]
+        >>> function_bank.append(composed_functions)
+        >>> pd.DataFrame(function_bank.sample(n=1,random_state=0))
+           i   id      type   input  living score_default object hyperparameters
+        0  4  bob  composed  [1, 2]    True           [0]   None              {}
+        >>> pd.DataFrame(function_bank.sample(n=1,include_base=True,random_state=0))
+           i       id      type   input  living score_default                                             object hyperparameters
+        0  0   Linear    atomic     NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
+        1  1     ReLU    atomic     NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
+        2  2  Dropout    atomic     NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
+        3  4      bob  composed  [1, 2]    True           [0]                                               None              {}
         """
+        # 0. Checking
+        assert n > 0, "Must request a positive number of samples."
         # 1. Turn the function manifest into a DataFrame.
         function_bank = pd.DataFrame(
             self._function_manifest
@@ -285,46 +407,81 @@ class FunctionBank():
         base_functions = function_bank.query(
             f'type in {base_set}'
         )
-        # 3. How many functions still need to be returned?
-        n_remaining = n - base_functions.shape[0]
-        # 4. Get that many composed functions.
+        # 3. How many functions were requested?
+        # Get that many composed functions if they exist.
         # Because all functions come with score_default this will
         #   automatically work.
-        print(function_bank.query('type == "composed"'))
-        print("back here when composed functions")
-        raise
-        composed_functions = self._sampling_function(
+        composed_ids = self._sampling_function(
             x = function_bank.query('type == "composed"'),
-            n = n_remaining,
+            n = n,
             random_state = random_state
         )
-        print(composed_functions)
-        raise
+        # 4. Pull that data out of the bank.
+        composed_functions = function_bank.query(
+            f'id == {composed_ids}'
+        )
         # 5. Turn both those into iterables and *smoosh* them.
-        base_set = base_functions.to_dict(orient = 'index')
-        composed_set = composed_functions.to_dict(orient = 'index')
+        base_set = base_functions.to_dict(orient = 'records')
+        composed_set = composed_functions.to_dict(orient = 'records')
         # 6. Return the concatenated array.
         return base_set + composed_set
 
-    def prune():
-        """Prune """
-        # self._prun
-        raise NotImplementedError
-
-    def idxmax(self):
-        """return max index"""
-        # This is pseudocode that needs to be tested
-        return pd.DataFrame(self._function_manifest).i.max()
-
     def append(self, function: Union[FunctionSet, Function]):
         """Appends a function or functions to the bank.
+
+        This will append either a single function representation or
+        an iterable of function representations to the Function Bank.
 
         Parameters
         ----------
         function: Union[FunctionSet, Function]
             This is either a function or iterable of functions.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from mentalgym.utils.data import testing_df
+        >>> from mentalgym.functionbank import FunctionBank
+        >>> from mentalgym.utils.function import make_function
+        >>> function_bank = FunctionBank(testing_df)
+        >>> composed_functions = [
+        ...     make_function(
+        ...         function_index = -3,
+        ...         function_id = 'steve',
+        ...         function_inputs = ['1'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1]
+        ...     ),
+        ...     make_function(
+        ...         function_index = -4,
+        ...         function_id = 'bob',
+        ...         function_inputs = ['1', '2'],
+        ...         function_type = 'intermediate',
+        ...         function_location = [1, 1, 2]
+        ...     )
+        ... ]
+        >>> function_bank.to_df()
+           i        id    type  input  living score_default                                             object hyperparameters
+        0 -1  column_0  source    NaN    True           [0]                                                NaN            None
+        1 -1  column_1  source    NaN    True           [0]                                                NaN            None
+        2 -1  column_2  source    NaN    True           [0]                                                NaN            None
+        3 -1    output    sink    NaN    True           [0]                                                NaN            None
+        4  0    Linear  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
+        5  1      ReLU  atomic    NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
+        6  2   Dropout  atomic    NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
+        >>> function_bank.append(composed_functions)
+        >>> function_bank.to_df()
+          i        id      type   input  living score_default                                             object hyperparameters
+        0 -1  column_0    source     NaN    True           [0]                                                NaN            None
+        1 -1  column_1    source     NaN    True           [0]                                                NaN            None
+        2 -1  column_2    source     NaN    True           [0]                                                NaN            None
+        3 -1    output      sink     NaN    True           [0]                                                NaN            None
+        4  0    Linear    atomic     NaN    True           [0]  <class 'mentalgym.functions.atomic.Linear.Line...              {}
+        5  1      ReLU    atomic     NaN    True           [0]     <class 'mentalgym.functions.atomic.relu.ReLU'>              {}
+        6  2   Dropout    atomic     NaN    True           [0]  <class 'mentalgym.functions.atomic.Dropout.Dro...              {}
+        7  3     steve  composed     [1]    True           [0]                                               None              {}
+        8  4       bob  composed  [1, 2]    True           [0]                                               None              {}
         """
-        # Pseudo code: add something to the manifest.
         # What doctoring needs to be done to the function?
         if isinstance(function, dict):
             function_set = [function]
@@ -360,22 +517,29 @@ class FunctionBank():
 
     def score(
         self,
-        experiment_space: FunctionSet,
+        function_set: Union[FunctionSet, pd.DataFrame],
         score: Number,
         score_name: str = 'default',
     ):
-        """Add scoring information to the bank
+        """Add scoring information to the bank.
 
         This adds scoring information to the function bank.
+        Every function in the bank has a *score buffer* for every
+        scoring function which it is measured against.
 
+        Parameters
+        ----------
+        function_set: Union[FunctionSet, pd.DataFrame]
+            This is either an iterable of function representations
+            or a DataFrame built from that iterable.
         """
         # Experiment space function representations contain an id.
         # We are going to grab that id, because it matches the id
         #   here, and we're going to increment the deques for
         #   those functions. If those deques do not exist, they
         #   are made.
-        ids = pd.DataFrame(experiment_space).id
-        function_space = pd.DataFrame(self._function_manifest)
+        ids = pd.DataFrame(function_set).id
+        function_space = self.to_df()
         # Check for the scoring function column. If it doesn't
         #   exist, make one.
         # for id in ids:
@@ -513,7 +677,7 @@ class FunctionBank():
         )
         # This turns the list of functions into something that's
         #   a little easier to slice and dice.
-        _writable = pd.DataFrame(self._function_manifest)
+        _writable = self.to_df()
         # This pulls out the score columns (which are deques)
         score_col = [
             _ for _ in _writable.columns

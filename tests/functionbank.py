@@ -4,6 +4,8 @@ This lays out simple test cases which can be used to test the function
 bank.
 """
 from collections import deque
+
+from numpy.random import default_rng
 from mentalgym import FunctionBank
 from mentalgym.constants import intermediate_i
 from mentalgym.utils.function import make_function
@@ -96,6 +98,28 @@ test_case_1 = {
         'expected_sample': pd.DataFrame([
             {'i': 4, 'id': 'bob', 'type': 'composed', 'input': ['1', '2'], 'living': True, 'score_default': deque([0], maxlen=100), 'object': None, 'hyperparameters': {}}
         ])
+    },
+    'score': {
+        'kwargs': {
+            'function_set': ['ReLU', 'Dropout', 'steve', 'bob'],
+            'score': 0.9
+        },
+        'expected_results': pd.DataFrame(
+            {
+                'i': [-1, -1, -1, -1, 0, 1, 2, 3, 4],
+                'id': ['0', '1', '2', 'y', 'Linear', 'ReLU', 'Dropout', 'steve', 'bob'],
+                'type': ['source', 'source', 'source', 'sink', 'atomic', 'atomic', 'atomic', 'composed', 'composed'],
+                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
+                'living': [True, True, True, True, True, True, True, True, True],
+                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0, .9], maxlen=100), deque([0, .9], maxlen=100), deque([0, .9], maxlen=100), deque([0, .9], maxlen=100)],
+                'object': [np.nan, np.nan, np.nan, np.nan, Linear, ReLU, Dropout, None, None],
+                'hyperparameters': [None, None, None, None, {}, {}, {}, {}, {}]
+            }
+        )
+    },
+    'prune': {
+        'seed': 0,
+        'expected_results': 0
     }
     
 }
@@ -170,6 +194,31 @@ test_case_2 = {
             {'i': 3, 'id': 'steve', 'type': 'composed', 'input': ['1'], 'living': True, 'score_default': deque([0], maxlen=100), 'object': None, 'hyperparameters': {}},
             {'i': 4, 'id': 'bob', 'type': 'composed', 'input': ['1', '2'], 'living': True, 'score_default': deque([0], maxlen=100), 'object': None, 'hyperparameters': {}}
         ])
+    },
+    'score': {
+        'kwargs': {
+            'function_set': ['1', 'bob'],
+            'score': [0.9, 200], # Note these scores are positive increasing with magnitude of statistic. "Bigger is assumed better"
+            'score_name': ['accuracy', 'complexity']
+        },
+        'expected_results': pd.DataFrame(
+            {
+                'i': [-1, -1, -1, -1, -1, 0, 1, 2, 3, 4],
+                'id': ['0', '1', '2', '3', 'y', 'Linear', 'ReLU', 'Dropout', 'steve', 'bob'],
+                'type': ['sink', 'source', 'source', 'source', 'source', 'atomic', 'atomic', 'atomic', 'composed', 'composed'],
+                'input': [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, ['1'], ['1', '2']],
+                'living': [True, True, True, True, True, True, True, True, True, True],
+                'score_default': [deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100)],
+                'score_accuracy': [deque([0], maxlen=100), deque([0, 0.9], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0, .9], maxlen=100)],
+                'score_complexity': [deque([0], maxlen=100), deque([0, 200], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0], maxlen=100), deque([0, 200], maxlen=100)],
+                'object': [np.nan, np.nan, np.nan, np.nan, np.nan, Linear, ReLU, Dropout, None, None],
+                'hyperparameters': [None, None, None, None, None, {}, {}, {}, {}, {}]
+            }
+        )
+    },
+    'prune': {
+        'seed': 0,
+        'expected_results': 0
     }
 }
 
@@ -285,7 +334,7 @@ def persistence_tester(function_bank: FunctionBank, dir: str):
     on the physical disk.
 
     Original Data
-    -------------\n{1}
+    -------------\n{function_bank.to_df()}
 
     Actual Data
     -----------\n{1}
@@ -433,10 +482,11 @@ def score_tester(function_bank, kwargs, expected_results):
     function_bank: FunctionBank
         This is the Function Bank object, which can be queried.
     kwargs: Dict[ str, Any]
-
+        The keyword arguments for score.
     expected_results: Dict[str, Any]
         The dictionary representation of the expected results.
     """
+    function_bank.score(**kwargs)
     err_msg = f"""Function Space Scoring Error:
 
     When updating scoring information the expected output differed
@@ -446,26 +496,63 @@ def score_tester(function_bank, kwargs, expected_results):
     -----------------\n{kwargs}
 
     Expected Results
-    -----------------\n{}
+    -----------------\n{pd.DataFrame(expected_results)}
 
     Actual Results
     --------------\n{function_bank.to_df()}
 
     """
-    raise err_msg
+    assert function_bank.to_df().equals(expected_results), err_msg
 
 
-def prune_tester(function_bank, expected_results):
+def prune_tester(function_bank, seed, expected_results):
     """Tests the *default* pruning method in the Function Bank.
 
     Parameters
     ----------
     function_bank: FunctionBank
         This is the Function Bank object, which can be queried.
+    seed: int
+        This is a random seed used in the simulation below.
     expected_results: Dict[str, Any]
         The dictionary representation of the expected results.
     """
-    raise
+    # This needs to simulate 100 scored episodes.
+    # This will not add new functions.
+    rng = default_rng(seed)
+    score_names = ['accuracy', 'complexity']
+    ids = rng.choice(
+        function_bank.to_df().query('type != "sink"').id,
+        size=(100,2)
+    )
+    score_acc = rng.random(size=(100, 1))
+    score_comp = rng.integers(low=0, high=100, size=(100, 1))
+    scores = np.concatenate([score_acc, score_comp],axis=1)
+    zipped = zip(ids,scores)
+    for function_set, score_arr in zipped:
+        function_bank.score(
+            function_set = list(function_set),
+            score = score_arr,
+            score_name = score_names
+        )
+    actual_df = function_bank.todf()
+    actual_score = actual_df[['id', *[_ for _ in actual_df.columns if _.startswith('score_')]]]
+    err_msg = f"""FunctionBank Prune Error:
+
+    When updating scoring information the expected output differed
+    from the actual.
+
+    Random Seed
+    -----------\n{seed}
+
+    Expected Results
+    -----------------\n{expected_results}
+
+    Actual Results
+    --------------\n{expected_results}
+
+    """
+    raise Exception(err_msg)
 
 @pytest.mark.parametrize('inputs', test_sets)
 def test_function_bank(inputs):
@@ -519,10 +606,14 @@ def test_function_bank(inputs):
         )
         # 8. Ensure that score is doing the right thing.
         score_tester(
-            function_bank
+            function_bank = function_bank,
+            kwargs = inputs['score']['kwargs'],
+            expected_results = inputs['score']['expected_results']
         )
-        # 7. Prune!
-        # 6. Ensure that prune is doing the right thing.
-        prune_tester()
-        # 9. Ensure that score is doing the right thing.
+        # 9. Ensure that prune is doing the right thing.
+        prune_tester(
+            function_bank = function_bank,
+            seed = inputs['prune']['seed'],
+            expected_results = inputs['prune']['expected_results']
+        )
         

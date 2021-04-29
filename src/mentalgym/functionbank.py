@@ -213,6 +213,18 @@ class FunctionBank():
         self._function_manifest = self._build_bank()
 
     ################################################################
+    #                   Experimental Analysis                      #
+    ################################################################
+    def analysis(self):
+        # TODO
+        # 1. Persist a static function bank to a dataset somewhere.
+        # 2. Compute an aggregate dataset that showcases living
+        #   functions, their type, complexity, and performance over
+        #   the last hundred episodes.
+        #   This is then added to the experiment space.
+        #   Persist this aggregate dataset.
+        raise("Baked in analysis routine")
+    ################################################################
     #                     Mechanics Definitions                    #
     #                                                              #
     # The prune, sample, append, and query methods are used to     #
@@ -220,10 +232,34 @@ class FunctionBank():
     #   bank. The score function is used to update scores in the   #
     #   bank.                                                      #
     ################################################################
-    def prune():
-        """Prune """
-        # self._prune
-        raise NotImplementedError
+    def prune(self, save: bool= True):
+        """Prune the function bank.
+
+        This uses an overloadable function, set at init, which can
+        return sampled ids from the function bank DataFrame
+        representation.
+
+        Those functions are set to living and the function manifest
+        updated.
+
+        Parameters
+        ----------
+        save: bool = True
+            Persist the function manifest to disk after pruning.
+        """
+        sampled_ids: pd.Series = self._sampling_func(
+            self.to_df().query('type=="composed"'),
+            self._population_size
+        )
+        x = self.to_df().query(
+            'type=="composed"'
+        ).query(
+            f'id != {sampled_ids}'
+        ).eval('living = False')
+        x
+
+        raise Exception(f"IN PRUNE:\n{x}")
+        
 
     def sample(
         self,
@@ -465,7 +501,7 @@ class FunctionBank():
 
     def score(
         self,
-        function_set: Union[FunctionSet, pd.DataFrame],
+        function_set: Union[FunctionSet, pd.DataFrame, Iterable[str]],
         score: Union[Number, Iterable[Number]],
         score_name: Union[str, Iterable[str]] = 'default',
     ):
@@ -479,7 +515,9 @@ class FunctionBank():
         ----------
         function_set: Union[FunctionSet, pd.DataFrame]
             This is either an iterable of function representations
-            or a DataFrame built from that iterable.
+            or a DataFrame built from that iterable. It can also
+            simply be an iterable of strings representing the
+            function ids.
         score: Union[Number, List[Number]]
             This is a *bigger is better* style score. The current
             method of scoring involves taking the arithmetic mean
@@ -551,40 +589,58 @@ class FunctionBank():
         assert len(_score) == len(_score_name), err_msg
         # 0.4) Now add 'score_' in front of the score names.
         _score_name = [f'score_{_}' for _ in _score_name]
-        # 0.5) Ensure that the function set coming in is Pandas style
-        #   filterable.
-        if not isinstance(function_set, pd.DataFrame):
-            function_df = pd.DataFrame(function_set)
-        else:
-            function_df = function_set
-        # 0.6) Ensure that the id column is available.
-        err_msg = f"""Function Scoring Error:
+        # 0.5) Make sure the data structure plays nicely.
+        # Basically one of a few things can happen.
+        # # 1) It has an id property available.
+        # This can happen when a FunctionBank or ExperimentSpace are passed.
+        try:
+            # Assume the id property is an id in the bank.
+            function_ids = function_set.id.to_list()
+            function_df = self.query(f'id=={function_ids}')
+        except AttributeError:
+        # # 2) It is an *iterable* of Functions
+            try:
+                # Assume the id property is an id in the bank.
+                function_ids = pd.DataFrame(function_set).id.to_list()
+                function_df = self.query(f'id=={function_ids}')
+            except AttributeError:
+        # # 3) Or it is a string or list of strings
+                try:
+        # # 4) In which case it had better return a set of results
+        #        as long as the query set.
+                    # Assume these are ids
+                    if isinstance(function_set, str):
+                        function_ids = [function_set]
+                        n_func = 1
+                    else:
+                        function_ids = list(np.unique(function_set))
+                        n_func = len(function_ids)
+                    function_df = self.query(f'id in {function_ids}')
+                    # And if you got a set of results that's not the
+                    #   same length as the unique indices, blow up.
+                    err_msg = f"""FunctionBank KeyError:
 
-        Scoring requires that the functions to be scored have valid
-        id's. These functions were missing an id column.
+                    The queried keys: {function_ids}
+                    The number of functions: {n_func}
+                    The available keys: {self.to_df().id.to_list()}
+                    function_df:\n{function_df}
+                    """
+                    if function_df.shape[0] != n_func:
+                        raise Exception(err_msg)
+                except KeyError:
+        # # 5) Otherwise it needs to blow up, scratching its head.
+                    err_msg = """Function Scoring Error:
 
-        Passed Functions:\n{function_df}
-        """
-        assert 'id' in function_df.columns, err_msg
-        # 1) We only care about the id column; it matches the id in
-        #   the function bank, and so we are going to increment those
-        #   score buffers *in-place*
-        function_ids = function_df.id.to_list()
-        # 2) Subset the function bank dataframe to those rows; since
-        #   the deques are objects they point to locations in memory
-        #   and we can increment them in-place.
+                        The function_set argument (the functions to score) can
+                        be a Pandas DataFrame (i.e. Experiment Space) with an id
+                        column, an iterable of Function representations with an id
+                        field, or simply a string or iterable of strings
+                        representing the ids to query for from the function bank.
+
+                        You passed:\n{function_set}
+                        """
+                    raise Exception
         functionbank = self.to_df()
-        in_fb = functionbank.query(f'id == {function_ids}').id.to_list()
-        # 3) Assert that you got the same number you queried for.
-        err_msg = f"""Function Scoring Error:
-
-        Passed IDs
-        ----------\n{function_ids}
-
-        Found in Function Bank
-        ----------------------\n{in_fb}
-        """
-        assert set(function_ids) == set(in_fb), err_msg
         # This gets a list of all the scoring columns from the
         #   function bank.
         score_cols = [
@@ -607,7 +663,7 @@ class FunctionBank():
                 # If not, create it with empty deques.
                 functionbank.insert(
                     loc = max_col_ind + 1,
-                    column = f'score_{score_col}',
+                    column = score_col,
                     value = [deque([0], maxlen=100) for _ in range(n)]
                 )
                 max_col_ind += 1
@@ -618,9 +674,10 @@ class FunctionBank():
             # to update the deques.
             functionbank.query(
                 f'id == {function_ids}'
-            )[f'score_{score_col}'].apply(
+            )[score_col].apply(
                 lambda x: x.append(score)
             )
+        functionbank.reset_index(inplace=True, drop = True)
         # Now, update the manifest.
         self._function_manifest = functionbank.to_dict(
             orient='records'

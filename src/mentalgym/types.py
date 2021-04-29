@@ -2,6 +2,7 @@
 
 The types below are used throughout the environment.
 """
+import pandas as pd
 from mentalgym.functions import (
     AtomicFunction,
     ComposedFunction
@@ -29,8 +30,8 @@ FunctionObject = Union[Type[AtomicFunction], Type[ComposedFunction]]
 #                   Observation Space Typing                       #
 ####################################################################
 # The ExperimentSpace is a component of the observation space
-# It contains a dictionary of 
-ExperimentSpace = Dict[str, ArrayLike]
+# It contains a dictionary of
+ExperimentSpace = Union[Dict[str, ArrayLike], pd.DataFrame]
 ExperimentSpaceContainer = Dict[str, ArrayLike]
 ####################################################################
 #                    Function Metric Typing                        #

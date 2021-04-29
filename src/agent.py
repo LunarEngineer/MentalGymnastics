@@ -17,7 +17,7 @@ class MentalAgent:
             verbose=hparams["verbose"],
             epochs=hparams["epochs"],
             net_lr=hparams["net_lr"],
-            net_batch_size = hparams["net_batch_size"]
+            net_batch_size=hparams["net_batch_size"],
         )
 
         self.num_episodes = hparams["num_episodes"]

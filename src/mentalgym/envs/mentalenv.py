@@ -19,7 +19,13 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
 )
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
-from mentalgym.constants import linear_i, relu_i, dropout_i, linear_output_size, dropout_p
+from mentalgym.constants import (
+    linear_i,
+    relu_i,
+    dropout_i,
+    linear_output_size,
+    dropout_p,
+)
 
 
 # Customize pandas DataFrame display width
@@ -260,7 +266,9 @@ class MentalEnv(gym.Env):
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
         action_index = int(
-            np.round(np.clip(2.5*action[0], 0, self._function_bank.idxmax()))
+            np.round(
+                np.clip(2.5 * action[0], 0, self._function_bank.idxmax())
+            )
         )
 
         # This extracts the function location from the action.
@@ -273,7 +281,7 @@ class MentalEnv(gym.Env):
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
         action_radius = 50
-#        action_radius = np.clip(action[-1], 0, None)
+        #        action_radius = np.clip(action[-1], 0, None)
 
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
@@ -519,9 +527,9 @@ class MentalEnv(gym.Env):
 
             # Get the id of the function that connects to the sink
             last_id = self._experiment_space.loc[
-                          self._experiment_space["type"] == "sink", "input"
-                      ].item()
- 
+                self._experiment_space["type"] == "sink", "input"
+            ].item()
+
             print("\n\nEPISODE:", self._episode)
             print("\nFinal Experiment Space:\n", self._experiment_space)
 
@@ -558,56 +566,67 @@ class MentalEnv(gym.Env):
         # Create new experiment space with only functions in the net.  This
         # new data frame will have only intermediate and composite functions,
         # in reverse order from output to input.
-        net_df = pd.DataFrame().reindex(columns=self._experiment_space.columns)
+        net_df = pd.DataFrame().reindex(
+            columns=self._experiment_space.columns
+        )
         net_df.loc[0] = self._experiment_space.query('type == "sink"').iloc[0]
         cur_inputs = [net_df.tail(1).input.item()]
 
         while len(cur_inputs):
             if cur_inputs[0] not in net_df.id.values:
-                net_df.loc[len(net_df.index)] = self._experiment_space.query('id == @cur_inputs[0]').iloc[0]
+                net_df.loc[len(net_df.index)] = self._experiment_space.query(
+                    "id == @cur_inputs[0]"
+                ).iloc[0]
                 inps = net_df.tail(1).input.item()
                 if inps != None:
                     for inp in inps:
-                        if inp not in net_df.id.values and self._experiment_space.query('id == @inp').type.values != 'source':
+                        if (
+                            inp not in net_df.id.values
+                            and self._experiment_space.query(
+                                "id == @inp"
+                            ).type.values
+                            != "source"
+                        ):
                             cur_inputs.append(inp)
                 cur_inputs.pop(0)
         net_df = net_df.sort_index(ascending=False)
-                
+
         print("\n\nFinal Net (df):\n", net_df)
 
         for ind in range(len(net_df)):
-            fn_type = net_df.iloc[ind]['i']
-            fn_params = net_df.iloc[ind]['hyperparameters']
+            fn_type = net_df.iloc[ind]["i"]
+            fn_params = net_df.iloc[ind]["hyperparameters"]
             if fn_type == relu_i:
                 self.net_init.append(nn.ReLU())
             elif fn_type == linear_i:
                 self.net_init.append(
                     nn.Linear(
-                        fn_params["input_size"],
-                        fn_params["output_size"]
+                        fn_params["input_size"], fn_params["output_size"]
                     )
                 )
             elif fn_type == dropout_i:
-                self.net_init.append(
-                    nn.Dropout(fn_params["p"])
-                )
+                self.net_init.append(nn.Dropout(fn_params["p"]))
 
         print("\n\nPyTorch Init:\n", self.net_init)
 
         # Creating np arrays
-        target = self.dataset['output'].values
-        features = self.dataset.drop('output', axis=1).values
+        target = self.dataset["output"].values
+        features = self.dataset.drop("output", axis=1).values
 
         # Passing to DataLoader
-        train = data_utils.TensorDataset(torch.tensor(features), torch.tensor(target))
-        train_loader = data_utils.DataLoader(train, batch_size=self.net_batch_size, shuffle=True)
-#        train_loader = data_utils.DataLoader(train, batch_size=1, shuffle=True)
+        train = data_utils.TensorDataset(
+            torch.tensor(features), torch.tensor(target)
+        )
+        train_loader = data_utils.DataLoader(
+            train, batch_size=self.net_batch_size, shuffle=True
+        )
         for idx, (data, target) in enumerate(train_loader):
             print("train_loader:\n", (data, target))
-            print("column 0 !!\n", (data[:,0:2], target))
-#        optimizer = torch.optim.Adam(, lr=self.net_lr)
+            print("column 0 !!\n", (data[:, 0:2], target))
+        #        optimizer = torch.optim.Adam(, lr=self.net_lr)
         criterion = nn.CrossEntropyLoss()
-#        train_net()
+
+    #        train_net()
 
     def train_net(self, data_loader, optimizer, criterion):
         iter_time = AverageMeter()
@@ -621,12 +640,12 @@ class MentalEnv(gym.Env):
                 data = data.cuda()
                 target = target.cuda()
 
-            #############################################################################
-            # TODO: Complete the body of training loop                                  #
-            #       1. forward data batch to the model                                  #
-            #       2. Compute batch loss                                               #
-            #       3. Compute gradients and update model parameters                    #
-            #############################################################################
+            ###########################################################
+            # TODO: Complete the body of training loop                #
+            #       1. forward data batch to the model                #
+            #       2. Compute batch loss                             #
+            #       3. Compute gradients and update model parameters  #
+            ###########################################################
 
             optimizer.zero_grad()
             out = model(data)
@@ -634,9 +653,9 @@ class MentalEnv(gym.Env):
             loss.backward()
             optimizer.step()
 
-            #############################################################################
-            #                              END OF YOUR CODE                             #
-            #############################################################################
+            ###########################################################
+            #                              END OF YOUR CODE           #
+            ###########################################################
 
             batch_acc = accuracy(out, target)
 
@@ -645,11 +664,21 @@ class MentalEnv(gym.Env):
 
             iter_time.update(time.time() - start)
             if idx % 10 == 0:
-                print(('Epoch: [{0}][{1}/{2}]\t'
-                       'Time {iter_time.val:.3f} ({iter_time.avg:.3f})\t'
-                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                       'Prec @1 {top1.val:.4f} ({top1.avg:.4f})\t')
-                       .format(epoch, idx, len(data_loader), iter_time=iter_time, loss=losses, top1=acc))
+                print(
+                    (
+                        "Epoch: [{0}][{1}/{2}]\t"
+                        "Time {iter_time.val:.3f} ({iter_time.avg:.3f})\t"
+                        "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
+                        "Prec @1 {top1.val:.4f} ({top1.avg:.4f})\t"
+                    ).format(
+                        epoch,
+                        idx,
+                        len(data_loader),
+                        iter_time=iter_time,
+                        loss=losses,
+                        top1=acc,
+                    )
+                )
 
     def build_state(self) -> ArrayLike:
         """Builds an observation from experiment space."""
@@ -710,8 +739,10 @@ class MentalEnv(gym.Env):
     def close(self):
         pass
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 

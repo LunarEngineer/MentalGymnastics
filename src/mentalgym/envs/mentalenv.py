@@ -398,20 +398,20 @@ class MentalEnv(gym.Env):
 
                 if function_class == ReLU:
                     intermediate_i = relu_i
-                    self.function_parameters = {
+                    function_parameters = {
                         "output_size": sum_of_inputs,
                         "input_size": sum_of_inputs,
                     }
                 elif function_class == Dropout:
                     intermediate_i = dropout_i
-                    self.function_parameters = {
+                    function_parameters = {
                         "p": dropout_p,
                         "output_size": sum_of_inputs,
                         "input_size": sum_of_inputs,
                     }
                 elif function_class == Linear:
                     intermediate_i = linear_i
-                    self.function_parameters = {
+                    function_parameters = {
                         "output_size": linear_output_size,
                         "input_size": sum_of_inputs,
                     }
@@ -422,7 +422,7 @@ class MentalEnv(gym.Env):
                     function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
                     function_location=action_location,
-                    function_hyperparameters=self.function_parameters,
+                    function_hyperparameters=function_parameters,
                 )
 
                 locs = [
@@ -593,21 +593,24 @@ class MentalEnv(gym.Env):
 
         print("\n\nFinal Net (df):\n", net_df)
 
-        for ind in range(len(net_df)):
-            fn_type = net_df.iloc[ind]["i"]
-            fn_params = net_df.iloc[ind]["hyperparameters"]
-            if fn_type == relu_i:
-                self.net_init.append(nn.ReLU())
-            elif fn_type == linear_i:
-                self.net_init.append(
-                    nn.Linear(
-                        fn_params["input_size"], fn_params["output_size"]
-                    )
-                )
-            elif fn_type == dropout_i:
-                self.net_init.append(nn.Dropout(fn_params["p"]))
+        # for ind in range(len(net_df)):
+            # fn_type = net_df.iloc[ind]["i"]
+            # fn_params = net_df.iloc[ind]["hyperparameters"]
+            # if fn_type == relu_i:
+                # self.net_init.append(nn.ReLU())
+            # elif fn_type == linear_i:
+                # self.net_init.append(
+                    # nn.Linear(
+                        # fn_params["input_size"], fn_params["output_size"]
+                    # )
+                # )
+            # elif fn_type == dropout_i:
+                # self.net_init.append(nn.Dropout(fn_params["p"]))
 
-        print("\n\nPyTorch Init:\n", self.net_init)
+        # print("\n\nPyTorch Init:\n", self.net_init)
+
+        # TODO: BUILD COMPUTATION GRAPH
+        
 
         # Creating np arrays
         target = self.dataset["output"].values
@@ -695,7 +698,6 @@ class MentalEnv(gym.Env):
         consisting of nothing but input and output nodes.
         """
         self.net_init = nn.ModuleList([])
-        self.function_parameters = dict()
         # Reset the step counter
         self._step = 0
         # Increment the episode counter

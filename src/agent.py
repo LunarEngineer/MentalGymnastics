@@ -21,6 +21,7 @@ class MentalAgent:
             number_functions=hparams["number_functions"],
             max_steps=hparams["max_steps"],
             verbose=hparams["verbose"],
+            epochs=hparams["epochs"],
         )
 
         self.num_episodes = hparams["num_episodes"]
@@ -74,6 +75,7 @@ if __name__ == "__main__":
     hparams["buffer_len"] = 100
     hparams["num_functions"] = 8
     hparams["num_active_fns_init"] = 3
+    hparams["epochs"] = 5
 
     agent = MentalAgent(hparams)
     agent.train(hparams)

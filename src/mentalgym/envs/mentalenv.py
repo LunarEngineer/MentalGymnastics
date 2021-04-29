@@ -4,7 +4,10 @@ import numpy as np
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 import gym
+import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
+import torch.utils.data as data_utils
 import pandas as pd
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
@@ -21,7 +24,7 @@ from mentalgym.utils.data import testing_df
 
 
 # Customize pandas DataFrame display width
-# pd.set_option("display.expand_frame_repr", False)
+pd.set_option("display.expand_frame_repr", False)
 
 __FUNCTION_BANK_KWARGS__ = {
     "function_bank_directory",
@@ -87,6 +90,9 @@ class MentalEnv(gym.Env):
         experiment_space_max: ArrayLike = np.array([100.0, 100.0]),
         number_functions: int = 8,
         max_steps: int = 4,
+        epochs: int = 5,
+        net_lr: float = 0.0001,
+        net_batch_size: int = 128,
         seed: Optional[int] = None,
         verbose: bool = False,
         **kwargs,
@@ -182,6 +188,11 @@ class MentalEnv(gym.Env):
             low=-np.inf, high=np.inf, shape=(self._action_size,)
         )
 
+        # Hyperparameters to train net
+        self.epochs = epochs
+        self.net_lr = net_lr
+        self.net_batch_size = net_batch_size
+
         if self._verbose:
             status_message = f"""Environment Init:
             Episodic Information
@@ -244,7 +255,7 @@ class MentalEnv(gym.Env):
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
         action_index = int(
-            np.round(np.clip(action[0], 0, self._function_bank.idxmax()))
+            np.round(np.clip(2.5*action[0], 0, self._function_bank.idxmax()))
         )
 
         # This extracts the function location from the action.
@@ -371,19 +382,6 @@ class MentalEnv(gym.Env):
                         sum_of_inputs += 1
                     else:
                         sum_of_inputs += inp_dict["output_size"]
-<<<<<<< HEAD
-                
-                # TODO: Move these hardcoded numbers to constants.py
-                # TODO: Instead, can we move them to the init and scrape from kwargs?
-                # That will make it easier to experiment.
-                if function_class == ReLU:
-                    self.function_parameters = {"output_size": sum_of_inputs, "input_size": sum_of_inputs}
-                elif function_class == Dropout:
-                    self.function_parameters = {"p": 0.5, "output_size": sum_of_inputs, "input_size": sum_of_inputs}
-                elif function_class == Linear:
-                    self.function_parameters = {"output_size": 256, "input_size": sum_of_inputs}
-=======
->>>>>>> efc4d7a450bdeb9c15cdb7f3b1f2d27d6fcb26ab
 
                 if function_class == ReLU:
                     intermediate_i = relu_i
@@ -457,12 +455,7 @@ class MentalEnv(gym.Env):
         ############################################################
         # Return a minor reward if there are *any* nodes added.
         reward = connection_reward(
-<<<<<<< HEAD
-            self._experiment_space,
-            self._function_bank
-=======
             self._experiment_space, self._function_bank
->>>>>>> efc4d7a450bdeb9c15cdb7f3b1f2d27d6fcb26ab
         )
 
         # Default values here, or pass some info?
@@ -579,21 +572,84 @@ class MentalEnv(gym.Env):
 
         for ind in range(len(net_df)):
             fn_type = net_df.iloc[ind]['i']
+            fn_params = net_df.iloc[ind]['hyperparameters']
             if fn_type == relu_i:
                 self.net_init.append(nn.ReLU())
             elif fn_type == linear_i:
                 self.net_init.append(
                     nn.Linear(
-                        self.function_parameters["input_size"],
-                        self.function_parameters["output_size"],
+                        fn_params["input_size"],
+                        fn_params["output_size"]
                     )
                 )
             elif fn_type == dropout_i:
                 self.net_init.append(
-                    nn.Dropout(self.function_parameters["p"])
+                    nn.Dropout(fn_params["p"])
                 )
 
         print("\n\nPyTorch Init:\n", self.net_init)
+
+        # Creating np arrays
+        target = testing_df['output'].values
+        features = testing_df.drop('output', axis=1).values
+
+        # Passing to DataLoader
+        train = data_utils.TensorDataset(torch.tensor(features), torch.tensor(target))
+        train_loader = data_utils.DataLoader(train, batch_size=self.net_batch_size, shuffle=True)
+#        train_loader = data_utils.DataLoader(train, batch_size=1, shuffle=True)
+        for idx, (data, target) in enumerate(train_loader):
+            print("train_loader:\n", (data, target))
+            print("column 0 !!\n", (data[:,0:2], target))
+#        optimizer = torch.optim.Adam(, lr=self.net_lr)
+        criterion = nn.CrossEntropyLoss()
+#        train_net()
+
+    def train_net(self, data_loader, optimizer, criterion):
+        iter_time = AverageMeter()
+        losses = AverageMeter()
+        acc = AverageMeter()
+
+        for idx, (data, target) in enumerate(data_loader):
+            start = time.time()
+
+            if torch.cuda.is_available():
+                data = data.cuda()
+                target = target.cuda()
+
+            #############################################################################
+            # TODO: Complete the body of training loop                                  #
+            #       1. forward data batch to the model                                  #
+            #       2. Compute batch loss                                               #
+            #       3. Compute gradients and update model parameters                    #
+            #############################################################################
+
+            optimizer.zero_grad()
+            out = model(data)
+            loss = criterion(out, target)
+            loss.backward()
+            optimizer.step()
+
+            #############################################################################
+            #                              END OF YOUR CODE                             #
+            #############################################################################
+
+            batch_acc = accuracy(out, target)
+
+            losses.update(loss, out.shape[0])
+            acc.update(batch_acc, out.shape[0])
+
+            iter_time.update(time.time() - start)
+            if idx % 10 == 0:
+                print(('Epoch: [{0}][{1}/{2}]\t'
+                       'Time {iter_time.val:.3f} ({iter_time.avg:.3f})\t'
+                       'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                       'Prec @1 {top1.val:.4f} ({top1.avg:.4f})\t')
+                       .format(epoch, idx, len(data_loader), iter_time=iter_time, loss=losses, top1=acc))
+
+
+
+
+
 
 #        cur_inputs = [self._experiment_space.query('type == "sink"')["input"].item()]
 #        while True:
@@ -801,3 +857,20 @@ class MentalEnv(gym.Env):
 
     def close(self):
         pass
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count

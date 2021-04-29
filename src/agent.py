@@ -16,16 +16,18 @@ from stable_baselines3.common.env_checker import check_env
 class MentalAgent:
     def __init__(self, hparams):
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(testing_df,
-                                            number_functions=hparams["number_functions"],
-                                            max_steps=hparams["max_steps"], 
-                                            verbose=hparams['verbose'])
+        self.env = mentalgym.envs.MentalEnv(
+            testing_df,
+            number_functions=hparams["number_functions"],
+            max_steps=hparams["max_steps"],
+            verbose=hparams["verbose"],
+        )
 
         self.num_episodes = hparams["num_episodes"]
         self.max_steps = hparams["max_steps"]
 
         #  Check custom environment and output additional warnings if needed
-        if hparams['verbose']:
+        if hparams["verbose"]:
             check_env(self.env)
 
         # Create A2C Agent
@@ -33,23 +35,24 @@ class MentalAgent:
         self.model = A2C(
             "MlpPolicy",
             self.env,
-            verbose=0,
-            gamma=hparams["gamma"],
             learning_rate=hparams["alpha_start"],
-            n_steps=1
+            n_steps=1,
+            gamma=hparams["gamma"],
+            verbose=0,
         )
 
     #                         policy_kwargs)
 
     def train(self, hparams):
-        """ Train the RL agent.
-        
-        self.model.n_steps: number of env steps per update
-        total_timesteps: number of times the agent will update, which should be self.num_episodes * self.max_steps        
-        environment steps needed to achieve the total_timesteps: total_timesteps * self.model.n_steps """
+        """Train the RL agent.
 
-        self.model.learn(total_timesteps=self.max_steps)
-        
+        self.model.n_steps: number of env steps per update
+        total_timesteps: number of times the agent will update, which should
+            be roughly self.num_episodes * self.max_steps
+        environment steps needed to achieve the total_timesteps:
+            total_timesteps * self.model.n_steps"""
+
+        self.model.learn(total_timesteps=self.num_episodes * self.max_steps)
 
 
 if __name__ == "__main__":
@@ -58,7 +61,7 @@ if __name__ == "__main__":
     hparams["verbose"] = False
     hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
-    hparams["max_steps"] = 10
+    hparams["max_steps"] = 4
     hparams["seed"] = None
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99

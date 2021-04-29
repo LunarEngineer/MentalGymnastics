@@ -3,10 +3,9 @@ from typing import Optional
 import numpy as np
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
-import pandas as pd
-# pd.set_option('display.max_columns', None)
 import gym
-
+import torch.nn as nn
+import pandas as pd
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
@@ -17,11 +16,12 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
 )
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
-from mentalgym.constants import intermediate_i
+from mentalgym.constants import linear_i, relu_i, dropout_i, linear_output_size, dropout_p
 from mentalgym.utils.data import testing_df
 
-import torch.nn as nn
 
+# Customize pandas DataFrame display width
+# pd.set_option("display.expand_frame_repr", False)
 
 __FUNCTION_BANK_KWARGS__ = {
     "function_bank_directory",
@@ -140,6 +140,7 @@ class MentalEnv(gym.Env):
         #   composed functions that the agent has placed onto the  #
         #   canvas. This is built in reset.                        #
         ############################################################
+        self._episode = -1
         self.state = self.reset()
         ############################################################
         #           Instantiate the Observation Space              #
@@ -156,10 +157,13 @@ class MentalEnv(gym.Env):
         #   * The integer 'function id' representing the integer
         #       index in the function bank.
         #   * The location to emplace the function (minimum 2d)
-        # TODO: Stable baselines recommends this to beflattened, symmetric, and normalized.
+        # TODO: Stable baselines recommends this to be flattened, symmetric,
+        # and normalized.
         # TODO: If we do that we just need to change the parse.
         self.observation_space = gym.spaces.Box(
-            low=-np.inf, high=np.inf, shape=(1 + self.ndim, self._state_length)
+            low=-np.inf,
+            high=np.inf,
+            shape=(1 + self.ndim, self._state_length),
         )
         ############################################################
         #              Instantiate the Action Space                #
@@ -177,6 +181,7 @@ class MentalEnv(gym.Env):
         self.action_space = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(self._action_size,)
         )
+
         if self._verbose:
             status_message = f"""Environment Init:
             Episodic Information
@@ -238,16 +243,6 @@ class MentalEnv(gym.Env):
         ############################################################
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
-        # TODO: Uncomment this after function bank implementation.
-        # action_index = -1 #round(action[0])
-        # action_index = np.random.choice([2,3,4], 1)[0]
-        # if self._step == 1:
-        #     action_index = 2 # steve
-        # if self._step == 2:
-        #     action_index = 3 # bob
-        # if self._step == 3:
-        #     action_index = 4 # carl
-
         action_index = int(
             np.round(np.clip(action[0], 0, self._function_bank.idxmax()))
         )
@@ -261,8 +256,8 @@ class MentalEnv(gym.Env):
         )
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
-        # action_radius = 100
-        action_radius = np.clip(action[-1], 0, None)
+        action_radius = 50
+#        action_radius = np.clip(action[-1], 0, None)
 
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
@@ -328,13 +323,12 @@ class MentalEnv(gym.Env):
             # If it's an atomic Function it is added as an
             #   'intermediate' and then constructed appropriately
             #   in the build_net.
-            # action_radius = 200 # TODO: Testing data, remove later.
-            # Build a KD tree from the locations of the nodes in the
-            #   experiment space.
-            tree = cKDTree(self._experiment_space[self._loc_fields].values)
-            # idx = tree.query_ball_point((action[1], action[2]), action[3])
-            # Query the KD Tree for all points within the radius.
 
+            # Build a KD tree from the locations of the nodes in the
+            # experiment space.
+            tree = cKDTree(self._experiment_space[self._loc_fields].values)
+
+            # Query the KD Tree for all points within the radius.
             idx = tree.query_ball_point(action_location, action_radius)
 
             # If any indices are returned it's a valid action
@@ -345,7 +339,7 @@ class MentalEnv(gym.Env):
                 #   to output. This checks for output, removes it,
                 input_df = self._experiment_space.iloc[idx]
                 output_df = input_df.query('type == "sink"')
- 
+
                 # TODO:
                 # This might need to be reworked.
                 # What does this functionality need to do?
@@ -363,8 +357,11 @@ class MentalEnv(gym.Env):
                 #   indices of -1, while atomic get -2? Open for discussion,
                 #   we simply need a method to distinguish them. We can
                 #   keep the callables in the experiment space, or abstract
-                #   them to a separate data structure. Advantages and disadvantages either way.
-                function_class = self._function_bank.query('i=={}'.format(action_index)).object.item()
+                #   them to a separate data structure. Advantages and
+                #   disadvantages either way.
+                function_class = self._function_bank.query(
+                    "i=={}".format(action_index)
+                ).object.item()
                 input_df = input_df.query('type != "sink"')
                 input_hparams = input_df.hyperparameters.to_list()
                 sum_of_inputs = 0
@@ -374,6 +371,7 @@ class MentalEnv(gym.Env):
                         sum_of_inputs += 1
                     else:
                         sum_of_inputs += inp_dict["output_size"]
+<<<<<<< HEAD
                 
                 # TODO: Move these hardcoded numbers to constants.py
                 # TODO: Instead, can we move them to the init and scrape from kwargs?
@@ -384,32 +382,42 @@ class MentalEnv(gym.Env):
                     self.function_parameters = {"p": 0.5, "output_size": sum_of_inputs, "input_size": sum_of_inputs}
                 elif function_class == Linear:
                     self.function_parameters = {"output_size": 256, "input_size": sum_of_inputs}
+=======
+>>>>>>> efc4d7a450bdeb9c15cdb7f3b1f2d27d6fcb26ab
 
                 if function_class == ReLU:
-                    self.net_init.append(nn.ReLU())
-                elif function_class == Linear:
-                    self.net_init.append(nn.Linear(self.function_parameters["input_size"],
-                                                self.function_parameters["output_size"]))
+                    intermediate_i = relu_i
+                    self.function_parameters = {
+                        "output_size": sum_of_inputs,
+                        "input_size": sum_of_inputs,
+                    }
                 elif function_class == Dropout:
-                    self.net_init.append(nn.Dropout(self.function_parameters["p"]))
+                    intermediate_i = dropout_i
+                    self.function_parameters = {
+                        "p": dropout_p,
+                        "output_size": sum_of_inputs,
+                        "input_size": sum_of_inputs,
+                    }
+                elif function_class == Linear:
+                    intermediate_i = linear_i
+                    self.function_parameters = {
+                        "output_size": linear_output_size,
+                        "input_size": sum_of_inputs,
+                    }
 
-#################
-# Note: See if we can build compuation graph HERE.
-# Need to import dataset and assign the inputs (and possibly batch them)
-#################
-                
                 built_function = make_function(
-                    # function_id=function_set[0]["id"],
                     function_index=intermediate_i,
                     function_object=function_class,
                     function_type="intermediate",
                     function_inputs=input_df.id.to_list(),
                     function_location=action_location,
-                    function_hyperparameters=self.function_parameters
+                    function_hyperparameters=self.function_parameters,
                 )
 
                 locs = [
-                    x for x in built_function.keys() if x.startswith("exp_loc")
+                    x
+                    for x in built_function.keys()
+                    if x.startswith("exp_loc")
                 ]
                 new_function = {
                     k: v
@@ -449,8 +457,12 @@ class MentalEnv(gym.Env):
         ############################################################
         # Return a minor reward if there are *any* nodes added.
         reward = connection_reward(
+<<<<<<< HEAD
             self._experiment_space,
             self._function_bank
+=======
+            self._experiment_space, self._function_bank
+>>>>>>> efc4d7a450bdeb9c15cdb7f3b1f2d27d6fcb26ab
         )
 
         # Default values here, or pass some info?
@@ -468,54 +480,55 @@ class MentalEnv(gym.Env):
             -----------------\n{state}
             """
             print(debug_message)
-        print("\n\nSTEP NUM", self._step)
 
         # Check to see if it's time to call it a day.
-        # TODO: make an exception for composed functions
-        # if composed function is the first dropped function (and it connects to the output),
-        # then the episode will end right away...
         done = connected_to_sink or (self._step >= self.max_steps)
         if done:
-            print("self.net_init:", self.net_init)
-            # Check if net is empty, and if so return 0 reward
-            net_empty = (
-                (self._experiment_space.type == "source")
-                | (self._experiment_space.type == "sink")
-            ).all()
+            # Create an experiment space without sources or sinks.  This is
+            # useful for several functions below
+            intermediate_es = self._experiment_space.query(
+                '(type != "source") and (type != "sink")'
+            )
 
-            if net_empty:
+            # Check if net is empty, and if so, return 0 reward
+            if not len(intermediate_es.index):
                 return state, 0, done, info
 
-            # Net must have at least one intermediate node
-            if not connected_to_sink:
-                # Create an experiment space w/o source or sink nodes
-                intermediate_es = self._experiment_space[
-                    self._experiment_space.type != "source"
-                ]
-                intermediate_es = intermediate_es[
-                    intermediate_es.type != "sink"
-                ]
+            # Check if net has exactly 1 composed function coneected to the
+            # sink, and if so return 0 reward
+            if (
+                len(intermediate_es.index) == 1
+                and connected_to_sink
+                and intermediate_es.iloc[0]["type"] == "composed"
+            ):
+                return state, 0, done, info
 
+            # Else we have a legitimate net: connect to a sink if needed.
+            if not connected_to_sink:
+                # Build tree with intermediate function locations
                 tree = cKDTree(intermediate_es[self._loc_fields].values)
 
                 # Location of sink
-                sink_loc = self._experiment_space[
-                    self._experiment_space["type"] == "sink"
-                ][self._loc_fields]
+                sink_loc = self._experiment_space.query('type == "sink"')[
+                    self._loc_fields
+                ]
 
-                # Find row index of closest intermediate function to sink node
-                trunc_last_index = tree.query(sink_loc, k=1)[1][0]
-                last_id = intermediate_es.iloc[trunc_last_index].id
+                # Find closest intermediate function to sink node and attach
+                last_index = tree.query(sink_loc, k=1)[1][0]
                 self._experiment_space.loc[
                     self._experiment_space["type"] == "sink", "input"
-                ] = last_id
+                ] = intermediate_es.iloc[last_index].id
 
-            else:
-                # last row in dataframe should be function connected to sink
-                last_id = self._experiment_space.tail(1).id.item()
+            # Get the id of the function that connects to the sink
+            last_id = self._experiment_space.loc[
+                          self._experiment_space["type"] == "sink", "input"
+                      ].item()
+ 
+            print("\n\nEPISODE:", self._episode)
+            print("\nFinal Experiment Space:\n", self._experiment_space)
 
             # TODO: Bake the net.
-            self._build_net(last_id)
+            self._build_net()
 
             # Add the completion reward.
             reward += float(
@@ -524,88 +537,92 @@ class MentalEnv(gym.Env):
 
         return state, reward, done, info
 
-    def build_state(self) -> ArrayLike:
-        """Builds an observation from experiment space."""
-        _exp_state = self._experiment_space[self._state_fields].values
-        _pad_state = np.zeros(
-            (self._state_length - _exp_state.shape[0], 1 + self.ndim)
-        )
-        return np.concatenate([_exp_state, _pad_state]).T
-
-    # Alternate Recurser
-    # def _recurser(self, exp_space, id):
-        # data = exp_space.query("id==@id")
-        # inputs = data.input.iloc[0]  # list of all inputs to that particular id
-        # flag = False
-        # if inputs == None:
-            # return True
-
-        # Linear(column0, column1)
-        # x = n
-        # x = self.nn.init[0](column0, column1)
-        
-        # if flag:
-        # return {_: (self._recurser(exp_space, _)) for _ in inputs}
-
-
-    def _recurser(self, exp_space, id):
-        data = exp_space.query("id==@id")
-        # print("\n")
-        # print("exp_space:\n", exp_space)
-        # print("id:", id)
-        # print("data:\n", data)
-        inputs = data.input.iloc[0]  # list of all inputs to that particular id
-        # print("inputs:", inputs)
-        # print("\n")
-
-        if inputs == None:
-            return 1
-
-        return {_: (self._recurser(exp_space, _), len(inputs)) for _ in inputs}
-
-    # TODO: finish this
-    # def _recurser_init(self, order_d):
-    #     # input ex: {'steve': {'column_0': {}}}
-
-    #     # init the pytorch layers
-    #     #   - need: # of inputs to the layer
-    #     #   - need: # of outputs to the layer
-    #     # ex: nn.Linear(n_in, n_out)
-    #     # ex: function.Linear(n_in, n_out)
-    #     # steve's input len == # of keys
-
-    #     if inputs == {}:
-    #         return 1
-
-    #     return
-    #     # return recurse(d['inputs'])
-    #     return { _ : self._recurser(exp_space, _) for _ in inputs}
-
-    def _build_net(self, last_id):
+    def _build_net(self):
         """Builds the experiment space's envisioned net.
 
         Inputs
         ----------
-        Takes in the last step's experiment space & layer right before the output layer.
+        Takes in the last step's experiment space & layer right before the
+        output layer.
 
         Returns
         ----------
         Adds the newly tested composed function to the function bank.
-        Updates the metrics for the atomic/composed functions used in the newly composed function.
+        Updates the metrics for the atomic/composed functions used in the
+        newly composed function.
 
         """
-        print("Exp Space @ Build Net:\n", self._experiment_space)
-        net_d = {}
-
         # comment out if function bank only has 'None' in inputs
-        self._experiment_space = self._experiment_space.fillna(np.nan).replace([np.nan], [None])
-        net_d[last_id] = self._recurser(self._experiment_space, last_id)
+        self._experiment_space = self._experiment_space.fillna(
+            np.nan
+        ).replace([np.nan], [None])
+
+        # Create new experiment space with only functions in the net.  This
+        # new data frame will have only intermediate and composite functions,
+        # in reverse order from output to input.
+        net_df = pd.DataFrame().reindex(columns=self._experiment_space.columns)
+        net_df.loc[0] = self._experiment_space.query('type == "sink"').iloc[0]
+        cur_inputs = [net_df.tail(1).input.item()]
+
+        while len(cur_inputs):
+            if cur_inputs[0] not in net_df.id.values:
+                net_df.loc[len(net_df.index)] = self._experiment_space.query('id == @cur_inputs[0]').iloc[0]
+                inps = net_df.tail(1).input.item()
+                if inps != None:
+                    for inp in inps:
+                        if inp not in net_df.id.values and self._experiment_space.query('id == @inp').type.values != 'source':
+                            cur_inputs.append(inp)
+                cur_inputs.pop(0)
+        net_df = net_df.sort_index(ascending=False)
+                
+        print("\n\nFinal Net (df):\n", net_df)
+
+        for ind in range(len(net_df)):
+            fn_type = net_df.iloc[ind]['i']
+            if fn_type == relu_i:
+                self.net_init.append(nn.ReLU())
+            elif fn_type == linear_i:
+                self.net_init.append(
+                    nn.Linear(
+                        self.function_parameters["input_size"],
+                        self.function_parameters["output_size"],
+                    )
+                )
+            elif fn_type == dropout_i:
+                self.net_init.append(
+                    nn.Dropout(self.function_parameters["p"])
+                )
+
+        print("\n\nPyTorch Init:\n", self.net_init)
+
+#        cur_inputs = [self._experiment_space.query('type == "sink"')["input"].item()]
+#        while True:
+#            net_df[len(net_df)+1] = cur_inputs
+#
+#            net_df = self._build_net_df(self._experiment_space, cur_inputs)
+#
+#        print("net_df:\n", net_df)
+#
+#    def _build_net_df(self, exp_space, ):
+        
+
+#        net_d = {}
+#
+#        # comment out if function bank only has 'None' in inputs
+#        self._experiment_space = self._experiment_space.fillna(
+#            np.nan
+#        ).replace([np.nan], [None])
+#        net_d[last_id] = self._recurser(self._experiment_space, last_id)
+
+
+#            )
+#        print("\nFinal Net:\n", self.net_init)
 
         # self._experiment_space['id']['object'].init()
 
         # make sure to instantiate the output layer
 
-        print("NET_D ----------------------", net_d)
+        #        print("NET_D ----------------------", net_d)
 
         # # init the layer
         # self.layer1 = nn.Linear(n_in, n_out)
@@ -671,10 +688,68 @@ class MentalEnv(gym.Env):
 
         # Save the new function to the function bank
 
-        # TODO: represent intermediate functions in a simple to use manner while
-        # still persisting the info to build them from atomic functions
+        # TODO: represent intermediate functions in a simple to use manner
+        # whilestill persisting the info to build them from atomic functions
 
-        pass
+    # Alternate Recurser
+    # def _recurser(self, exp_space, id):
+    # data = exp_space.query("id==@id")
+    # inputs = data.input.iloc[0]  # list of all inputs to that particular id
+    # flag = False
+    # if inputs == None:
+    # return True
+
+    # Linear(column0, column1)
+    # x = n
+    # x = self.nn.init[0](column0, column1)
+
+    # if flag:
+    # return {_: (self._recurser(exp_space, _)) for _ in inputs}
+
+    # def _recurser(self, exp_space, id):
+        # data = exp_space.query("id==@id")
+        # # print("\n")
+        # # print("exp_space:\n", exp_space)
+        # # print("id:", id)
+        # # print("data:\n", data)
+        # inputs = data.input.iloc[
+            # 0
+        # ]  # list of all inputs to that particular id
+        # # print("inputs:", inputs)
+        # # print("\n")
+
+        # if inputs == None:
+            # return 1
+
+        # return {
+            # _: (self._recurser(exp_space, _), len(inputs)) for _ in inputs
+        # }
+
+    # TODO: finish this
+    # def _recurser_init(self, order_d):
+    #     # input ex: {'steve': {'column_0': {}}}
+
+    #     # init the pytorch layers
+    #     #   - need: # of inputs to the layer
+    #     #   - need: # of outputs to the layer
+    #     # ex: nn.Linear(n_in, n_out)
+    #     # ex: function.Linear(n_in, n_out)
+    #     # steve's input len == # of keys
+
+    #     if inputs == {}:
+    #         return 1
+
+    #     return
+    #     # return recurse(d['inputs'])
+    #     return { _ : self._recurser(exp_space, _) for _ in inputs}
+
+    def build_state(self) -> ArrayLike:
+        """Builds an observation from experiment space."""
+        _exp_state = self._experiment_space[self._state_fields].values
+        _pad_state = np.zeros(
+            (self._state_length - _exp_state.shape[0], 1 + self.ndim)
+        )
+        return np.concatenate([_exp_state, _pad_state]).T
 
     def reset(self):
         """Initialize state space.
@@ -686,6 +761,8 @@ class MentalEnv(gym.Env):
         self.function_parameters = dict()
         # Reset the step counter
         self._step = 0
+        # Increment the episode counter
+        self._episode += 1
         # Fill the experiment space.
         self._experiment_space = refresh_experiment_container(
             function_bank=self._function_bank,

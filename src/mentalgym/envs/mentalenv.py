@@ -9,7 +9,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch.utils.data as data_utils
 import pandas as pd
-from mentalgym.constants import experiment_space_fields
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.function import make_function
@@ -20,6 +19,7 @@ from mentalgym.utils.spaces import (
 )
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
 from mentalgym.constants import (
+    experiment_space_fields,
     linear_i,
     relu_i,
     dropout_i,
@@ -267,7 +267,9 @@ class MentalEnv(gym.Env):
         #   is in the appropriate range of values.
         action_index = int(
             np.round(
-                np.clip(2.5 * action[0], 0, self._function_bank.idxmax())
+                np.clip(
+                    2.5 * action[0], 0, self._function_bank.idxmax()
+                )  # TODO: remove multiplier
             )
         )
 
@@ -280,8 +282,9 @@ class MentalEnv(gym.Env):
         )
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
-        action_radius = 50
-        #        action_radius = np.clip(action[-1], 0, None)
+        action_radius = np.clip(
+            5 * action[-1], 0, None
+        )  # TODO: remove multiplier
 
         # Verbose logging here for development and troubleshooting.
         if self._verbose:
@@ -335,121 +338,44 @@ class MentalEnv(gym.Env):
         # Dependent on what the Function type is, it will be handled
         #   differently.
 
+        # Add composed functions directly to experiment space
         if f_type == "composed":
-            # If it's a composed Function it is just appended to the
-            #   experiment container. TODO: Test
             self._experiment_space = append_to_experiment(
                 experiment_space_container=self._experiment_space,
                 function_bank=self._function_bank,
                 composed_functions=[fun],
             )
+        # Build properties of atomic functions then add to experiment space
         else:
-            # If it's an atomic Function it is added as an
-            #   'intermediate' and then constructed appropriately
-            #   in the build_net.
-
-            # Build a KD tree from the locations of the nodes in the
-            # experiment space.
+            # Build KD tree with all function locations currently in exp space
             tree = cKDTree(self._experiment_space[self._loc_fields].values)
 
-            # Query the KD Tree for all points within the radius.
+            # Query the KD Tree for all points within the action radius.
             idx = tree.query_ball_point(action_location, action_radius)
 
             # If any indices are returned it's a valid action
             if len(idx):
                 # This uses the returned indices to subset the
                 #   experiment space. This can contain input,
-                #   intermediate, and composed nodes, in addition
-                #   to output. This checks for output, removes it,
-                input_df = self._experiment_space.iloc[idx]
-                output_df = input_df.query('type == "sink"')
+                #   intermediate, composed, and output nodes.
+                connected_df = self._experiment_space.iloc[idx]
 
-                # TODO:
-                # This might need to be reworked.
-                # What does this functionality need to do?
-                # This entire remaining chunk simply needs to add an
-                #   intermediate function to experiment space while
-                #   retaining the *signature* of the atomic function.
-                # The signature (Callable) can be used to construct
-                #   the function when called in the baking function
-                #   _build_net.
-                # Should intermediate functions *care* about the index?
-                # No. I do not believe they should. The only use of the
-                #   index is for subsetting the function bank;
-                #   intermediate functions will never exist in the
-                #   function bank. Input / Output functions should get
-                #   indices of -1, while atomic get -2? Open for discussion,
-                #   we simply need a method to distinguish them. We can
-                #   keep the callables in the experiment space, or abstract
-                #   them to a separate data structure. Advantages and
-                #   disadvantages either way.
-                function_class = self._function_bank.query(
-                    "i=={}".format(action_index)
-                ).object.item()
-                input_df = input_df.query('type != "sink"')
-                input_hparams = input_df.hyperparameters.to_list()
-                sum_of_inputs = 0
-
-                for inp_dict in input_hparams:
-                    if not len(inp_dict):
-                        sum_of_inputs += 1
-                    else:
-                        sum_of_inputs += inp_dict["output_size"]
-
-                if function_class == ReLU:
-                    intermediate_i = relu_i
-                    function_parameters = {
-                        "output_size": sum_of_inputs,
-                        "input_size": sum_of_inputs,
-                    }
-                elif function_class == Dropout:
-                    intermediate_i = dropout_i
-                    function_parameters = {
-                        "p": dropout_p,
-                        "output_size": sum_of_inputs,
-                        "input_size": sum_of_inputs,
-                    }
-                elif function_class == Linear:
-                    intermediate_i = linear_i
-                    function_parameters = {
-                        "output_size": linear_output_size,
-                        "input_size": sum_of_inputs,
-                    }
-
-                built_function = make_function(
-                    function_index=intermediate_i,
-                    function_object=function_class,
-                    function_type="intermediate",
-                    function_inputs=input_df.id.to_list(),
-                    function_location=action_location,
-                    function_hyperparameters=function_parameters,
+                # Add current function to experiment space
+                self._build_atomic_function(
+                    action_index, action_location, connected_df
                 )
 
-                locs = [
-                    x
-                    for x in built_function.keys()
-                    if x.startswith("exp_loc")
-                ]
-                new_function = {
-                    k: v
-                    for k, v in built_function.items()
-                    if k in experiment_space_fields + locs
-                }
-
-                self._experiment_space = append_to_experiment(
-                    experiment_space_container=self._experiment_space,
-                    function_bank=self._function_bank,
-                    composed_functions=[new_function],
-                )
-
-                # If the output was connected, then we will trigger
-                #   completion and build and run the net.
+                # If current function connects to output, then trigger
+                #   episode completion and connect function to sink.
+                output_df = connected_df.query('type == "sink"')
                 if output_df.shape[0]:
                     connected_to_sink = True
-
-                    self._experiment_space.loc[
-                        self._experiment_space["type"] == "sink", "input"
-                    ] = self._experiment_space.tail(1).id.item()
+                    self._experiment_space.at[
+                        self._experiment_space.query(
+                            'type=="sink"'
+                        ).index.item(),
+                        "input",
+                    ] = [self._experiment_space.tail(1).id.item()]
 
         if self._verbose:
             debug_message = f"""Function Build:
@@ -521,9 +447,11 @@ class MentalEnv(gym.Env):
 
                 # Find closest intermediate function to sink node and attach
                 last_index = tree.query(sink_loc, k=1)[1][0]
-                self._experiment_space.loc[
-                    self._experiment_space["type"] == "sink", "input"
-                ] = intermediate_es.iloc[last_index].id
+
+                self._experiment_space.at[
+                    self._experiment_space.query('type=="sink"').index.item(),
+                    "input",
+                ] = [intermediate_es.iloc[last_index].id]
 
             # Get the id of the function that connects to the sink
             last_id = self._experiment_space.loc[
@@ -542,6 +470,87 @@ class MentalEnv(gym.Env):
             )
 
         return state, reward, done, info
+
+    def _build_atomic_function(
+        self, action_index, action_location, connected_df
+    ):
+        """Takes an action index and action location for an atomic function
+        and builds the corresponding row to be added to the experiment space.
+
+        Parameters
+        ----------
+        action_index: float
+            The function the agent chose to drop. Should be an atomic action.
+        action_location: tuple(float, float)
+            Where in the experiment space the function is dropped
+        input_df: pd.DataFrame
+
+        """
+        # Check if valid atomic function
+        assert action_index in [linear_i, relu_i, dropout_i]
+
+        # Extract class of function
+        function_class = self._function_bank.query(
+            "i=={}".format(action_index)
+        ).object.item()
+
+        # Find all inputs to function
+        inputs_df = connected_df.query('type != "sink"')
+        inputs_hparams = inputs_df.hyperparameters.to_list()
+
+        # Add all input sizes together
+        sum_of_inputs = 0
+        for inp_dict in inputs_hparams:
+            if not len(inp_dict):
+                sum_of_inputs += 1
+            else:
+                sum_of_inputs += inp_dict["output_size"]
+
+        # Set function-specific hyperparameters
+        if function_class == ReLU:
+            intermediate_i = relu_i
+            function_parameters = {
+                "output_size": sum_of_inputs,
+                "input_size": sum_of_inputs,
+            }
+        elif function_class == Dropout:
+            intermediate_i = dropout_i
+            function_parameters = {
+                "p": dropout_p,
+                "output_size": sum_of_inputs,
+                "input_size": sum_of_inputs,
+            }
+        elif function_class == Linear:
+            intermediate_i = linear_i
+            function_parameters = {
+                "output_size": linear_output_size,
+                "input_size": sum_of_inputs,
+            }
+
+        # Create dictionary representation of function attributes
+        built_function = make_function(
+            function_index=intermediate_i,
+            function_object=function_class,
+            function_type="intermediate",
+            function_inputs=inputs_df.id.to_list(),
+            function_location=action_location,
+            function_hyperparameters=function_parameters,
+        )
+
+        # Extract only fields needed for experiment space
+        locs = [x for x in built_function.keys() if x.startswith("exp_loc")]
+        new_function = {
+            k: v
+            for k, v in built_function.items()
+            if k in experiment_space_fields + locs
+        }
+
+        # Add new function to experiment space
+        self._experiment_space = append_to_experiment(
+            experiment_space_container=self._experiment_space,
+            function_bank=self._function_bank,
+            composed_functions=[new_function],
+        )
 
     def _build_net(self):
         """Builds the experiment space's envisioned net.
@@ -570,7 +579,7 @@ class MentalEnv(gym.Env):
             columns=self._experiment_space.columns
         )
         net_df.loc[0] = self._experiment_space.query('type == "sink"').iloc[0]
-        cur_inputs = [net_df.tail(1).input.item()]
+        cur_inputs = net_df.tail(1).input.item()
 
         while len(cur_inputs):
             if cur_inputs[0] not in net_df.id.values:
@@ -594,23 +603,22 @@ class MentalEnv(gym.Env):
         print("\n\nFinal Net (df):\n", net_df)
 
         # for ind in range(len(net_df)):
-            # fn_type = net_df.iloc[ind]["i"]
-            # fn_params = net_df.iloc[ind]["hyperparameters"]
-            # if fn_type == relu_i:
-                # self.net_init.append(nn.ReLU())
-            # elif fn_type == linear_i:
-                # self.net_init.append(
-                    # nn.Linear(
-                        # fn_params["input_size"], fn_params["output_size"]
-                    # )
-                # )
-            # elif fn_type == dropout_i:
-                # self.net_init.append(nn.Dropout(fn_params["p"]))
+        # fn_type = net_df.iloc[ind]["i"]
+        # fn_params = net_df.iloc[ind]["hyperparameters"]
+        # if fn_type == relu_i:
+        # self.net_init.append(nn.ReLU())
+        # elif fn_type == linear_i:
+        # self.net_init.append(
+        # nn.Linear(
+        # fn_params["input_size"], fn_params["output_size"]
+        # )
+        # )
+        # elif fn_type == dropout_i:
+        # self.net_init.append(nn.Dropout(fn_params["p"]))
 
         # print("\n\nPyTorch Init:\n", self.net_init)
 
         # TODO: BUILD COMPUTATION GRAPH
-        
 
         # Creating np arrays
         target = self.dataset["output"].values
@@ -629,9 +637,9 @@ class MentalEnv(gym.Env):
         #        optimizer = torch.optim.Adam(, lr=self.net_lr)
         criterion = nn.CrossEntropyLoss()
 
-    #        train_net()
+    #        _train_net()
 
-    def train_net(self, data_loader, optimizer, criterion):
+    def _train_net(self, data_loader, optimizer, criterion):
         iter_time = AverageMeter()
         losses = AverageMeter()
         acc = AverageMeter()

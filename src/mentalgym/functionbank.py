@@ -134,29 +134,33 @@ class FunctionBank():
         This is the number of functions kept 'alive' at any time.
         Living functions can be drawn via the sampling function.
         This has the effect of truncating evolutionary deadends.
+    verbose: bool = False
+        This tells the function bank to produce verbose output.
+    force_refresh: bool = False
+        This is an optional flag that you may turn on to force the
+        function bank to purge the existing function bank directory.
+        This will delete everything in that directory and start a
+        fresh function bank.
 
     Methods
     -------
-    query(): pd.DataFrame
+    query(query_str) -> pd.DataFrame
         Overloads Pandas .query on the internal function bank.
-    sample(): Needs testing, finished documentation
+    append()
+    sample(n, include_base, random_state) -> FunctionSet:
         Returns a sample of functions.
-        Using this to build the set of functions is equivalent to shaping
-        function space. This is how you define your exploration strategy.
-    prune(): 
+    prune(random_state): 
         Removes functions from the function bank.
         This is used to prune dead-end elements of the search space.
-        All this does is 'disable' actions. A disabled action cannot
-        be drawn during an episode.
-    build()
-        Returns a composed function from input.
-    score()
-        This takes an Experiment Space and a score, updating statistics
-        for those actions. If this score (i.e. accuracy) doesn't
-        already exist then it is added to the dataset. Default
-        functionality assumes that scores are better if higher.
-        This stores current hyperparameters for actions when they are
-        created.
+        All this does is 'disable' composed actions. A disabled action
+        cannot be drawn during an episode.
+    score(function_set, score, score_name)
+        This takes an iterable of Functions (various options) and
+        updates the scoring information for those functions.
+    idxmax() -> int:
+        Returns the maximum index from the function bank.
+    to_df() -> pandas.DataFrame:
+        This returns the function manifest as a DataFrame.
     _build_bank()
         Builds an function bank from a local directory.
     _save_bank()
@@ -170,7 +174,9 @@ class FunctionBank():
         dataset_scraper_function: Optional[Callable] = None,
         sampling_function: Optional[Callable] = None,
         pruning_function: Optional[Callable] = None,
-        population_size: Optional[int] = 1000
+        population_size: Optional[int] = 1000,
+        verbose: bool = False,
+        force_refresh: bool = False
     ):
         ############################################################
         # This sets up the engine of the function bank using user  #
@@ -203,7 +209,9 @@ class FunctionBank():
         self._population_size = population_size
         self._data = modeling_data
         self._target = target
-        
+        self._verbose = verbose
+        self._force_refresh = force_refresh
+
         ############################################################
         #              This section starts the engine.             #
         ############################################################
@@ -224,6 +232,98 @@ class FunctionBank():
         #   This is then added to the experiment space.
         #   Persist this aggregate dataset.
         raise("Baked in analysis routine")
+
+    def function_statistics(
+        self,
+        ids: Optional[Union[str, Iterable[str]]] = None,
+        extended: bool = False
+    ) -> pd.DataFrame:
+        """Compute statistics for functions.
+
+        This will compute summary statistics for functions in the
+        function bank and will return the summary statistics for
+        every scoring function used.
+
+        If requested this will also return the score buffers for
+        each action indicating 'in the last `buffer length` episodes
+        they were used these were the scores'. Note that two functions
+        values for 'buffer 1' are not necessarily correlated in time.
+
+        This will fill buffers that haven't been used with NaN. When
+        computing statistics this will ignore NaN.
+
+        Parameters
+        ----------
+        ids: Optional[Union[str, Iterable[str]]]
+            This is an optional id or set of ids to limit
+            computation.
+        extended: bool = False
+            If False this will only return summary statistics for
+            each score type for each function:
+            * mean
+            * median
+
+        Returns
+        -------
+        function_statistics: pd.DataFrame
+            A DataFrame with as many rows as there are functions
+            queried for (all if no ids passed) containing aggregate
+        """
+        df = self.to_df()
+        if ids is not None:
+            df = df.query(f'id == {ids}').reset_index(drop = True)
+        score_ids = df[['id']]
+        score_cols = [_ for _ in df if _.startswith('score')]
+        score_dfs = []
+        for score_col in score_cols:
+            # This assumes that all the deques have the same length.
+            # This should be a good assumption.
+            # This gets the maximum length for the buffers
+            score_len = df[score_col].iloc[0].maxlen
+            # This creates column names that long.
+            score_names = [f'{score_col}_{_}' for _ in range(score_len)]
+            # This, then, creates an empty dataset just as long
+            score_arr = np.empty((df.shape[0], score_len))
+            score_arr[:] = np.nan
+            score_df = pd.DataFrame(
+                score_arr,
+                columns = score_names
+            )
+            # This pulls out the buffers
+            scores = pd.DataFrame.from_records(df[score_col])
+            #   and finds out how long each of the buffers is.
+            scores_len = scores.shape[1]
+            # Then shove the real data on top.
+            score_df.iloc[:,:scores_len] = scores
+            # Finally, stuff this in the scoring list.
+            score_dfs.append(score_df)
+        # score_dfs is now a list as long as the number of scoring
+        #   functions with *non-aggregate* data. These are aggregated
+        #   to make the summary statistics.
+        # We want the ids to be up front.
+        output_dfs = [score_ids]
+        # Now, walk down the scoring datasets, summarize them, append
+        #   the summary to the main dataset, and then append the
+        #   non-aggregate data if requested.
+        for score_col, score_df in zip(score_cols, score_dfs):
+            # This transposes the dataset so that the statistics are
+            #   summarized by function
+            summary_df = score_df.T.describe().T
+            # This then adds the *name* of the scoring function to
+            #   the aggregate column names.
+            summary_df.columns = [
+                f'{score_col}_{_}' for _ in summary_df.columns
+            ]
+            # This if/then branch decides what to keep and appends
+            #   the data to the primary dataset.
+            if extended:
+                output_dfs += [summary_df, score_df]
+            else:
+                output_dfs += [summary_df]
+        # This takes everything and jams it together.
+        _output = pd.concat(output_dfs,axis=1)
+        return _output
+
     ################################################################
     #                     Mechanics Definitions                    #
     #                                                              #
@@ -232,7 +332,10 @@ class FunctionBank():
     #   bank. The score function is used to update scores in the   #
     #   bank.                                                      #
     ################################################################
-    def prune(self, save: bool= True):
+    def prune(
+        self,
+        random_state: Optional[int] = None
+    ):
         """Prune the function bank.
 
         This uses an overloadable function, set at init, which can
@@ -244,25 +347,53 @@ class FunctionBank():
 
         Parameters
         ----------
-        save: bool = True
-            Persist the function manifest to disk after pruning.
+        random_state: Optional[int] = None
+            This is an optional random seed used for repeatable
+            results.
+
+        Examples
+        --------
+        >>> # Go look in tests/functionbank/prune_tester
+        >>> # There's an example in there.
         """
-        sampled_ids: pd.Series = self._sampling_function(
-            self.to_df().query('type=="composed"'),
-            self._population_size
-        )
+        # This returns a *keep* style sample of ids from the composed
+        #   ids.
         x = self.to_df()
-        print(x)
-        print(x.type=='composed')
-        print(~x.id.isin(sampled_ids))
-        print(~x.id.isin(sampled_ids) & x.type=='composed')
-        print(x[~x.id.isin(sampled_ids) & x.type=='composed'])
-        # Come back here tomorrow and see if the population size is being set appropriately.
-        x.query(
-            'type=="composed"'
-        ).query(
-            f'id != {sampled_ids}'
-        ).eval('living = False', inplace=True)
+        living_ids: pd.Series = self._sampling_function(
+            x = x.query('type=="composed" and living==True'),
+            n = self._population_size,
+            random_state = random_state
+        )
+        # This is a boolean mask with True for 'keep this composed'
+        prune_id_mask = x.id.isin(living_ids)
+        # This is a boolean mask with True for 'this is io or atomic'
+        io_mask = x.type.isin(['source', 'sink', 'atomic'])
+        # This makes an 'or' from the two above and then negates it.
+        # This has the effect of 'masking' only the composed we wish
+        #   to prune.
+        x.loc[~(prune_id_mask | io_mask),'living'] = False
+        status_message = f"""Function Bank Prune:
+
+        Current Function Bank
+        ---------------------\n{self.to_df()}
+
+        Population Size
+        ---------------\n{self._population_size}
+
+        Sampled IDs to Persist
+        ----------------------\n{living_ids}
+
+        Pruning Mask
+        ------------\n{prune_id_mask}
+
+        Input/Output/Atomic Mask
+        ------------------------\n{io_mask}
+
+        Function Bank Posterior to Prune
+        --------------------------------\n{x}
+        """
+        if self._verbose:
+            print(status_message)
         self._function_manifest = x.to_dict(orient = 'records')
 
     def sample(
@@ -781,7 +912,9 @@ class FunctionBank():
         # This function will build a default manifest of functions
         #   and save it locally, if it does not exist.
         # Anything that's not JSON compatible gets pickled in and out.
-        if not os.path.exists(manifest_file):
+        # The force refresh allows for stomping on data, even if it
+        #   already exists.
+        if (not os.path.exists(manifest_file)) or self._force_refresh:
             self._function_manifest = build_default_function_space(
                 self._data,
                 self._target

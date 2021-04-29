@@ -98,7 +98,7 @@ def softmax_score_sample(
     s = softmax(scaled_and_averaged_scores)
     # Then draw some samples using the softmax output as a quasi
     #   probabilistic vector. The output of this is an n-length
-    #   vector of ids.
+    #   vector of ids. These are *keep* ids.
     sampled_ids = rng.choice(
         x.id,
         size = n,

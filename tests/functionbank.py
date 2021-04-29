@@ -119,19 +119,25 @@ test_case_1 = {
     },
     'prune': {
         'seed': 0,
+        'expected_results': []
+    },
+    'function_statistics':{
+        'kwargs': {
+            'ids': None
+        },
+        'expected_shape': (9, 25),
         'expected_results': pd.DataFrame([
-            {'id': '0', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5498, 'score_complexity': 44.96},
-            {'id': '1', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.464, 'score_complexity': 55.0667},
-            {'id': '2', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4815, 'score_complexity': 51.3},
-            {'id': 'y', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.0, 'score_complexity': 0.0},
-            {'id': 'Linear', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4739, 'score_complexity': 46.5},
-            {'id': 'ReLU', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.4521, 'score_complexity': 44.375},
-            {'id': 'Dropout', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.4903, 'score_complexity': 45.0741},
-            {'id': 'steve', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.4903, 'score_complexity': 57.0},
-            {'id': 'bob', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.6102, 'score_complexity': 52.5806}
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 25.0, 'score_accuracy_std': 0.3441, 'score_complexity_count': 25.0, 'score_complexity_std': 30.5512},
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 15.0, 'score_accuracy_std': 0.3009, 'score_complexity_count': 15.0, 'score_complexity_std': 34.087},
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 20.0, 'score_accuracy_std': 0.3413, 'score_complexity_count': 20.0, 'score_complexity_std': 32.7882},
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 1.0, 'score_accuracy_std': np.nan, 'score_complexity_count': 1.0, 'score_complexity_std': np.nan},
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 24.0, 'score_accuracy_std': 0.3105, 'score_complexity_count': 24.0, 'score_complexity_std': 30.6097},
+            {'score_default_count': 2.0, 'score_default_std': 0.6364, 'score_accuracy_count': 24.0, 'score_accuracy_std': 0.3063, 'score_complexity_count': 24.0, 'score_complexity_std': 32.382},
+            {'score_default_count': 2.0, 'score_default_std': 0.6364, 'score_accuracy_count': 27.0, 'score_accuracy_std': 0.2755, 'score_complexity_count': 27.0, 'score_complexity_std': 31.6421},
+            {'score_default_count': 2.0, 'score_default_std': 0.6364, 'score_accuracy_count': 27.0, 'score_accuracy_std': 0.3158, 'score_complexity_count': 27.0, 'score_complexity_std': 31.4006},
+            {'score_default_count': 2.0, 'score_default_std': 0.6364, 'score_accuracy_count': 31.0, 'score_accuracy_std': 0.3196, 'score_complexity_count': 31.0, 'score_complexity_std': 30.1129}
         ])
     }
-    
 }
 
 test_case_2 = {
@@ -228,17 +234,17 @@ test_case_2 = {
     },
     'prune': {
         'seed': 0,
+        'expected_results': ['steve']
+    },
+    'function_statistics':{
+        'kwargs': {
+            'ids': ['1', 'bob'],
+            'extended': True
+        },
+        'expected_shape': (2, 325),
         'expected_results': pd.DataFrame([
-            {'id': '0', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.0, 'score_complexity': 0.0},
-            {'id': '1', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5831, 'score_complexity': 49.0},
-            {'id': '2', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4259, 'score_complexity': 54.0},
-            {'id': '3', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5034, 'score_complexity': 56.9333},
-            {'id': 'y', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4363, 'score_complexity': 43.5769},
-            {'id': 'Linear', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.3903, 'score_complexity': 43.8095},
-            {'id': 'ReLU', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5318, 'score_complexity': 46.35},
-            {'id': 'Dropout', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5346, 'score_complexity': 46.5385},
-            {'id': 'steve', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4875, 'score_complexity': 63.5},
-            {'id': 'bob', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.6309, 'score_complexity': 54.5}
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 24.0, 'score_accuracy_std': 0.3442, 'score_complexity_count': 24.0, 'score_complexity_std': 43.8367},
+            {'score_default_count': 1.0, 'score_default_std': np.nan, 'score_accuracy_count': 30.0, 'score_accuracy_std': 0.3114, 'score_complexity_count': 30.0, 'score_complexity_std': 39.2997}
         ])
     }
 }
@@ -525,7 +531,6 @@ def score_tester(function_bank, kwargs, expected_results):
     """
     assert function_bank.to_df().equals(expected_results), err_msg
 
-
 def prune_tester(function_bank, seed, expected_results):
     """Tests the *default* pruning method in the Function Bank.
 
@@ -556,18 +561,15 @@ def prune_tester(function_bank, seed, expected_results):
             score = score_arr,
             score_name = score_names
         )
-    function_bank.prune(save=False)
-    actual_df = function_bank.to_df()
-    actual_score = actual_df[[_ for _ in actual_df.columns if _.startswith('score_')]]
-    actual_id = actual_df[['id', 'living']]
-    actual_score = actual_score.applymap(
-        np.mean
-    ).round(4)
-    actual_output = pd.concat([actual_id, actual_score], axis=1)
+    function_bank.prune(random_state = seed)
+    actual_results = function_bank.to_df().query(
+        'living==False'
+    ).id.to_list()
     err_msg = f"""FunctionBank Prune Error:
 
     When updating scoring information the expected output differed
-    from the actual.
+    from the actual. These below are the expected and actual pruned
+    composed functions.
 
     Random Seed
     -----------\n{seed}
@@ -576,10 +578,61 @@ def prune_tester(function_bank, seed, expected_results):
     -----------------\n{expected_results}
 
     Actual Results
-    --------------\n{actual_output.to_dict(orient='records')}
+    --------------\n{actual_results}
 
     """
-    assert actual_output.equals(expected_results), err_msg
+    assert set(expected_results) == set(actual_results), err_msg
+
+def function_statistics_tester(function_bank, kwargs, expected_shape, expected_results):
+    """Tests the statistics generation.
+
+    Parameters
+    ----------
+    function_bank: FunctionBank
+        This is the Function Bank object, which can be queried.
+    kwargs: Dict[str, Any]
+        Keyword arguments for function_statistics
+    expected_results: pd.DataFrame
+        The expected statistics.
+    """
+    actual_results = function_bank.function_statistics(**kwargs)
+    # The dataset we're going to test 
+    # 1. What's the dataset shape? Is it the expected shape?
+    err_msg = f"""FunctionBank Statistics Error:
+
+    When calculating statistics the dataset shape was not as
+    expected.
+
+    Expected Shape
+    --------------\n{expected_shape}
+
+    Actual Shape
+    ------------\n{actual_results.shape}
+
+    """
+    assert actual_results.shape == expected_shape, err_msg
+    actual_results = actual_results[[
+        'score_default_count',
+        'score_default_std',
+        'score_accuracy_count',
+        'score_accuracy_std',
+        'score_complexity_count',
+        'score_complexity_std'
+    ]].round(4)
+    err_msg = f"""FunctionBank Statistics Error:
+
+    When updating scoring information the expected output differed
+    from the actual. These below are the expected and actual results
+    of calling function_statistics on the function bank.
+
+    Expected Results
+    -----------------\n{expected_results}
+
+    Actual Results
+    --------------\n{actual_results.to_dict(orient='records')}
+
+    """
+    assert expected_results.equals(actual_results), err_msg
 
 @pytest.mark.parametrize('inputs', test_sets)
 def test_function_bank(inputs):
@@ -639,9 +692,14 @@ def test_function_bank(inputs):
         )
         # 9. Ensure that prune is doing the right thing.
         prune_tester(
-            # Spoiler alert, it's not
             function_bank = function_bank,
             seed = inputs['prune']['seed'],
             expected_results = inputs['prune']['expected_results']
         )
-        
+        # 10. Ensure that function statistics is doing the right thing
+        function_statistics_tester(
+            function_bank = function_bank,
+            kwargs = inputs['function_statistics']['kwargs'],
+            expected_shape = inputs['function_statistics']['expected_shape'],
+            expected_results = inputs['function_statistics']['expected_results']
+        )

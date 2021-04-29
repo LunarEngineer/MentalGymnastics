@@ -247,19 +247,23 @@ class FunctionBank():
         save: bool = True
             Persist the function manifest to disk after pruning.
         """
-        sampled_ids: pd.Series = self._sampling_func(
+        sampled_ids: pd.Series = self._sampling_function(
             self.to_df().query('type=="composed"'),
             self._population_size
         )
-        x = self.to_df().query(
+        x = self.to_df()
+        print(x)
+        print(x.type=='composed')
+        print(~x.id.isin(sampled_ids))
+        print(~x.id.isin(sampled_ids) & x.type=='composed')
+        print(x[~x.id.isin(sampled_ids) & x.type=='composed'])
+        # Come back here tomorrow and see if the population size is being set appropriately.
+        x.query(
             'type=="composed"'
         ).query(
             f'id != {sampled_ids}'
-        ).eval('living = False')
-        x
-
-        raise Exception(f"IN PRUNE:\n{x}")
-        
+        ).eval('living = False', inplace=True)
+        self._function_manifest = x.to_dict(orient = 'records')
 
     def sample(
         self,

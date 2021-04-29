@@ -119,7 +119,17 @@ test_case_1 = {
     },
     'prune': {
         'seed': 0,
-        'expected_results': 0
+        'expected_results': pd.DataFrame([
+            {'id': '0', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5498, 'score_complexity': 44.96},
+            {'id': '1', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.464, 'score_complexity': 55.0667},
+            {'id': '2', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4815, 'score_complexity': 51.3},
+            {'id': 'y', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.0, 'score_complexity': 0.0},
+            {'id': 'Linear', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4739, 'score_complexity': 46.5},
+            {'id': 'ReLU', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.4521, 'score_complexity': 44.375},
+            {'id': 'Dropout', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.4903, 'score_complexity': 45.0741},
+            {'id': 'steve', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.4903, 'score_complexity': 57.0},
+            {'id': 'bob', 'living': True, 'score_default': 0.45, 'score_accuracy': 0.6102, 'score_complexity': 52.5806}
+        ])
     }
     
 }
@@ -218,7 +228,18 @@ test_case_2 = {
     },
     'prune': {
         'seed': 0,
-        'expected_results': 0
+        'expected_results': pd.DataFrame([
+            {'id': '0', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.0, 'score_complexity': 0.0},
+            {'id': '1', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5831, 'score_complexity': 49.0},
+            {'id': '2', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4259, 'score_complexity': 54.0},
+            {'id': '3', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5034, 'score_complexity': 56.9333},
+            {'id': 'y', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4363, 'score_complexity': 43.5769},
+            {'id': 'Linear', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.3903, 'score_complexity': 43.8095},
+            {'id': 'ReLU', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5318, 'score_complexity': 46.35},
+            {'id': 'Dropout', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.5346, 'score_complexity': 46.5385},
+            {'id': 'steve', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.4875, 'score_complexity': 63.5},
+            {'id': 'bob', 'living': True, 'score_default': 0.0, 'score_accuracy': 0.6309, 'score_complexity': 54.5}
+        ])
     }
 }
 
@@ -535,8 +556,14 @@ def prune_tester(function_bank, seed, expected_results):
             score = score_arr,
             score_name = score_names
         )
-    actual_df = function_bank.todf()
-    actual_score = actual_df[['id', *[_ for _ in actual_df.columns if _.startswith('score_')]]]
+    function_bank.prune(save=False)
+    actual_df = function_bank.to_df()
+    actual_score = actual_df[[_ for _ in actual_df.columns if _.startswith('score_')]]
+    actual_id = actual_df[['id', 'living']]
+    actual_score = actual_score.applymap(
+        np.mean
+    ).round(4)
+    actual_output = pd.concat([actual_id, actual_score], axis=1)
     err_msg = f"""FunctionBank Prune Error:
 
     When updating scoring information the expected output differed
@@ -549,10 +576,10 @@ def prune_tester(function_bank, seed, expected_results):
     -----------------\n{expected_results}
 
     Actual Results
-    --------------\n{expected_results}
+    --------------\n{actual_output.to_dict(orient='records')}
 
     """
-    raise Exception(err_msg)
+    assert actual_output.equals(expected_results), err_msg
 
 @pytest.mark.parametrize('inputs', test_sets)
 def test_function_bank(inputs):
@@ -612,6 +639,7 @@ def test_function_bank(inputs):
         )
         # 9. Ensure that prune is doing the right thing.
         prune_tester(
+            # Spoiler alert, it's not
             function_bank = function_bank,
             seed = inputs['prune']['seed'],
             expected_results = inputs['prune']['expected_results']

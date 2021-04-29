@@ -22,6 +22,8 @@ class MentalAgent:
             max_steps=hparams["max_steps"],
             verbose=hparams["verbose"],
             epochs=hparams["epochs"],
+            net_lr=hparams["net_lr"],
+            net_batch_size = hparams["net_batch_size"]
         )
 
         self.num_episodes = hparams["num_episodes"]
@@ -76,6 +78,8 @@ if __name__ == "__main__":
     hparams["num_functions"] = 8
     hparams["num_active_fns_init"] = 3
     hparams["epochs"] = 5
+    hparams["net_lr"] = 0.0001
+    hparams["net_batch_size"] = 128
 
     agent = MentalAgent(hparams)
     agent.train(hparams)

@@ -20,7 +20,6 @@ from mentalgym.utils.spaces import (
 )
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
 from mentalgym.constants import linear_i, relu_i, dropout_i, linear_output_size, dropout_p
-from mentalgym.utils.data import testing_df
 
 
 # Customize pandas DataFrame display width
@@ -63,6 +62,9 @@ class MentalEnv(gym.Env):
     max_steps: int = 4
         The maximum number of steps the agent can take in an
         episode.
+    epochs: int = 5
+    net_lr: float = 0.0001
+    net_batch_size: int = 128
     seed: Optional[int] = None
         This is used to seed randomness.
     verbose: bool = False
@@ -104,6 +106,7 @@ class MentalEnv(gym.Env):
         super(MentalEnv, self).__init__()
 
         dataset.columns = [str(_) for _ in dataset.columns]
+        self.dataset = dataset
         ############################################################
         #                 Store Hyperparameters                    #
         ############################################################
@@ -135,7 +138,7 @@ class MentalEnv(gym.Env):
         #   composed functions that have been created over time.   #
         ############################################################
         self._function_bank = FunctionBank(
-            modeling_data=dataset,
+            modeling_data=self.dataset,
             population_size=number_functions,
             **self._function_bank_kwargs,
         )
@@ -188,7 +191,9 @@ class MentalEnv(gym.Env):
             low=-np.inf, high=np.inf, shape=(self._action_size,)
         )
 
-        # Hyperparameters to train net
+        ############################################################
+        # Hyperparameters for Training and Testing composed Net    #
+        ############################################################
         self.epochs = epochs
         self.net_lr = net_lr
         self.net_batch_size = net_batch_size
@@ -590,8 +595,8 @@ class MentalEnv(gym.Env):
         print("\n\nPyTorch Init:\n", self.net_init)
 
         # Creating np arrays
-        target = testing_df['output'].values
-        features = testing_df.drop('output', axis=1).values
+        target = self.dataset['output'].values
+        features = self.dataset.drop('output', axis=1).values
 
         # Passing to DataLoader
         train = data_utils.TensorDataset(torch.tensor(features), torch.tensor(target))

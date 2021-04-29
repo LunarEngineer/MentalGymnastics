@@ -1,22 +1,16 @@
 import numpy as np
-
-# import torch
-import mentalgym
-import mentalgym.envs
-import mentalgym.functionbank
-from mentalgym.utils.data import testing_df
-
-# import gym
 from stable_baselines3 import A2C
 from stable_baselines3.common.env_checker import check_env
-
-# from stable_baselines3.common.env_util import make_vec_env
+from mentalgym.envs import MentalEnv
+from mentalgym.utils.data import testing_df
 
 
 class MentalAgent:
     def __init__(self, hparams):
+        """Initialize the RL agent, including setting up its environment"""
+
         # Instantiate environment
-        self.env = mentalgym.envs.MentalEnv(
+        self.env = MentalEnv(
             testing_df,
             number_functions=hparams["number_functions"],
             max_steps=hparams["max_steps"],
@@ -41,12 +35,12 @@ class MentalAgent:
             learning_rate=hparams["alpha_start"],
             n_steps=1,
             gamma=hparams["gamma"],
-            verbose=0,
+            verbose=hparams["verbose"],
         )
 
     #                         policy_kwargs)
 
-    def train(self, hparams):
+    def train(self):
         """Train the RL agent.
 
         self.model.n_steps: number of env steps per update
@@ -61,7 +55,7 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
-    hparams["verbose"] = False
+    hparams["verbose"] = 0
     hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
     hparams["max_steps"] = 4
@@ -82,4 +76,4 @@ if __name__ == "__main__":
     hparams["net_batch_size"] = 128
 
     agent = MentalAgent(hparams)
-    agent.train(hparams)
+    agent.train()

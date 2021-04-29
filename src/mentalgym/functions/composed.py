@@ -1,36 +1,58 @@
 import json
 import os
+import pandas as pd
 import torch
+
+from mentalgym.types import ExperimentSpace, FunctionBank
+from typing import Any, Dict, Iterable, Optional, Union
 
 class ComposedFunction():
     """Composed of multiple atomic functions.
 
-    This class is used to build a representation for a composed
-    function. It can be instantiated in one of two ways:
+    This class is used to build, run, and load a composed function.
 
-    1. When called for the first time this will be provided a folder
-       and an experiment space; the space will be used to build the
-       PyTorch graph. The graph will be persisted. The function bank
-       passed will be used to query for information.
-    2. When called subsequently this will only be provided a folder
-       path and a function bank; it will build itself from that
-       location.
+    The 'id' is a string representing the *name* of the Function.
+    The Composed Function will check the FunctionBank to
+        see if an object with this id exists. If it does, then
+        the Composed Function will attempt to load its weights
+        from that location. If it is unable to load weights then
+        an error is raised.
+    If it *does not see a folder*, then this will build a model
+        from a given Experiment Space.
 
     Parameters
     ----------
-    fn_path: str
-        This is the location
+    experiment_space: Optional[ExperimentSpace]
+        This is an ExperimentSpace object.
+    function_bank: Optional[FunctionBank] = None
+        This is a FunctionBank object.
+
+    Methods
+    -------
+    forward(*args, **kwargs):
+        The function signature of forward is such that it expects
+        to see the inputs it was instantiated with when it is called
+        with forward.
+
+    Properties
+    ----------
+
     """
     def __init__(
         self,
-        fn_path: str,
+        id: str,
         experiment_space: Optional[ExperimentSpace] = None,
         function_bank: Optional[FunctionBank] = None
     ):
-        self.fn_path = fn_path
-        self._function_bank = function_bank
-        self._experiment_space = experiment_space
-        # 1) Is this building the net?
+        # 1) Is this building the net? We will check to see if the
+        #   Function's directory exists.
+        function_dir = os.path.join(
+            experiment_space._function_bank_directory,
+            id
+        )
+        folder_exists = os.path.isdir(function_dir)
+        if not folder_exists:
+            self.build_forward(experiment_space, function_bank)
         has_space = experiment_space is not None
         has_bank = function_bank is not None
         if has_bank:
@@ -59,15 +81,7 @@ class ComposedFunction():
                 """
                 raise Exception(err_msg)
 
-    def build_from_space():
-        """Builds a net from an experiment space representation.
-
-        Returns
-        -------
-        model: torch.module
-            This is a PyTorch layer with forward, backward, etc...
-
-        """
+    
 
         # When building a PyTorch net we generally start at the input.
         # This graph is easiest to *construct* by starting at the output

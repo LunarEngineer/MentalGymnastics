@@ -16,7 +16,8 @@ from mentalgym.utils.function import (
 )
 from mentalgym.utils.validation import is_function
 from numpy.typing import ArrayLike
-from typing import Callable, Optional
+from scipy.spatial import cKDTree
+from typing import Callable, Iterable, Optional
 
 
 def refresh_experiment_container(
@@ -494,6 +495,35 @@ def build_default_function_space(
         ],
         axis = 1
     ).assign(input=None).to_dict(orient = 'records')
-    
 
     return io_functions
+
+def get_experiment_neighbors(
+    experiment_space,
+    location,
+    radius
+) -> Iterable[str]:
+    """Uses a KD Tree to return neighbors in range.
+
+    Examples
+    --------
+    >>> #TODO: Put a simple experiment space here.
+    >>> location = (0,0)
+    >>> radius = 2
+    >>> get_experiment_neighbors(
+    ...     experiment_space = experiment_space,
+    ...     location = location,
+    ...     radius = radius
+    ... )
+    ['1', '0']
+    """
+    tree = cKDTree(
+        experiment_space[[
+            _ for _ in experiment_space.columns
+            if _.startswith("exp_loc")
+        ]]
+    )
+    # Query the KD Tree for all points within the radius.
+    idx = tree.query_ball_point(location, radius)
+    return experiment_space.iloc[idx].id.to_list()
+

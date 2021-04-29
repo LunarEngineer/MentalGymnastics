@@ -6,6 +6,8 @@ This is an environment where you can specify a number of atomic *functions* (wit
 
 The agent, beginning with these atomic functions and an input dataset, will begin experimenting and will add higher level functions into it's function space as it explores and evolves to solve a defined problem.
 
+Currently these functions are PyTorch layers.
+
 ## The State Space
 
 The environment presents a complex state space composed of:
@@ -25,21 +27,18 @@ When the episode starts this consists solely of the *source* and *sink* nodes.
 
 ### The Function Space
 
-This is a dataset that represents a *function palette* which the agent may place into the Experiment Space and which contains:
+This is a dataset that represents a *function palette* from which the agent may choose Functions to insert into the Experiment Space, which contains:
 
-* Input functions,
-* Output functions,
 * Atomic functions, and
 * Composed functions
-
-Input and Output functions are placed into the environment when the environment is instantiated; Atomic actions (when chosen) are used to create Composed functions.
 
 The *size* of the palette is defined at runtime when the gym is created.
 
 ## The Action Space
 
-The agent picks an action every turn by selecting a discrete value which is associated with one of the functions from the function bank.
-The agent also chooses a continous location and a continuous radius.
+$A == \left(ID, L, R)\right$
+
+The agent picks an action every turn by selecting an *index*, a *location*, and a *radius*. The agent constructed within this repository is implemen
 
 In every time step the *state* is updated by inserting the function that was selected at the location and radius given.
 

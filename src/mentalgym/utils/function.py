@@ -1,11 +1,12 @@
 import pandas as pd
 from collections import deque
-from mentalgym.types import Function, FunctionSet, FunctionObject
-
+from mentalgym.functions import AtomicFunction, ComposedFunction
+from mentalgym.types import ExperimentSpace, Function, FunctionBank, FunctionSet
 from numpy.random import default_rng
 from numpy.typing import ArrayLike
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Union
 
+FunctionObject = Union[AtomicFunction, ComposedFunction]
 
 def dataset_to_functions(
     dataset: pd.DataFrame,
@@ -172,3 +173,41 @@ def make_function(
             }
         )
     return function_representation
+
+def build_forward(
+        experiment_space: ExperimentSpace,
+        function_bank: FunctionBank
+    ):
+        """Builds a net from an experiment space representation.
+
+        Parameters
+        ----------
+        experiment_space: ExperimentSpace
+            This is an ExperimentSpace object.
+        function_bank: FunctionBank
+            This is an ExperimentSpace object.
+
+        Returns
+        -------
+        model: torch.module
+            This is a PyTorch layer with forward, backward, etc...
+        """
+
+def recursion_tree_builder(
+    experiment_space: ExperimentSpace,
+    id: str
+) -> Dict[str, Any]:
+    """Returns a recursed leg of a DaG built from an Experiment.
+
+    This will query the ExperimentSpace for inputs belonging to
+    this ID. This will then return a dictionary, keyed by those
+    input IDs, with values of recursion_tree_builder.
+    """
+    query_results = experiment_space.query('id==@id')
+    if query_results.input.item() is None:
+        return f'input_{id}'
+    else:
+        return {
+            subid: recursion_tree_builder(experiment_space, subid)
+            for subid in query_results
+        }

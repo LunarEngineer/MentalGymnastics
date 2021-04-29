@@ -16,7 +16,7 @@ from mentalgym.utils.spaces import (
     append_to_experiment,
 )
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
-from mentalgym.constants import intermediate_i, linear_output_size, dropout_p
+from mentalgym.constants import linear_i, relu_i, dropout_i, linear_output_size, dropout_p
 from mentalgym.utils.data import testing_df
 
 
@@ -133,7 +133,6 @@ class MentalEnv(gym.Env):
             population_size=number_functions,
             **self._function_bank_kwargs,
         )
-        # self._function_bank = function_bank
         ############################################################
         #            Instantiate the Experiment Space              #
         #                                                          #
@@ -372,27 +371,24 @@ class MentalEnv(gym.Env):
                         sum_of_inputs += inp_dict["output_size"]
 
                 if function_class == ReLU:
+                    intermediate_i = relu_i
                     self.function_parameters = {
                         "output_size": sum_of_inputs,
                         "input_size": sum_of_inputs,
                     }
                 elif function_class == Dropout:
+                    intermediate_i = dropout_i
                     self.function_parameters = {
                         "p": dropout_p,
                         "output_size": sum_of_inputs,
                         "input_size": sum_of_inputs,
                     }
                 elif function_class == Linear:
+                    intermediate_i = linear_i
                     self.function_parameters = {
                         "output_size": linear_output_size,
                         "input_size": sum_of_inputs,
                     }
-
-                #################
-                # Note: See if we can build computation graph HERE.
-                # Need to import dataset and assign the inputs
-                # (and possibly batch them)
-                #################
 
                 built_function = make_function(
                     function_index=intermediate_i,
@@ -561,23 +557,18 @@ class MentalEnv(gym.Env):
                 
         print("\n\nFinal Net (df):\n", net_df)
 
-#        net_list = net_df.sort_index(ascending=False).id.to_list()
-#        print("\nNet Dict:\n", net_dict)
-
         for ind in range(len(net_df)):
-            function_class = self._function_bank.query(
-                "i=={}".format(-net_df.iloc[ind]['i']-1)
-            ).object.item()
-            if function_class == ReLU:
+            fn_type = net_df.iloc[ind]['i']
+            if fn_type == relu_i:
                 self.net_init.append(nn.ReLU())
-            elif function_class == Linear:
+            elif fn_type == linear_i:
                 self.net_init.append(
                     nn.Linear(
                         self.function_parameters["input_size"],
                         self.function_parameters["output_size"],
                     )
                 )
-            elif function_class == Dropout:
+            elif fn_type == dropout_i:
                 self.net_init.append(
                     nn.Dropout(self.function_parameters["p"])
                 )

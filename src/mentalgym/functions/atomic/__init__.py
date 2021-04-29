@@ -2,6 +2,7 @@ from ._atomic import AtomicFunction
 from .Linear import Linear
 from .relu import ReLU
 from .Dropout import Dropout
+from mentalgym.constants import linear_i, relu_i, dropout_i
 
 # Here we are going to make a Function Set for the Atomic functions.
 # The id's are numerically descending.
@@ -9,19 +10,19 @@ from .Dropout import Dropout
 # TODO: Someday make this more intelligent, potentially scrape a dataset.
 atomic_functions = [
     dict(
-        function_index = 0,
+        function_index = linear_i,
         function_id = 'Linear',
         function_object = Linear,
         function_type = 'atomic'
     ),
     dict(
-        function_index = 1,
+        function_index = relu_i,
         function_id = 'ReLU',
         function_object = ReLU,
         function_type = 'atomic'
     ),
     dict(
-        function_index = 2,
+        function_index = dropout_i,
         function_id = 'Dropout',
         function_object = Dropout,
         function_type = 'atomic'

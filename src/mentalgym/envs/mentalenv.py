@@ -371,19 +371,6 @@ class MentalEnv(gym.Env):
                         sum_of_inputs += 1
                     else:
                         sum_of_inputs += inp_dict["output_size"]
-<<<<<<< HEAD
-                
-                # TODO: Move these hardcoded numbers to constants.py
-                # TODO: Instead, can we move them to the init and scrape from kwargs?
-                # That will make it easier to experiment.
-                if function_class == ReLU:
-                    self.function_parameters = {"output_size": sum_of_inputs, "input_size": sum_of_inputs}
-                elif function_class == Dropout:
-                    self.function_parameters = {"p": 0.5, "output_size": sum_of_inputs, "input_size": sum_of_inputs}
-                elif function_class == Linear:
-                    self.function_parameters = {"output_size": 256, "input_size": sum_of_inputs}
-=======
->>>>>>> efc4d7a450bdeb9c15cdb7f3b1f2d27d6fcb26ab
 
                 if function_class == ReLU:
                     intermediate_i = relu_i
@@ -457,12 +444,7 @@ class MentalEnv(gym.Env):
         ############################################################
         # Return a minor reward if there are *any* nodes added.
         reward = connection_reward(
-<<<<<<< HEAD
-            self._experiment_space,
-            self._function_bank
-=======
             self._experiment_space, self._function_bank
->>>>>>> efc4d7a450bdeb9c15cdb7f3b1f2d27d6fcb26ab
         )
 
         # Default values here, or pass some info?
@@ -594,6 +576,8 @@ class MentalEnv(gym.Env):
                 )
 
         print("\n\nPyTorch Init:\n", self.net_init)
+
+        
 
 #        cur_inputs = [self._experiment_space.query('type == "sink"')["input"].item()]
 #        while True:

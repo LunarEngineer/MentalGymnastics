@@ -227,6 +227,10 @@ class ComposedFunction():
         )
         raise NotImplementedError(err_msg)
 
+        # There is a recursor function and a recursive forward.
+        # In the recursor you take the output and recursively build the input.
+        # We are torch concatenating
+
     def save(self, repr, model):
         with open(os.path.join(self.fn_path, "connectivity_graph.json"), 'w') as f:
             f.write(json.dumps(repr))

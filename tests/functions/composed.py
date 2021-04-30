@@ -18,11 +18,13 @@ from mentalgym.utils.function import make_function
 from mentalgym.utils.spaces import (
     append_to_experiment,
     get_experiment_neighbors,
+    get_output_inputs,
     refresh_experiment_container
 )
 from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
+from typing import Iterable
 
 # TODO: More test cases here would be extremely useful. Simply look
 #   at the structure of the Experiment Space below, mimic it, then
@@ -161,6 +163,14 @@ def test_composed_function(test_set):
                 location = action['location'],
                 radius = action['radius']
             )
+        # Then snap the nearest node to the output.
+        nearest_id: str = get_output_inputs(
+            experiment_space = experiment_space
+        )
+        experiment_space.at[
+            experiment_space.type == "sink",
+            "input"
+        ] = [nearest_id]
         status_message = f"""
 
         Experiment Space Posterior to Actions
@@ -170,7 +180,7 @@ def test_composed_function(test_set):
             print(status_message)
         # Now we are going to create a Composed Function from these
         #   actions.
-        composed_function = layer_function = make_function(
+        composed_function = make_function(
             function_index = function_bank.idxmax() + 1,
             function_type = 'composed',
             function_object = ComposedFunction,

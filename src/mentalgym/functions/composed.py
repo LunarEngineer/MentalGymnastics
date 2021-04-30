@@ -130,7 +130,6 @@ class ComposedFunction():
         # This line ensures that all the 'No input' nodes have None
         #   values, instead of NaN. This is used elsewhere, where None
         #   values will trigger a recursion stop.
-        print(experiment_space)
         experiment_space = experiment_space.fillna(
             np.nan
         ).replace([np.nan], [None])
@@ -321,6 +320,10 @@ class ComposedFunction():
 
 
         raise NotImplementedError(err_msg)
+
+        # There is a recursor function and a recursive forward.
+        # In the recursor you take the output and recursively build the input.
+        # We are torch concatenating
 
     def save(self, repr, model):
         with open(os.path.join(self.fn_path, "connectivity_graph.json"), 'w') as f:

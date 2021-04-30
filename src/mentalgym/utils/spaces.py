@@ -9,7 +9,7 @@ import pandas as pd
 #pd.set_option('display.max_columns', None)
 from mentalgym.constants import experiment_space_fields
 from mentalgym.functions import atomic_functions
-from mentalgym.types import FunctionSet
+from mentalgym.types import ExperimentSpace, FunctionSet
 from mentalgym.utils.function import (
     dataset_to_functions,
     make_function
@@ -498,6 +498,7 @@ def build_default_function_space(
 
     return io_functions
 
+# TODO: Testing
 def get_experiment_neighbors(
     experiment_space,
     location,
@@ -541,3 +542,59 @@ def get_experiment_neighbors(
     idx = tree.query_ball_point(location, radius)
     return experiment_space.iloc[idx].id.to_list()
 
+# TODO: Testing
+def get_output_inputs(
+    experiment_space: ExperimentSpace,
+    add_composed: bool = False
+) -> Iterable[str]:
+    """Return ID value for closest node to output.
+
+    Unless specifically asked this *only* looks for 'intermediate'
+    functions. Composed functions, if placed into a net, represent a
+    *previous* graph that has been built and executed.
+
+    Parameters
+    ----------
+    experiment_space: ExperimentSpace
+        An ExperimentSpace object with a sink location and nodes.
+    """
+    # Pull the location fields out.
+    loc_fields = [
+        _ for _ in experiment_space.columns
+        if _.startswith('exp_loc_')
+    ]
+    # Create a one row dataframe for the sink.
+    sink_location = experiment_space.query(
+        'type == "sink"'
+    )[loc_fields]
+    # Determine which nodes to use for a neighbor query.
+    if not add_composed:
+        nodes = experiment_space.query(
+            'type == "intermediate"'
+        )
+    else:
+        nodes = experiment_space.query(
+            'type in ["intermediate", "composed"]'
+        )[loc_fields]
+    # Do some 'silly' checking.
+    err_msg = """Get Output Inputs Error:
+
+    When attempting to find the closest node to the sink in the
+    ExperimentSpace no *sink* node was found.
+    """
+    assert not sink_location.empty, err_msg
+    err_msg = """Get Output Inputs Error:
+
+    When attempting to find the closest node to the sink in the
+    ExperimentSpace no connecting nodes were found.
+    """
+    assert not nodes.empty, err_msg
+    # Build a tree from the nodes.
+    tree = cKDTree(
+        nodes[loc_fields]
+    )
+    # Return the nearest ID.
+    nearest_id = nodes.iloc[
+        tree.query(sink_location, k=1)[1][0]
+    ].id
+    return nearest_id

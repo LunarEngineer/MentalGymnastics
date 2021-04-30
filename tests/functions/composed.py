@@ -18,11 +18,13 @@ from mentalgym.utils.function import make_function
 from mentalgym.utils.spaces import (
     append_to_experiment,
     get_experiment_neighbors,
+    get_output_inputs,
     refresh_experiment_container
 )
 from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
+from typing import Iterable
 
 # TODO: More test cases here would be extremely useful. Simply look
 #   at the structure of the Experiment Space below, mimic it, then
@@ -161,6 +163,15 @@ def test_composed_function(test_set):
                 location = action['location'],
                 radius = action['radius']
             )
+        # Then snap the nearest node to the output.
+        nearest_id: str = get_output_inputs(
+            experiment_space = experiment_space
+        )
+        # Add that information to the experiment space.
+        experiment_space.at[
+            experiment_space.query('type == "sink"').index.item(),
+            "input"
+        ] = [nearest_id]
         status_message = f"""
 
         Experiment Space Posterior to Actions
@@ -170,12 +181,22 @@ def test_composed_function(test_set):
             print(status_message)
         # Now we are going to create a Composed Function from these
         #   actions.
-        composed_function = layer_function = make_function(
+        composed_function = make_function(
             function_index = function_bank.idxmax() + 1,
             function_type = 'composed',
             function_object = ComposedFunction,
             function_hyperparameters = {}
         )
+        # This, when it's called for the first time, builds
+        #   a net and assigns it to forward.
+        composed_instance = ComposedFunction(
+            id = composed_function['id'],
+            experiment_space = experiment_space,
+            function_bank = function_bank,
+            verbose = False
+        )
+        # Set inputs.
+        composed_function['inputs'] = composed_instance.inputs
         status_message = f"""
 
         Composed Function Representation
@@ -183,16 +204,6 @@ def test_composed_function(test_set):
         """
         if verbose:
             print(status_message)
-        # This, when it's called for the first time, builds
-        #   a net and assigns it to forward.
-        composed_instance = ComposedFunction(
-            id = composed_function['id'],
-            experiment_space = experiment_space,
-            function_bank = function_bank,
-            verbose = True
-        )
-        # Set inputs.
-        composed_function['inputs'] = composed_instance.inputs
 ####################################################################
 #  The example PyTorch equivalent is shown below and the resultant #
 #   weight structures compared.                                    #

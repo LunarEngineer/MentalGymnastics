@@ -188,9 +188,11 @@ def test_composed_function(test_set):
         composed_instance = ComposedFunction(
             id = composed_function['id'],
             experiment_space = experiment_space,
-            function_bank = function_bank
+            function_bank = function_bank,
+            verbose = True
         )
         # Set inputs.
+        composed_function['inputs'] = composed_instance.inputs
 ####################################################################
 #  The example PyTorch equivalent is shown below and the resultant #
 #   weight structures compared.                                    #

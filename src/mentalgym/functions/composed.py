@@ -45,50 +45,61 @@ class ComposedFunction():
         self,
         id: str,
         experiment_space: Optional[ExperimentSpace] = None,
-        function_bank: Optional[FunctionBank] = None
+        function_bank: Optional[FunctionBank] = None,
+        verbose: bool = True
     ):
+        self._verbose = verbose
         # 1) Is this building the net? We will check to see if the
         #   Function's directory exists.
         function_dir = os.path.join(
-            experiment_space._function_bank_directory,
+            function_bank._function_bank_directory,
             id
         )
         folder_exists = os.path.isdir(function_dir)
         # If the folder does not exist, then we are going to build
         #   the PyTorch graph for this net.
         if not folder_exists:
-            self.build_forward(experiment_space, function_bank)
+            has_space = experiment_space is not None
+            # Get a minimal subspace
+            subspace = self.build_from_space(experiment_space)
+            # Then turn that into a graph.
+            self.build_forward(
+                experiment_space = subspace,
+                function_bank = function_bank
+            )
+            # And save that graph.
+            self.save()
         # If the folder *does* exist, then we are going to load the
         #   graph for this net.
         else:
             self.load()
-        # has_space = experiment_space is not None
-        # has_bank = function_bank is not None
-        if has_bank:
-            if has_space:
-                self.model = self.build_from_space()
-            else:
-                self.model = self.load()
-        else:
-            try:
-                self.model = self.load()
-            except:
-                err_msg = """Composed Function Error:
+        # 
+        # 
+        # if has_bank:
+        #     if has_space:
+        #         self.model = self.build_from_space()
+        #     else:
+        #         self.model = self.load()
+        # else:
+        #     try:
+        #         self.model = self.load()
+        #     except:
+        #         err_msg = """Composed Function Error:
 
-                The Composed Function constructor was not given a
-                FunctionBank object; when it attempted to pull a
-                model from the given location it was unable to do so.
+        #         The Composed Function constructor was not given a
+        #         FunctionBank object; when it attempted to pull a
+        #         model from the given location it was unable to do so.
 
-                Function Bank
-                -------------\n{function_bank}
+        #         Function Bank
+        #         -------------\n{function_bank}
 
-                Experiment Space
-                ----------------\n{experiment_space}
+        #         Experiment Space
+        #         ----------------\n{experiment_space}
 
-                Function Directory
-                ------------------\n{fn_path}
-                """
-                raise Exception(err_msg)
+        #         Function Directory
+        #         ------------------\n{fn_path}
+        #         """
+        #         raise Exception(err_msg)
 
     def build_from_space(
         self,
@@ -116,6 +127,7 @@ class ComposedFunction():
         # This line ensures that all the 'No input' nodes have None
         #   values, instead of NaN. This is used elsewhere, where None
         #   values will trigger a recursion stop.
+        print(experiment_space)
         experiment_space = experiment_space.fillna(
             np.nan
         ).replace([np.nan], [None])
@@ -179,7 +191,7 @@ class ComposedFunction():
         Output Experiment Space
         -----------------------\n{net_df}
         """
-        if self.verbose:
+        if self._verbose:
             print(status_message)
         return net_df
 
@@ -196,7 +208,9 @@ class ComposedFunction():
           and walking backward. When we've walked backwards using a
           recursion function we have a completed net.
         
-        This function is using the ExperimentSpace to do this.
+        This function is using the ExperimentSpace to do this. This
+        does not return anything, but it sets the self.model and
+        self.inputs properties.
 
         Parameters
         ----------

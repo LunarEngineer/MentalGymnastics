@@ -534,7 +534,7 @@ class MentalEnv(gym.Env):
         if function_class == ReLU:
             intermediate_i = relu_i
             function_parameters = {
-                "output_size": sum_of_inputs,
+                "output_size": sum_of_inputs, #TODO: Think this needs to change to 
                 "input_size": sum_of_inputs,
             }
         elif function_class == Dropout:

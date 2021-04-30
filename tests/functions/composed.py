@@ -104,6 +104,41 @@ def drop_layer(
         for k, v in layer_function.items()
         if k in list(experiment_space.columns) + locs
     }
+    # 4) Then this sets the hyperparameters appropriately.
+    sum_of_inputs = 0
+    inputs_hparams = experiment_space.query(
+        f'id=={input_ids}'
+    ).hyperparameters.to_list()
+    # This is walking down a list of dictionaries.
+    for parameter_dict in inputs_hparams:
+        # If the dictionary is empty
+        if not len(parameter_dict):
+            # Then it's a single column coming in. Increment the
+            #   count of input by one.
+            sum_of_inputs += 1
+        else:
+            # Otherwise it's the sum of the output size from the
+            #   layer above tacked on to the accumulating value.
+            sum_of_inputs += parameter_dict["output_size"]
+
+    # Set function-specific hyperparameters
+    if atomic_constants[index] == ReLU:
+        new_function['hyperparameters'] = {
+            "output_size": sum_of_inputs, #TODO: Think this needs to change to 
+            "input_size": sum_of_inputs,
+        }
+    elif atomic_constants[index] == Dropout:
+        new_function['hyperparameters'] = {
+            "p": .5,
+            "output_size": sum_of_inputs,
+            "input_size": sum_of_inputs,
+        }
+    elif atomic_constants[index] == Linear:
+        print("SHOULD BE HERE")
+        new_function['hyperparameters'] = {
+            "out_features": 12,
+            "in_features": sum_of_inputs,
+        }
     experiment_space = append_to_experiment(
         experiment_space_container = experiment_space,
         function_bank = function_bank,

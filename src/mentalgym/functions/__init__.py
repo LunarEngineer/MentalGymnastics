@@ -1,5 +1,6 @@
 from .atomic import (
     atomic_functions,
+    atomic_constants,
     AtomicFunction,
     Linear,
     ReLU,

@@ -465,6 +465,10 @@ class MentalEnv(gym.Env):
 
             # Build and save net
             id = 100 # TODO:How to generate ID?
+            # TODO: Use the make_function to generate the ID, then create
+            #   a new composed function like you're doing. The ID will
+            #   get updated in the 'id' field and added to the hyperparameter
+            #   field {'id': inp}
             new_composed_fn = ComposedFunction(id, self._experiment_space,
                                                 self._function_bank)
 

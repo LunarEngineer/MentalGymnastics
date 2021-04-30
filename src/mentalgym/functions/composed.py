@@ -7,7 +7,7 @@ from copy import deepcopy
 
 from mentalgym.types import ExperimentSpace, FunctionBank
 from typing import Any, Dict, Iterable, Optional, Union
-
+import torch.nn as nn
 
 class ComposedFunction():
     """Composed of multiple atomic functions.
@@ -64,6 +64,9 @@ class ComposedFunction():
         folder_exists = os.path.isdir(function_dir)
         # If the folder does not exist, then we are going to build
         #   the PyTorch graph for this net.
+        
+        self.module_dict = nn.ModuleDict()
+
         if not folder_exists:
             # Get a minimal subspace
             subspace = self.build_from_space(experiment_space)
@@ -200,6 +203,78 @@ class ComposedFunction():
         return net_df
 
 
+
+    # def _recusive_init(
+    #     self, 
+    #     experiment_space: ExperimentSpace, 
+    #     id: str
+    # ):
+    #     """ Populates the ModuleDict.
+
+    #     Takes in a cleaned version of the experiment space.
+    #     Recursively adds the modules to the ModuleDict, which is the
+    #     equivalent of initiating those layers.
+
+    #     """
+    #     data = exp_space.query("id==@id")
+    #     inputs = data.input.iloc[0]
+
+    #     if inputs == None:
+    #         return
+
+    #     for ind in range(len(experiment_space)):
+    #         fn_type = experiment_space.iloc[ind]['i']
+    #         fn_id = experiment_space.iloc[ind]['id']
+    #         fn_parameters = experiment_space.iloc[ind]['hyperparameters']
+
+    #         if fn_type == relu_i:
+    #             self.module_dict[fn_id] = nn.ReLU()
+    #         elif fn_type == linear_i:
+    #             self.module_dict[fn_id] = nn.Linear(
+    #                     self.function_parameters["input_size"],
+    #                     self.function_parameters["output_size"],
+    #             )
+    #         elif fn_type == dropout_i:
+    #             self.module_dict[fn_id] = nn.Dropout(
+    #                 self.function_parameters["p"]
+    #             )
+            
+    #         self._recusive_init(experiment_space, ind)
+        
+    #     return 
+            
+
+    # def _recusive_forward(
+    #     self, 
+    #     experiment_space: ExperimentSpace, 
+    #     id: str
+    # ):
+    #     """ Recursively calls forward on layers.
+
+    #     Takes in the experiment space & ModuleDict.
+    #     Recursively passes concatenated inputs to the next layer.
+    #     Outputs the last layer's output.
+
+    #     """
+    #     data = exp_space.query("id==@id")
+    #     inputs = data.input.iloc[0]
+        
+    #     type_ = data.type.iloc[0]       # get the type of the input we're currently on
+    #     name = data.name.iloc[0]        # name of the input we're currently on
+
+    #     output = torch.zeros(1)         # cannot concat empty tensors, so this must be zeros(1)
+
+    #     if type_ == 'source':
+    #         return torch.tensor(dataset.values[0], dtype=torch.float, requires_grad=True)  # return the modeling data point
+        
+    #     for inp in inputs:
+    #         output = torch.cat((output, self._recusive_forward(experiment_space, id)))  # concatenate all the inputs
+        
+    #     output = output[1:]             # remove the added zeros(1) we created
+        
+    #     return self.module_dict[name](output)
+
+
     def build_forward(
         self,
         experiment_space: ExperimentSpace,
@@ -225,6 +300,27 @@ class ComposedFunction():
 
         This function builds a PyTorch Graph from an experiment space.
         """
+        raise NotImplementedError(err_msg)
+        # This function is creating a ModuleDict to represent the
+        # structure
+        self._recusive_init(experiment_space, 'output')
+        last_id = self._experiment_space.loc[
+                          self._experiment_space["type"] == "sink", "input"
+                      ].item()
+
+        last_out = self._recusive_forward(experiment_space, last_id)   # last_id here because we haven't connected the output layer yet - nn.CrossEntropy or what have you
+
+        # as a sanity check, last_out.requires_grad should be True...if it's not, then a comp graph wasn't built properly
+
+        from torchviz import makedot
+
+        makedot(last_out).render("comp_graph", format="png")    # visualize the output comp graph
+        # --------------------------
+
+
+
+
+
         raise NotImplementedError(err_msg)
 
         # There is a recursor function and a recursive forward.

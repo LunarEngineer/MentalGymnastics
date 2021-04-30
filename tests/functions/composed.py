@@ -8,10 +8,13 @@ and the expected output.
 """
 import numpy as np
 import pandas as pd
-from mentalgym.constants import linear_i, relu_i
-from mentalgym.functions import Linear
+import pytest
+from mentalgym.functions import Linear, ReLU, Dropout
 from mentalgym.functionbank import FunctionBank
-from mentalgym.functions.atomic.relu import ReLU
+from mentalgym.functions import (
+    atomic_constants,
+
+)
 from mentalgym.functions.composed import ComposedFunction
 from mentalgym.types import ExperimentSpace
 from mentalgym.utils.function import make_function
@@ -26,9 +29,9 @@ from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
 from typing import Iterable
 
-# TODO: More test cases here would be extremely useful. Simply look
-#   at the structure of the Experiment Space below, mimic it, then
-#   add a test case with expected output.
+# TODO: More test cases here would be extremely useful. Ctrl+F for
+#   Simple Test Case and create a new testing case. Ensure the
+#   output is reasonable and insert the output.
 ####################################################################
 #                        Prerequisite Data                         #
 ####################################################################
@@ -53,11 +56,6 @@ test_data = pd.DataFrame(
 test_data.columns = [str(_) for _ in test_data.columns]
 
 # This is used in the testing functions to retrieve function objects.
-layer_mapping = {
-    linear_i: Linear,
-    relu_i: ReLU
-}
-
 def drop_layer(
     experiment_space: ExperimentSpace,
     function_bank: FunctionBank,
@@ -92,7 +90,7 @@ def drop_layer(
         function_inputs = input_ids,
         function_location = location,
         function_type = 'intermediate',
-        function_object = layer_mapping[index],
+        function_object = atomic_constants[index],
         function_hyperparameters = {}
     )
     # 3) This just does some name matching.
@@ -121,12 +119,42 @@ def drop_layer(
 ####################################################################
 test_set_1 = {
     'actions': [
-        {'id': linear_i, 'location': (0,0), 'radius': 2},
-    ]
+        {'id': 0, 'location': (0,0), 'radius': 2},
+    ],
+    'expected_inputs': {},
+    'minimal_space': pd.DataFrame()
+}
+####################################################################
+#                        Simple Test Case 2                        #
+####################################################################
+# In this test case a very simple Linear Layer is produced which   #
+#   takes as input two features ([1, 0]). Then, a ReLU layer is    #
+#   placed on top of that. In this instance the ReLU layer is      #
+#   closest to the sink.
+####################################################################
+test_set_2 = {
+    'actions': [
+        {'id': 0, 'location': (0,0), 'radius': 2},
+        {'id': 1, 'location': (0,1), 'radius': 2},
+    ],
+    'expected_inputs': {},
+    'minimal_space': pd.DataFrame()
 }
 
-
+####################################################################
+#                       Integration Testing                        #
+####################################################################
+# This test routine tests much of the internal functionality of the#
+#   composed function while it asserts that the output is a        #
+#   runnable PyTorch layer.                                        #
+####################################################################
+test_sets = [
+    test_set_1,
+    test_set_2
+]
 verbose = True
+
+@pytest.mark.parametrize('test_set', test_sets)
 def test_composed_function(test_set):
     with TemporaryDirectory() as d:
         # Make a Function Bank.
@@ -195,8 +223,11 @@ def test_composed_function(test_set):
             function_bank = function_bank,
             verbose = False
         )
+        # At this point we have the first test. Does the minimal
+        #   space created by the composed function match the expectation?
         # Set inputs.
         composed_function['inputs'] = composed_instance.inputs
+        composed_function['hyperparameters']['id'] = composed_function['id']
         status_message = f"""
 
         Composed Function Representation

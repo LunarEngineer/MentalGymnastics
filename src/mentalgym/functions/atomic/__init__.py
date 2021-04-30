@@ -29,10 +29,16 @@ atomic_functions = [
     )
 ]
 
+atomic_constants = {
+    i: _['function_object']
+    for (i, _) in enumerate(atomic_functions)
+}
+
 __all__ = [
     'AtomicFunction',
     'Linear',
     'RelU',
     'Dropout',
     'atomic_functions'
+    'atomic_constants'
 ]

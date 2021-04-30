@@ -77,10 +77,7 @@ class ComposedFunction():
             # Get a minimal subspace
             self.build_from_space(experiment_space)
             # Then turn that into a graph.
-            self.build_forward(
-                experiment_space = experiment_space,
-                function_bank = function_bank
-            )
+            self.build_forward()
             # And save that graph.
             self.save()
         # If the folder *does* exist, then we are going to load the
@@ -114,10 +111,11 @@ class ComposedFunction():
 
         # If the inputs are None, then this ceases recursion, because
         #   this is a *source* node.
-        # TODO: Is this necessary?
-        # if inputs == None:
-        #     self._data
-        #     return
+        # TODO: Is this necessary? Can it be purged? The section
+        #   below where it checks for the row type of source might
+        #   be enough.
+        if inputs == None:
+            return
 
         # If the inputs are *not* None, then this has input!
         # For every input node to connect...
@@ -144,8 +142,10 @@ class ComposedFunction():
             """
             assert len(row)==1, err_msg
             row = row[0]
-            # This skips source records.
-            if row['type'] == 'source': continue
+            if row['type'] == 'source':
+                self.inputs[ind] = self._n_inputs
+                self._n_inputs += 1
+                continue
             # Extract the ID
             fn_id = row['id']
             # Then pull out the hyperparameters
@@ -260,8 +260,6 @@ class ComposedFunction():
 
     def build_forward(
         self,
-        experiment_space: ExperimentSpace,
-        function_bank: FunctionBank
     ):
         """Build a PyTorch Graph.
 
@@ -274,10 +272,6 @@ class ComposedFunction():
         does not return anything, but it sets the self.model and
         self.inputs properties.
 
-        Parameters
-        ----------
-        experiment_space: ExperimentSpace
-            This is an experiment space.
         """
         # This function is creating a ModuleDict to represent the
         # structure
@@ -294,13 +288,15 @@ class ComposedFunction():
             """
             if self._verbose: print(status_message)
     
-    def forward():
+    def forward(self):
         err_msg = """Forward Not Fully Implemented:
 
         This function should execute a PyTorch Graph.
+        This should be calling recursive forward
         """
+        
         raise Exception(err_msg)
-        last_id = self._experiment_space.loc[
+        last_id = self._net_subset.loc[
                           self._experiment_space["type"] == "sink", "input"
                       ].item()
 
@@ -319,10 +315,6 @@ class ComposedFunction():
 
         raise NotImplementedError(err_msg)
 
-        # There is a recursor function and a recursive forward.
-        # In the recursor you take the output and recursively build the input.
-        # We are torch concatenating
-
     def save(self):
         # Get the directory shorthand for readability
         d = self._function_dir
@@ -330,6 +322,7 @@ class ComposedFunction():
         if not os.path.isdir(d):
             os.makedirs(d)
         # Save out the module dictionary
+        # TODO: Does this work for composed functions of composed functions?
         torch.save(
             self._module_dict,
             os.path.join(d,'module_dict.pt')
@@ -386,7 +379,7 @@ class ComposedFunction():
               * object
         """
         persist_fields = [
-            'i', 'id', 'type', 'input', 'hyperparameters', 'object'
+            'id', 'type', 'input', 'hyperparameters', 'object'
         ]
         # TODO: Ensure this is not changing the input dataframe.
         # This line ensures that all the 'No input' nodes have None

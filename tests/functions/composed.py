@@ -27,7 +27,8 @@ from mentalgym.utils.spaces import (
 from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
-from typing import Dict, Iterable
+from torch import nn
+from typing import Dict, Iterable, Type
 
 # TODO: More test cases here would be extremely useful. Ctrl+F for
 #   Simple Test Case and create a new testing case. Ensure the
@@ -54,6 +55,33 @@ test_data = pd.DataFrame(
 ).assign(y=y)
 # Give it string names so the gym doesn't get cranky.
 test_data.columns = [str(_) for _ in test_data.columns]
+
+def frame_tester(
+    df_expected: pd.DataFrame,
+    df_actual: pd.DataFrame
+):
+    if not df_expected.equals(df_actual):
+        truth_dict = {}
+        for col in df_expected.columns:
+            truth_dict[col] = df_expected[col].equals(df_actual[col])
+        err_msg = f"""Frame matching disparity:
+
+        Expected Dataset
+        ----------------\n{df_expected}
+
+        Actual Dataset
+        --------------\n{df_actual}
+
+        Expected Types
+        --------------\n{df_expected.dtypes}
+
+        Actual Types
+        ------------\n{df_actual.dtypes}
+
+        Col for Col Match
+        -----------------\n{truth_dict}
+        """
+        raise Exception(err_msg)
 
 # This is used in the testing functions to retrieve function objects.
 def drop_layer(
@@ -84,10 +112,12 @@ def drop_layer(
         location = location,
         radius = radius
     )
+    i = experiment_space.shape[0]
     # 2) Make the layer with make_function
     layer_function = make_function(
         function_index = index,
         function_inputs = input_ids,
+        function_id = f'FAKE_ACTION_{abs(i)}',
         function_location = location,
         function_type = 'intermediate',
         function_object = atomic_constants[index],
@@ -134,7 +164,6 @@ def drop_layer(
             "input_size": sum_of_inputs,
         }
     elif atomic_constants[index] == Linear:
-        print("SHOULD BE HERE")
         new_function['hyperparameters'] = {
             "out_features": 12,
             "in_features": sum_of_inputs,
@@ -156,8 +185,14 @@ test_set_1 = {
     'actions': [
         {'id': 0, 'location': (0,0), 'radius': 2},
     ],
-    'expected_inputs': {},
-    'minimal_space': pd.DataFrame()
+    'expected_inputs': {'1': 0, '0': 1},
+    'expected_minimal_space': pd.DataFrame([
+        {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None},
+        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['1', '0'], 'hyperparameters': {'out_features': 12, 'in_features': 2}, 'object': Linear},
+        {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
+        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None}
+    ]),
+    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)})
 }
 ####################################################################
 #                        Simple Test Case 2                        #
@@ -173,7 +208,8 @@ test_set_2 = {
         {'id': 1, 'location': (0,1), 'radius': 2},
     ],
     'expected_inputs': {},
-    'minimal_space': pd.DataFrame()
+    'expected_minimal_space': pd.DataFrame(),
+    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)})
 }
 
 ####################################################################
@@ -185,12 +221,12 @@ def inputs_tester(
     expected_inputs: Dict[str, int],
     actual_inputs: Dict[str, int]
 ):
-    f"""Tests the inputs of a composed function.
+    """Tests the inputs of a composed function.
 
     This needs a .inputs dictionary which is used to map input
     names to integer locations. This is a 'key mapping'.
 
-    {'input1': 0, 'input2': 2}
+    dict(input1 = 0, input2 = 2)
 
     Parameters
     ----------
@@ -199,7 +235,7 @@ def inputs_tester(
     actual_inputs: Dict[str, int]
         The actual key mapping
     """
-    err_msg = """ComposedFunction Input Mapping Error:
+    err_msg = f"""ComposedFunction Input Mapping Error:
 
     The ComposedFunction stores a mapping dictionary allowing it
     to extract the correct positional indices from an input dataset.
@@ -210,21 +246,21 @@ def inputs_tester(
     Actual Value
     ------------\n{actual_inputs}
     """
-    # TODO: Implement this test.
-    # This needs to test equivalency of the items in the data, but
-    #   order is irrelevant.
-    raise Exception(err_msg)
+    assert pd.Series(
+        expected_inputs
+    ).equals(
+        pd.Series(actual_inputs)
+    ), err_msg
 
 def minimal_subspace_tester(
     expected_space: pd.DataFrame,
     actual_space: pd.DataFrame
 ):
-    """Tests the inputs of a composed function.
+    """Tests the minimal subspace retained by a Function.
 
-    This needs a .inputs dictionary which is used to map input
-    names to integer locations. This is a 'key mapping'.
-
-    {'input1': 0, 'input2': 2}
+    The function maintains a small Frame that it uses to build
+    the graph. It's likely not necessary to persist, but it's
+    there.
 
     Parameters
     ----------
@@ -245,8 +281,57 @@ def minimal_subspace_tester(
     Actual Value
     ------------\n{actual_space}
     """
-    assert expected_space.equals(actual_space), err_msg
+    try:
+        frame_tester(expected_space, actual_space)
+    except Exception as e:
+        print(err_msg)
+        raise e
 
+def graph_tester(
+    expected_graph: nn.ModuleDict,
+    actual_graph: nn.ModuleDict
+):
+    """Tests the minimal subspace retained by a Function.
+
+    The function maintains a small Frame that it uses to build
+    the graph. It's likely not necessary to persist, but it's
+    there.
+
+    Parameters
+    ----------
+    expected_graph: nn.ModuleDict
+        The expected graph
+    actual_space: nn.ModuleDict
+        The actual graph
+    """
+    all_modules = {}
+    for module_name, module in expected_graph.items():
+        in_right = module_name in actual_graph.keys()
+        structure_identical = Type[module] == Type[actual_graph[module_name]]
+        all_modules[module_name] = {
+            'Present in actual data': in_right,
+            'Identical structure': structure_identical
+        }
+    err_msg = f"""ComposedFunction Graph Error:
+
+    The ComposedFunction uses ModuleDict to store a computation
+    graph. That computation graph did not meet the expected values.
+
+    Expected Value
+    --------------\n{expected_graph}
+
+    Actual Value
+    ------------\n{actual_graph}
+
+    Module-by-Module Inspection
+    ---------------------------\n{pd.DataFrame(all_modules)}
+    """
+    raise Exception(err_msg)
+    try:
+        frame_tester(expected_space, actual_space)
+    except Exception as e:
+        print(err_msg)
+        raise e
 ####################################################################
 #                       Integration Testing                        #
 ####################################################################
@@ -331,8 +416,20 @@ def test_composed_function(test_set):
         )
         # At this point we have the first test. Does the minimal
         #   space created by the composed function match the expectation?
-        inputs_tester(composed_function['inputs'], composed_instance.inputs)
-        # Set inputs.
+        inputs_tester(
+            test_set['expected_inputs'],
+            composed_instance.inputs
+        )
+        # Does the minimal subset match?
+        minimal_subspace_tester(
+            test_set['expected_minimal_space'],
+            composed_instance._net_subspace
+        )
+        # Does the Torch graph match?
+        graph_tester(
+            test_set['expected_graph'],
+            composed_instance._module_dict
+        )
         composed_function['inputs'] = composed_instance.inputs
         composed_function['hyperparameters']['id'] = composed_function['id']
         status_message = f"""

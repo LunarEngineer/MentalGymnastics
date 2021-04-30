@@ -1,5 +1,6 @@
 import json
 import os
+import numpy as np
 import pandas as pd
 import torch
 from copy import deepcopy
@@ -53,10 +54,16 @@ class ComposedFunction():
             id
         )
         folder_exists = os.path.isdir(function_dir)
+        # If the folder does not exist, then we are going to build
+        #   the PyTorch graph for this net.
         if not folder_exists:
             self.build_forward(experiment_space, function_bank)
-        has_space = experiment_space is not None
-        has_bank = function_bank is not None
+        # If the folder *does* exist, then we are going to load the
+        #   graph for this net.
+        else:
+            self.load()
+        # has_space = experiment_space is not None
+        # has_bank = function_bank is not None
         if has_bank:
             if has_space:
                 self.model = self.build_from_space()
@@ -83,48 +90,128 @@ class ComposedFunction():
                 """
                 raise Exception(err_msg)
 
-        # When building a PyTorch net we generally start at the input.
-        # This graph is easiest to *construct* by starting at the output
-        #   and walking backward. When we've walked backwards using a
-        #   recursion function we have a nested dictionary of input IDs.
-        # We can build the net from that nested dictionary with another
-        #   recursive function.
+    def build_from_space(
+        self,
+        experiment_space: ExperimentSpace
+    ) -> ExperimentSpace:
+        """Create a minimal set of functions to build a graph.
 
-    def build_from_space():
-        # comment out if function bank only has 'None' in inputs
+        This, starting with the output node, will take an existing
+        ExperimentSpace object and discard to only the required
+        nodes which will be used to build the PyTorch computation
+        graph.
+
+        Parameters
+        ----------
+        experiment_space: ExperimentSpace
+            This is a representation of Function objects.
+
+        Returns
+        -------
+        minimal_experiment_space: ExperimentSpace
+            This is a simplified representation of Function objects
+            which
+        """
+        # TODO: Ensure this is not changing the input dataframe.
+        # This line ensures that all the 'No input' nodes have None
+        #   values, instead of NaN. This is used elsewhere, where None
+        #   values will trigger a recursion stop.
         experiment_space = experiment_space.fillna(
             np.nan
         ).replace([np.nan], [None])
-
-        # Create new experiment space with only functions in the net.  This
-        # new data frame will have only intermediate and composite functions,
-        # in reverse order from output to input.
+        # Create new experiment space with only functions in the net.
+        # This new space will have only intermediate and composite
+        # functions in reverse order from output to input.
         net_df = pd.DataFrame().reindex(
             columns=experiment_space.columns
         )
+        # This sets the first record of this space to be the *sink*
+        #   node in the ExperimentSpace.
         net_df.loc[0] = experiment_space.query('type == "sink"').iloc[0]
+        # Because the input is a *list* it must be recursively copied
+        #   to prevent a 'pop' from affecting the primary dataset.
         cur_inputs = deepcopy(net_df.tail(1).input.item())
-
+        # While the current inputs variable has values in it...
         while len(cur_inputs):
-            cur_input = cur_inputs[0]
-            if cur_input not in net_df.id.values:
-                net_df.loc[len(net_df.index)] = experiment_space.query(
-                    "id == @cur_input"
-                ).iloc[0]
-                inps = net_df.tail(1).input.item()
-                if inps != None:
-                    for inp in inps:
-                        if (
-                            inp not in net_df.id.values
-                            and experiment_space.query(
-                                "id == @inp"
-                            ).type.values
-                            != "source"
-                        ):
-                            cur_inputs.append(inp)
-            cur_inputs.pop(0)
+            # Snag the first one of those nodes and add it in to the
+            #   output dataset.
+            # cur_input = cur_inputs[0]
+            cur_input = cur_inputs.pop(0)
+            # But... only if it's not already in the output dataset.
+            if cur_input in net_df.id.values:
+                # If it already exists, skip it.
+                continue
+            # if cur_input not in net_df.id.values:
+            # This sets the *final row* of the output dataset to
+            #   the output of querying the ExperimentSpace for the
+            #   cur_input 'id' value. This should always return a
+            #   single value.
+            net_df.loc[len(net_df.index)] = experiment_space.query(
+                "id == @cur_input"
+            ).iloc[0]
+            # This, then gets the *new* inputs for that downstream
+            #   node.
+            inps = net_df.tail(1).input.item()
+            # And each of these inputs will get added to the list
+            #   of inputs that we're wandering down.
+            if inps is not None:
+                for inp in inps:
+                    # TODO: How are we ensuring that we get the right
+                    #   inputs for this? Is that handled in Christianne's
+                    #   work?
+                    # If it's not already in the output dataset and
+                    #   it is *not* a source node, then add it to the
+                    #   output dataset.
+                    if (
+                        inp not in net_df.id.values
+                        and experiment_space.query(
+                            "id == @inp"
+                        ).type.values
+                        != "source"
+                    ):
+                        cur_inputs.append(inp)
+            # cur_inputs.pop(0)
+        status_message = f"""Composed Function: build_from_space
 
-        print("\n\nFinal Net (df):\n", net_df)
+        Input Experiment Space
+        ----------------------\n{experiment_space}
+
+        Output Experiment Space
+        -----------------------\n{net_df}
+        """
+        if self.verbose:
+            print(status_message)
+        return net_df
+
+
+    def build_forward(
+        self,
+        experiment_space: ExperimentSpace,
+        function_bank: FunctionBank
+    ):
+        """Build a PyTorch Graph.
+
+        When building a PyTorch net we generally start at the input.
+        This graph is easiest to *construct* by starting at the output
+          and walking backward. When we've walked backwards using a
+          recursion function we have a completed net.
+        
+        This function is using the ExperimentSpace to do this.
+
+        Parameters
+        ----------
+        experiment_space: ExperimentSpace
+            This is an experiment space.
+        """
+        err_msg = """Build Forward Not Implemented:
+
+        This function builds a PyTorch Graph from an experiment space.
+        """
+        minimal_space = self.build_from_space(
+            experiment_space,
+            function_bank
+        )
+        raise NotImplementedError(err_msg)
 
     def save(self, repr, model):
         with open(os.path.join(self.fn_path, "connectivity_graph.json"), 'w') as f:

@@ -202,6 +202,18 @@ def recursion_tree_builder(
     This will query the ExperimentSpace for inputs belonging to
     this ID. This will then return a dictionary, keyed by those
     input IDs, with values of recursion_tree_builder.
+
+    Parameters
+    ----------
+    experiment_space: ExperimentSpace
+        An ExperimentSpace object.
+    id: str
+        The ID to query from the ExperimentSpace.
+
+    Returns
+    -------
+    branch: Dict[str, Any]]
+        A branching representation of the inputs of a node.
     """
     query_results = experiment_space.query('id==@id')
     if query_results.input.item() is None:

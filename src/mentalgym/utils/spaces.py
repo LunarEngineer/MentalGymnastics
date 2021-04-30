@@ -505,6 +505,20 @@ def get_experiment_neighbors(
 ) -> Iterable[str]:
     """Uses a KD Tree to return neighbors in range.
 
+    Parameters
+    ----------
+    experiment_space: ExperimentSpace
+        An ExperimentSpace object.
+    location: ArrayLike
+        A location for the query.
+    radius:
+        A radius for the query.
+
+    Returns
+    -------
+    ids: Iterable[str]
+        The iterable of 'id's of the nodes returned from the query.
+
     Examples
     --------
     >>> #TODO: Put a simple experiment space here.

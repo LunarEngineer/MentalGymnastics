@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 import numpy as np
+from copy import copy, deepcopy
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 import gym
@@ -283,7 +284,7 @@ class MentalEnv(gym.Env):
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
         action_radius = np.clip(
-            5 * action[-1], 0, None
+            50 * action[-1], 0, None
         )  # TODO: remove multiplier
 
         # Verbose logging here for development and troubleshooting.
@@ -579,12 +580,13 @@ class MentalEnv(gym.Env):
             columns=self._experiment_space.columns
         )
         net_df.loc[0] = self._experiment_space.query('type == "sink"').iloc[0]
-        cur_inputs = net_df.tail(1).input.item()
+        cur_inputs = deepcopy(net_df.tail(1).input.item())
 
         while len(cur_inputs):
-            if cur_inputs[0] not in net_df.id.values:
+            cur_input = cur_inputs[0]
+            if cur_input not in net_df.id.values:
                 net_df.loc[len(net_df.index)] = self._experiment_space.query(
-                    "id == @cur_inputs[0]"
+                    "id == @cur_input"
                 ).iloc[0]
                 inps = net_df.tail(1).input.item()
                 if inps != None:
@@ -597,9 +599,11 @@ class MentalEnv(gym.Env):
                             != "source"
                         ):
                             cur_inputs.append(inp)
-                cur_inputs.pop(0)
-        net_df = net_df.sort_index(ascending=False)
+            else:
+                print("Else Case!!")
+            cur_inputs.pop(0)
 
+        net_df = net_df.sort_index(ascending=False).reset_index(drop=True)
         print("\n\nFinal Net (df):\n", net_df)
 
         # for ind in range(len(net_df)):
@@ -631,9 +635,9 @@ class MentalEnv(gym.Env):
         train_loader = data_utils.DataLoader(
             train, batch_size=self.net_batch_size, shuffle=True
         )
-        for idx, (data, target) in enumerate(train_loader):
-            print("train_loader:\n", (data, target))
-            print("column 0 !!\n", (data[:, 0:2], target))
+#        for idx, (data, target) in enumerate(train_loader):
+#            print("train_loader:\n", (data, target))
+#            print("column 0 !!\n", (data[:, 0:2], target))
         #        optimizer = torch.optim.Adam(, lr=self.net_lr)
         criterion = nn.CrossEntropyLoss()
 

@@ -167,8 +167,9 @@ def test_composed_function(test_set):
         nearest_id: str = get_output_inputs(
             experiment_space = experiment_space
         )
+        # Add that information to the experiment space.
         experiment_space.at[
-            experiment_space.type == "sink",
+            experiment_space.query('type == "sink"').index.item(),
             "input"
         ] = [nearest_id]
         status_message = f"""
@@ -186,6 +187,16 @@ def test_composed_function(test_set):
             function_object = ComposedFunction,
             function_hyperparameters = {}
         )
+        # This, when it's called for the first time, builds
+        #   a net and assigns it to forward.
+        composed_instance = ComposedFunction(
+            id = composed_function['id'],
+            experiment_space = experiment_space,
+            function_bank = function_bank,
+            verbose = False
+        )
+        # Set inputs.
+        composed_function['inputs'] = composed_instance.inputs
         status_message = f"""
 
         Composed Function Representation
@@ -193,16 +204,6 @@ def test_composed_function(test_set):
         """
         if verbose:
             print(status_message)
-        # This, when it's called for the first time, builds
-        #   a net and assigns it to forward.
-        composed_instance = ComposedFunction(
-            id = composed_function['id'],
-            experiment_space = experiment_space,
-            function_bank = function_bank,
-            verbose = True
-        )
-        # Set inputs.
-        composed_function['inputs'] = composed_instance.inputs
 ####################################################################
 #  The example PyTorch equivalent is shown below and the resultant #
 #   weight structures compared.                                    #

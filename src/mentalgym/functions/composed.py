@@ -127,7 +127,6 @@ class ComposedFunction():
         # This line ensures that all the 'No input' nodes have None
         #   values, instead of NaN. This is used elsewhere, where None
         #   values will trigger a recursion stop.
-        print(experiment_space)
         experiment_space = experiment_space.fillna(
             np.nan
         ).replace([np.nan], [None])

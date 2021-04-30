@@ -49,6 +49,12 @@ class ComposedFunction():
         verbose: bool = True
     ):
         self._verbose = verbose
+        # This property is storing the *locational* indices that the
+        #   graph will expect to see the columns at.
+        # i.e. {'input_0': 0, 'input_2': 1}
+        # This can be unpacked later to appropriately feed information
+        #   to the graph when forward is called.
+        self.inputs = {}
         # 1) Is this building the net? We will check to see if the
         #   Function's directory exists.
         function_dir = os.path.join(
@@ -59,7 +65,6 @@ class ComposedFunction():
         # If the folder does not exist, then we are going to build
         #   the PyTorch graph for this net.
         if not folder_exists:
-            has_space = experiment_space is not None
             # Get a minimal subspace
             subspace = self.build_from_space(experiment_space)
             # Then turn that into a graph.
@@ -121,7 +126,7 @@ class ComposedFunction():
         -------
         minimal_experiment_space: ExperimentSpace
             This is a simplified representation of Function objects
-            which
+            which will be used to construct a DaG.
         """
         # TODO: Ensure this is not changing the input dataframe.
         # This line ensures that all the 'No input' nodes have None
@@ -220,10 +225,6 @@ class ComposedFunction():
 
         This function builds a PyTorch Graph from an experiment space.
         """
-        minimal_space = self.build_from_space(
-            experiment_space,
-            function_bank
-        )
         raise NotImplementedError(err_msg)
 
         # There is a recursor function and a recursive forward.
@@ -236,6 +237,7 @@ class ComposedFunction():
         torch.save(model.state_dict(), os.path.join(self.fn_path, "weights.pt"))
 
     def load(self):
+        # Load the net DF
         with open(os.path.join(self.fn_path, "connectivity_graph.json"), 'r') as f:
             self.repr = f.read()
         torch.load(os.path.join(self.fn_path, "weights.pt"))

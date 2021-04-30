@@ -2,9 +2,11 @@ import json
 import os
 import pandas as pd
 import torch
+from copy import deepcopy
 
 from mentalgym.types import ExperimentSpace, FunctionBank
 from typing import Any, Dict, Iterable, Optional, Union
+
 
 class ComposedFunction():
     """Composed of multiple atomic functions.
@@ -81,14 +83,49 @@ class ComposedFunction():
                 """
                 raise Exception(err_msg)
 
-    
-
         # When building a PyTorch net we generally start at the input.
         # This graph is easiest to *construct* by starting at the output
         #   and walking backward. When we've walked backwards using a
         #   recursion function we have a nested dictionary of input IDs.
         # We can build the net from that nested dictionary with another
         #   recursive function.
+
+    def build_from_space():
+        # comment out if function bank only has 'None' in inputs
+        experiment_space = experiment_space.fillna(
+            np.nan
+        ).replace([np.nan], [None])
+
+        # Create new experiment space with only functions in the net.  This
+        # new data frame will have only intermediate and composite functions,
+        # in reverse order from output to input.
+        net_df = pd.DataFrame().reindex(
+            columns=experiment_space.columns
+        )
+        net_df.loc[0] = experiment_space.query('type == "sink"').iloc[0]
+        cur_inputs = deepcopy(net_df.tail(1).input.item())
+
+        while len(cur_inputs):
+            cur_input = cur_inputs[0]
+            if cur_input not in net_df.id.values:
+                net_df.loc[len(net_df.index)] = experiment_space.query(
+                    "id == @cur_input"
+                ).iloc[0]
+                inps = net_df.tail(1).input.item()
+                if inps != None:
+                    for inp in inps:
+                        if (
+                            inp not in net_df.id.values
+                            and experiment_space.query(
+                                "id == @inp"
+                            ).type.values
+                            != "source"
+                        ):
+                            cur_inputs.append(inp)
+            cur_inputs.pop(0)
+
+        print("\n\nFinal Net (df):\n", net_df)
+
     def save(self, repr, model):
         with open(os.path.join(self.fn_path, "connectivity_graph.json"), 'w') as f:
             f.write(json.dumps(repr))
@@ -98,4 +135,3 @@ class ComposedFunction():
         with open(os.path.join(self.fn_path, "connectivity_graph.json"), 'r') as f:
             self.repr = f.read()
         torch.load(os.path.join(self.fn_path, "weights.pt"))
-

@@ -13,6 +13,7 @@ import pandas as pd
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.function import make_function
+from mentalgym.functions.composed import ComposedFunction
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
     refresh_experiment_container,
@@ -462,13 +463,21 @@ class MentalEnv(gym.Env):
             print("\n\nEPISODE:", self._episode)
             print("\nFinal Experiment Space:\n", self._experiment_space)
 
-            # TODO: Bake the net.
-            self._build_net()
+            # Build and save net
+            id = 100 # TODO:How to generate ID?
+            new_composed_fn = ComposedFunction(id, self._experiment_space,
+                                                self._function_bank)
+
+            # TODO: Train the net.
+            # self._train_net()
+
+            # TODO: Validate the net.
+            # self._validate_net()
 
             # Add the completion reward.
-            reward += float(
-                linear_completion_reward(self._experiment_space, None, 0.5)
-            )
+            # reward += float(
+            #     linear_completion_reward(self._experiment_space, None, 0.5)
+            # )
 
         return state, reward, done, info
 

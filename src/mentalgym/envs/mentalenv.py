@@ -469,6 +469,8 @@ class MentalEnv(gym.Env):
             #   a new composed function like you're doing. The ID will
             #   get updated in the 'id' field and added to the hyperparameter
             #   field {'id': inp}
+            # This composed function *is* your net. Assign it to a model,
+            #   and call it on the input.
             new_composed_fn = ComposedFunction(id, self._experiment_space,
                                                 self._function_bank)
 
@@ -512,13 +514,21 @@ class MentalEnv(gym.Env):
         inputs_df = connected_df.query('type != "sink"')
         inputs_hparams = inputs_df.hyperparameters.to_list()
 
+        # TODO: This section, where it determines the size of the input and output layers
+        # todo: should be abstracted to a function.
         # Add all input sizes together
         sum_of_inputs = 0
-        for inp_dict in inputs_hparams:
-            if not len(inp_dict):
+        # This is walking down a list of dictionaries.
+        for parameter_dict in inputs_hparams:
+            # If the dictionary is empty
+            if not len(parameter_dict):
+                # Then it's a single column coming in. Increment the
+                #   count of input by one.
                 sum_of_inputs += 1
             else:
-                sum_of_inputs += inp_dict["output_size"]
+                # Otherwise it's the sum of the output size from the
+                #   layer above tacked on to the accumulating value.
+                sum_of_inputs += parameter_dict["output_size"]
 
         # Set function-specific hyperparameters
         if function_class == ReLU:

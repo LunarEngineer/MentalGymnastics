@@ -27,7 +27,7 @@ from mentalgym.utils.spaces import (
 from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
-from typing import Iterable
+from typing import Dict, Iterable
 
 # TODO: More test cases here would be extremely useful. Ctrl+F for
 #   Simple Test Case and create a new testing case. Ensure the
@@ -142,6 +142,77 @@ test_set_2 = {
 }
 
 ####################################################################
+#                            Unit Testing                          #
+####################################################################
+# These routines will test unit functionality of the
+#   ComposedFunction.
+def inputs_tester(
+    expected_inputs: Dict[str, int],
+    actual_inputs: Dict[str, int]
+):
+    f"""Tests the inputs of a composed function.
+
+    This needs a .inputs dictionary which is used to map input
+    names to integer locations. This is a 'key mapping'.
+
+    {'input1': 0, 'input2': 2}
+
+    Parameters
+    ----------
+    expected_inputs: Dict[str, int]
+        The expected key mapping
+    actual_inputs: Dict[str, int]
+        The actual key mapping
+    """
+    err_msg = """ComposedFunction Input Mapping Error:
+
+    The ComposedFunction stores a mapping dictionary allowing it
+    to extract the correct positional indices from an input dataset.
+
+    Expected Value
+    --------------\n{expected_inputs}
+
+    Actual Value
+    ------------\n{actual_inputs}
+    """
+    # TODO: Implement this test.
+    # This needs to test equivalency of the items in the data, but
+    #   order is irrelevant.
+    raise Exception(err_msg)
+
+def minimal_subspace_tester(
+    expected_space: pd.DataFrame,
+    actual_space: pd.DataFrame
+):
+    """Tests the inputs of a composed function.
+
+    This needs a .inputs dictionary which is used to map input
+    names to integer locations. This is a 'key mapping'.
+
+    {'input1': 0, 'input2': 2}
+
+    Parameters
+    ----------
+    expected_space: pd.DataFrame
+        The expected subspace
+    actual_space: pd.DataFrame
+        The actual subspace
+    """
+    err_msg = f"""ComposedFunction Input Subspace Error:
+
+    The ComposedFunction stores a minimal subspace representation
+    of the functions within it. This subspace is showing a difference
+    between the actual and expected values.
+
+    Expected Value
+    --------------\n{expected_space}
+
+    Actual Value
+    ------------\n{actual_space}
+    """
+    assert expected_space.equals(actual_space), err_msg
+
+####################################################################
 #                       Integration Testing                        #
 ####################################################################
 # This test routine tests much of the internal functionality of the#
@@ -221,10 +292,11 @@ def test_composed_function(test_set):
             id = composed_function['id'],
             experiment_space = experiment_space,
             function_bank = function_bank,
-            verbose = False
+            verbose = verbose
         )
         # At this point we have the first test. Does the minimal
         #   space created by the composed function match the expectation?
+        inputs_tester(composed_function['inputs'], composed_instance.inputs)
         # Set inputs.
         composed_function['inputs'] = composed_instance.inputs
         composed_function['hyperparameters']['id'] = composed_function['id']

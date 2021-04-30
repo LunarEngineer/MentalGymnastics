@@ -599,11 +599,8 @@ class MentalEnv(gym.Env):
                             != "source"
                         ):
                             cur_inputs.append(inp)
-            else:
-                print("Else Case!!")
             cur_inputs.pop(0)
 
-        net_df = net_df.sort_index(ascending=False).reset_index(drop=True)
         print("\n\nFinal Net (df):\n", net_df)
 
         # for ind in range(len(net_df)):

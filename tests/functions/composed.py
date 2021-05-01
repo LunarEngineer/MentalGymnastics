@@ -8,6 +8,7 @@ and the expected output.
 """
 import numpy as np
 import pandas as pd
+pd.options.display.max_columns = 200
 import pytest
 import torch
 from mentalgym.functions import Linear, ReLU, Dropout
@@ -150,19 +151,19 @@ def drop_layer(
         else:
             # Otherwise it's the sum of the output size from the
             #   layer above tacked on to the accumulating value.
-            sum_of_inputs += parameter_dict["output_size"]
+            sum_of_inputs += parameter_dict["out_features"]
 
     # Set function-specific hyperparameters
     if atomic_constants[index] == ReLU:
         new_function['hyperparameters'] = {
-            "output_size": sum_of_inputs, #TODO: Think this needs to change to 
-            "input_size": sum_of_inputs,
+            "out_features": sum_of_inputs, #TODO: Think this needs to change to 
+            "in_features": sum_of_inputs,
         }
     elif atomic_constants[index] == Dropout:
         new_function['hyperparameters'] = {
             "p": .5,
-            "output_size": sum_of_inputs,
-            "input_size": sum_of_inputs,
+            "out_features": sum_of_inputs,
+            "in_features": sum_of_inputs,
         }
     elif atomic_constants[index] == Linear:
         new_function['hyperparameters'] = {
@@ -186,15 +187,16 @@ test_set_1 = {
     'actions': [
         {'id': 0, 'location': (0,0), 'radius': 2}
     ],
-    'expected_inputs': {'1': 0, '0': 1},
+    'expected_inputs': {'1': 1, '0': 0},
     'expected_minimal_space': pd.DataFrame([
-        {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None},
-        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['1', '0'], 'hyperparameters': {'out_features': 12, 'in_features': 2}, 'object': Linear},
+        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},        
         {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None}
+        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 12, 'in_features': 2}, 'object': Linear},
+        {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
     'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)})
 }
+
 ####################################################################
 #                        Simple Test Case 2                        #
 ####################################################################
@@ -208,9 +210,18 @@ test_set_2 = {
         {'id': 0, 'location': (0,0), 'radius': 2},
         {'id': 1, 'location': (0,1), 'radius': 2},
     ],
-    'expected_inputs': {},
-    'expected_minimal_space': pd.DataFrame(),
-    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)})
+    'expected_inputs': {'0': 2, '1': 3},
+    'expected_minimal_space': pd.DataFrame([
+        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},        
+        {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
+        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 12, 'in_features': 2}, 'object': Linear},
+        {'id': 'FAKE_ACTION_102', 'type': 'intermediate', 'input': ['0', '1', 'FAKE_ACTION_101'], 'hyperparameters': {'out_features': 14, 'in_features': 14}, 'object': ReLU},
+        {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_102'], 'hyperparameters': {}, 'object': None}
+    ]),
+    'expected_graph': nn.ModuleDict({
+        'FAKE_ACTION_102': ReLU(in_features=14, out_features=14),
+        'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)
+    })
 }
 
 ####################################################################
@@ -247,11 +258,7 @@ def inputs_tester(
     Actual Value
     ------------\n{actual_inputs}
     """
-    assert pd.Series(
-        expected_inputs
-    ).equals(
-        pd.Series(actual_inputs)
-    ), err_msg
+    assert expected_inputs == actual_inputs, err_msg
 
 def minimal_subspace_tester(
     expected_space: pd.DataFrame,
@@ -466,4 +473,4 @@ def test_composed_function(test_set):
 
 
 
-test_composed_function(test_set_1)
+test_composed_function(test_set_2)

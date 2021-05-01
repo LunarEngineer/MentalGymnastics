@@ -452,6 +452,7 @@ class ComposedFunction(nn.Module):
             by = ['id', 'type'],
             inplace = True
         )
+        net_df = net_df.reset_index(drop=True)
         status_message = f"""Composed Function: build_from_space
 
         Input Experiment Space

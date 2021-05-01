@@ -517,7 +517,7 @@ def score_tester(
     score,
     expected_scores
 ):
-    scores = function_bank.score(
+    function_bank.score(
         function_set = ids,
         score = score
     )
@@ -536,6 +536,15 @@ def score_tester(
     -------------\n{actual_scores}
     """
     assert actual_scores == expected_scores, err_msg
+
+def test_place_composed(
+    function_bank,
+    experiment_space,
+    actions,
+    composed_id
+):
+    raise
+
 
 ####################################################################
 #                       Integration Testing                        #
@@ -691,8 +700,18 @@ def test_composed_function(test_set):
             """
             print(err_msg)
 
+        # Now, we simulate a second episode. In this episode we refresh
+        #   the container
+        experiment_space = refresh_experiment_container(
+            function_bank = function_bank,
+            min_loc = np.array([0, 0]),
+            max_loc = np.array([100, 100])
+        )
+        print(experiment_space)
         # Finally, what happens when this Composed Function is used
         #   in a new episode?
+        test_place_composed()
+
 
 
 

@@ -49,11 +49,16 @@ class ComposedFunction(nn.Module):
         id: str,
         experiment_space: Optional[ExperimentSpace] = None,
         function_bank: Optional[FunctionBank] = None,
+        function_dir: Optional[str] = None,
+        input_size: Optional[int] = None,
+        output_size: Optional[int] = None,
         verbose: bool = True
     ):
         super().__init__()
         self._n_inputs = 0
         self.input = {}
+        self.input_size = input_size
+        self.output_size = output_size
         self._net_subspace = None
         self._verbose = verbose
         self._module_dict = None
@@ -66,10 +71,13 @@ class ComposedFunction(nn.Module):
         self.inputs = {}
         # 1) Is this building the net? We will check to see if the
         #   Function's directory exists.
-        self._function_dir = os.path.join(
-            function_bank._function_bank_directory,
-            str(id)                                     # check that ID is actually a string
-        )
+        if function_dir is None:
+            self._function_dir = os.path.join(
+                function_bank._function_bank_directory,
+                str(id)                                     # check that ID is actually a string
+            )
+        else:
+            self._function_dir = function_dir
         folder_exists = os.path.isdir(self._function_dir)
         # If the folder does not exist, then we are going to build
         #   the PyTorch graph for this net.
@@ -254,7 +262,6 @@ class ComposedFunction(nn.Module):
             print(status_message)
         return self._module_dict[data.id.item()](input_data)
 
-
     def build_forward(
         self,
     ):
@@ -273,8 +280,21 @@ class ComposedFunction(nn.Module):
         # This function is creating a ModuleDict to represent the
         # structure
         # Get the id of the sink:
-        sink_id = self._net_subspace.query('type=="sink"').id.item()
+        sink_row = self._net_subspace.query('type=="sink"')
+        sink_id = sink_row.id.item()
+        # Get all the inputs that go in.
+        sink_inputs = [x for l in sink_row.input for x in l]
+        # Note that this is incorporated this way to allow for
+        #   multiple nodes connected to the sink.
+        input_params = self._net_subspace.query(
+            f'id==@sink_inputs'
+        ).hyperparameters
+        self.output_size = 1
         self._recusive_init(sink_id)
+        self.input_size = self._n_inputs
+        self.output_size = 0
+        for param_dict in input_params:
+            self.output_size += param_dict['output_size']
         # This needs to check the Module Dict
         if self._verbose:
             status_message = f"""Composed Build Completion Status:

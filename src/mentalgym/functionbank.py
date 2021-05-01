@@ -576,17 +576,21 @@ class FunctionBank():
                 f_id = func['id']
             else:
                 f_id = None
-            curated_function_set.append(
-                make_function(
-                    function_index = self.idxmax() + i + 1,
-                    function_id = f_id,
-                    function_object = func['object'],
-                    function_hyperparameters = func['hyperparameters'],
-                    function_type = 'composed',
-                    function_inputs = func['input'],
-                    max_score_len = 100
-                )
+            # Make a function representation
+            func = make_function(
+                function_index = self.idxmax() + i + 1,
+                function_id = f_id,
+                function_object = func['object'],
+                function_hyperparameters = func['hyperparameters'],
+                function_type = 'composed',
+                function_inputs = func['input'],
+                max_score_len = 100
             )
+            # If the hyperparameters do *not* have an id, add it now.
+            if 'id' not in func['hyperparameters']:
+                func['hyperparameters']['id'] = func['id']
+            # Ditto for .inputs.
+            curated_function_set.append(func)
             i += 1
 
         self._function_manifest = pd.DataFrame(

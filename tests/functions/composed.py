@@ -415,6 +415,45 @@ def forward_tester(
     --------------------------------------\n{diff}
     """
     assert diff.sum() < 1e-6, err_msg
+
+def composed_append_tester(
+    function_bank,
+    composed_function,
+    # expected_function
+) -> ComposedFunction:
+    """Tests FunctionBank to append/return Composed dunction.
+
+    This sticks the composed function into the FunctionBank and
+    tries to query for that composed, returning it.
+
+    Parameters
+    ----------
+    composed_function: ComposedFunction
+        The composed function object created in the tests.
+    input: torch.Tensor
+        The input dataset.
+    test_name: str
+        The name of the test set, also used as a unique filename.
+    """
+    composed_id = composed_function['id']
+    function_bank.append(composed_function)
+    new_composed = function_bank.query(f'id=="{composed_id}"').iloc[0]
+    new_instance = new_composed['object'](**new_composed['hyperparameters'])
+    # If we've gotten this far then we've pulled the item from
+    #   the function bank and we can check to see if it's ok.
+    print(new_instance)
+
+
+
+def score_tester(
+    function_bank,
+    ids,
+    score,
+    expected_scores
+):
+    # TODO: Call function_bank.score()
+    raise NotImplementedError
+
 ####################################################################
 #                       Integration Testing                        #
 ####################################################################
@@ -500,8 +539,14 @@ def test_composed_function(test_set):
             function_bank = function_bank,
             verbose = verbose
         )
-        # At this point we have the first test. Does the minimal
-        #   space created by the composed function match the expectation?
+        extra_keys = {
+            'input_size': composed_instance.input_size,
+            'output_size': composed_instance.output_size,
+            'function_dir': composed_instance._function_dir,
+        }
+        composed_function['hyperparameters'].update(extra_keys)
+        # At this point we have the first test. Do the initialized
+        #   properties match?
         inputs_tester(
             test_set['expected_inputs'],
             composed_instance.inputs
@@ -529,9 +574,26 @@ def test_composed_function(test_set):
             X,
             test_set['name']
         )
-        
+
+        # Awesome, now that it's been used for forward, let's
+        #   append it to the function bank.
+        composed_append_tester(
+            function_bank,
+            composed_function
+        )
+
+        # Now, we're going to score this function.
+        # This actually tests the statistics reporting at the same time.
+        score_tester(
+            function_bank = function_bank,
+            ids = composed_instance.ids + composed_function["id"],
+            score = .7,
+            expected_scores = 0
+        )
+
 
 
 
 
 test_composed_function(test_set_1)
+test_composed_function(test_set_2)

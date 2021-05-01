@@ -161,25 +161,25 @@ def drop_layer(
         else:
             # Otherwise it's the sum of the output size from the
             #   layer above tacked on to the accumulating value.
-            sum_of_inputs += parameter_dict["out_features"]
+            sum_of_inputs += parameter_dict["output_size"]
 
     # Set function-specific hyperparameters
     # TODO: Come back to this tomorrow morning.
     if atomic_constants[index] == ReLU:
         new_function['hyperparameters'] = {
-            "out_features": sum_of_inputs, #TODO: Think this needs to change to 
-            "in_features": sum_of_inputs,
+            "output_size": sum_of_inputs, #TODO: Think this needs to change to 
+            "input_size": sum_of_inputs,
         }
     elif atomic_constants[index] == Dropout:
         new_function['hyperparameters'] = {
             "p": .5,
-            "out_features": sum_of_inputs,
-            "in_features": sum_of_inputs,
+            "output_size": sum_of_inputs,
+            "input_size": sum_of_inputs,
         }
     elif atomic_constants[index] == Linear:
         new_function['hyperparameters'] = {
-            "out_features": sum_of_inputs,
-            "in_features": sum_of_inputs,
+            "output_size": sum_of_inputs,
+            "input_size": sum_of_inputs,
         }
     experiment_space = append_to_experiment(
         experiment_space_container = experiment_space,
@@ -202,12 +202,12 @@ test_set_1 = {
     'expected_minimal_space': pd.DataFrame([
         {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
         {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 2, 'in_features': 2}, 'object': Linear},
+        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'output_size': 2, 'input_size': 2}, 'object': Linear},
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
-    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)}),
+    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)}),
     'expected_forward': np.zeros((5,5)),
-    'expected_graph_render': 'test_set_one.svg'
+    'expected_graph_render': 'test_set_one.graph'
 }
 
 ####################################################################
@@ -227,13 +227,13 @@ test_set_2 = {
     'expected_minimal_space': pd.DataFrame([
         {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},        
         {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 12, 'in_features': 2}, 'object': Linear},
-        {'id': 'FAKE_ACTION_102', 'type': 'intermediate', 'input': ['0', '1', 'FAKE_ACTION_101'], 'hyperparameters': {'out_features': 14, 'in_features': 14}, 'object': ReLU},
+        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'output_size': 12, 'input_size': 2}, 'object': Linear},
+        {'id': 'FAKE_ACTION_102', 'type': 'intermediate', 'input': ['0', '1', 'FAKE_ACTION_101'], 'hyperparameters': {'output_size': 14, 'input_size': 14}, 'object': ReLU},
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_102'], 'hyperparameters': {}, 'object': None}
     ]),
     'expected_graph': nn.ModuleDict({
-        'FAKE_ACTION_102': ReLU(in_features=14, out_features=14),
-        'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)
+        'FAKE_ACTION_102': ReLU(input_size=14, output_size=14),
+        'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)
     })
 }
 
@@ -367,7 +367,7 @@ def graph_tester(
 def forward_tester(
     expected_forward: torch.Tensor,
     composed_function: ComposedFunction,
-    expected_svg_path: str,
+    expected_graph_name: str,
     input: torch.Tensor
 ):
     """Tests the composed function's forward.
@@ -380,19 +380,31 @@ def forward_tester(
         The expected results from calling forward
     composed_function: ComposedFunction
         The composed function object created in the tests.
+    expected_graph_name: str
+        The name of the file to load and compare against.
     input: torch.Tensor
         The input dataset.
     """
     actual_forward = composed_function(input)
-    svg_dir = os.path.join(
+    graph_path = os.path.join(
         os.path.dirname(__file__),
-        'expected_graphs'
+        'expected_graphs',
+        expected_graph_name
     )
     graph_dot = make_dot(actual_forward)
-    graph_dot.format = 'svg'
-    graph_dot.render(
-        os.path.join(svg_dir,'test')
-    )
+    # To generate data, uncomment this section, then ensure you
+    #   commit the testing data.
+    with open(graph_path, 'w') as f:
+        f.writelines(graph_dot)
+    with open(graph_path, 'r') as f:
+        digraph = f.readlines()
+    print(digraph)
+    # graph_dot.format = 'svg'
+    print(graph_dot.source)
+    # graph_dot.render(
+    #     # Swap out these lines to generate dot output
+    #     os.path.join(svg_dir,'test')
+    # )
     diff = expected_forward - actual_forward
     zeros = torch.zeros_like(diff)
     err_msg = f"""ComposedFunction Forward Error:

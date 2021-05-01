@@ -691,6 +691,9 @@ def test_composed_function(test_set):
             """
             print(err_msg)
 
+        # Finally, what happens when this Composed Function is used
+        #   in a new episode?
+
 
 
 

@@ -195,6 +195,7 @@ def drop_layer(
 #   takes as input two features ([1, 0]).                          #
 ####################################################################
 test_set_1 = {
+    'name': 'test_set_1_simple_linear',
     'actions': [
         {'id': 0, 'location': (0,0), 'radius': 2}
     ],
@@ -205,9 +206,7 @@ test_set_1 = {
         {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'output_size': 2, 'input_size': 2}, 'object': Linear},
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
-    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)}),
-    'expected_forward': np.zeros((5,5)),
-    'expected_graph_render': 'test_set_one.graph'
+    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)})
 }
 
 ####################################################################
@@ -219,6 +218,7 @@ test_set_1 = {
 #   closest to the sink.
 ####################################################################
 test_set_2 = {
+    'name': 'test_set_2_two_layer',
     'actions': [
         {'id': 0, 'location': (0,0), 'radius': 2},
         {'id': 1, 'location': (0,1), 'radius': 2},
@@ -365,10 +365,9 @@ def graph_tester(
     # TODO: 3. Consider doing more here.
 
 def forward_tester(
-    expected_forward: torch.Tensor,
     composed_function: ComposedFunction,
-    expected_graph_name: str,
-    input: torch.Tensor
+    input: torch.Tensor,
+    test_name: str
 ):
     """Tests the composed function's forward.
 
@@ -376,46 +375,46 @@ def forward_tester(
 
     Parameters
     ----------
-    expected_forward: torch.Tensor
-        The expected results from calling forward
     composed_function: ComposedFunction
         The composed function object created in the tests.
-    expected_graph_name: str
-        The name of the file to load and compare against.
     input: torch.Tensor
         The input dataset.
+    test_name: str
+        The name of the test set, also used as a unique filename.
     """
+    # Call forward
     actual_forward = composed_function(input)
+    # Specify filepaths
     graph_path = os.path.join(
         os.path.dirname(__file__),
         'expected_graphs',
-        expected_graph_name
+        f'{test_name}.graph'
     )
+    tensor_path = os.path.join(
+        os.path.dirname(__file__),
+        'expected_graphs',
+        f'{test_name}.pt'
+    )
+    # Write out the graph viz image.
     graph_dot = make_dot(actual_forward)
-    # To generate data, uncomment this section, then ensure you
-    #   commit the testing data.
-    # GENERATE_DATA: Uncomment this section to *make* the graphs.
-    # with open(graph_path, 'w') as f:
-    #     f.writelines(graph_dot)
-    with open(graph_path, 'r') as f:
-        digraph = f.readlines()
-    print(type(digraph))
-    # graph_dot.format = 'svg'
-    # graph_dot.render(
-    #     # Swap out these lines to generate dot output
-    #     os.path.join(svg_dir,'test')
-    # )
-    diff = expected_forward - actual_forward
-    zeros = torch.zeros_like(diff)
+    with open(graph_path, 'w') as f:
+        f.write(graph_dot.source)
+    # Create and persist the testing data.
+    # GENERATE_DATA: Uncomment this section to make the tensor.
+    torch.save(actual_forward,tensor_path)
+    # Load the testing data.
+    expected_tensor = torch.load(tensor_path)
+    # Calculate the difference.
+    diff = expected_tensor - actual_forward
     err_msg = f"""ComposedFunction Forward Error:
 
     When calling the Composed Function's forward on the input
-    a disparity exists.
+    a disparity exists between the forward and actual values..
 
     Difference Between Expected And Actual
     --------------------------------------\n{diff}
     """
-    assert torch.isclose(diff, zeros), err_msg
+    assert diff.sum() < 1e-6, err_msg
 ####################################################################
 #                       Integration Testing                        #
 ####################################################################
@@ -526,10 +525,9 @@ def test_composed_function(test_set):
 
         X, y = torchify(test_data)
         forward_tester(
-            test_set['expected_forward'],
             composed_instance,
-            test_set['expected_graph_render'],
-            X
+            X,
+            test_set['name']
         )
         
 

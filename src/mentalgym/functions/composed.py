@@ -217,15 +217,11 @@ class ComposedFunction(nn.Module):
             required data from a dataset.
         """
         # Pull out the row for this ID
-        print("ID: ", id)
         data = self._net_subspace.query("id==@id")
-        print("DATA:\n", data)
         # Then get the inputs that feed into it.
         inputs = data.input.iloc[0]
-        print("INPUTS: ", inputs)
         # And determine if it is a source node.
         is_source = data.type.iloc[0] == 'source'
-        print("IS_SOURCE", is_source)
         # If it's a source node we're simply going to return the
         #   column of the dataset that matches *this* input.
         if is_source:
@@ -235,7 +231,7 @@ class ComposedFunction(nn.Module):
                 data = input,
                 input_mapping = self.inputs,
                 ids = [id]
-            )
+            ).float()
             return input_data
         # If it's *not* a source, then we recurse down each leg.
         other_inputs = [
@@ -244,13 +240,20 @@ class ComposedFunction(nn.Module):
         # And concatenate the results together to make the input
         #   for this layer.
         input_data = torch.cat(
-            (
-                input,
-                *other_inputs
-            ),
+            other_inputs,
+            # (
+            #     input,
+            #     *other_inputs
+            # ),
             axis = 1
         )
-        print("INPUT_DATA: ", input_data)
+        status_message = f"""Composed Function Status: Recursive Forward
+
+        The ID of the forward function we are calling: {data.id.item()}
+        The size of the input data: {input_data.shape}
+        The Module we are calling: {self._module_dict[data.id.item()]}
+        The input size of the module: {self._module_dict[data.id.item()].in_features}
+        """
 
         # type_ = data.type.iloc[0]       # get the type of the input we're currently on
         # name = data.name.iloc[0]        # name of the input we're currently on
@@ -258,7 +261,7 @@ class ComposedFunction(nn.Module):
         # output = torch.zeros(1)         # cannot concat empty tensors, so this must be zeros(1)
 
         # output = output[1:]             # remove the added zeros(1) we created
-        print("ID: ", data.id.item())
+        print(status_message)
         return self._module_dict[data.id.item()](input_data)
 
 
@@ -509,11 +512,8 @@ def map_to_output(
     # Ensure the list of strings is a list.
     if isinstance(ids, str):
         ids = [ids]
-    print("IDS: ", ids)
     # Then use that list to subset the columns, using the key
     #   mapping to pull the integer values for the named elements.
     subset = [v for k, v in input_mapping.items() if k in ids]
-    print("SUBSET: ", subset)
-    print(data)
     layer = data[:, subset]
     return layer.clone().detach().requires_grad_(True)

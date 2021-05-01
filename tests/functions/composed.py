@@ -156,6 +156,7 @@ def drop_layer(
             sum_of_inputs += parameter_dict["out_features"]
 
     # Set function-specific hyperparameters
+    # TODO: Come back to this tomorrow morning.
     if atomic_constants[index] == ReLU:
         new_function['hyperparameters'] = {
             "out_features": sum_of_inputs, #TODO: Think this needs to change to 
@@ -169,7 +170,7 @@ def drop_layer(
         }
     elif atomic_constants[index] == Linear:
         new_function['hyperparameters'] = {
-            "out_features": 12,
+            "out_features": sum_of_inputs,
             "in_features": sum_of_inputs,
         }
     experiment_space = append_to_experiment(
@@ -191,9 +192,9 @@ test_set_1 = {
     ],
     'expected_inputs': {'1': 1, '0': 0},
     'expected_minimal_space': pd.DataFrame([
-        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},        
+        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
         {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 12, 'in_features': 2}, 'object': Linear},
+        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 2, 'in_features': 2}, 'object': Linear},
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
     'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)})

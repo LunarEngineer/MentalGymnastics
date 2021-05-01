@@ -153,12 +153,17 @@ def make_function(
         function_id = make_id(seed=seed)
     if function_hyperparameters is None:
         function_hyperparameters = {}
-
+    # This enforces a consistent ordering to the inputs
+    if function_inputs is not None:
+        _function_inputs = function_inputs
+        _function_inputs.sort()
+    else:
+        _function_inputs = None
     function_representation = {
         'i': function_index,
         'id': function_id,
         'type': function_type,
-        'input': function_inputs,
+        'input': _function_inputs,
         'living': True,
         'object': function_object,
         'hyperparameters': function_hyperparameters,

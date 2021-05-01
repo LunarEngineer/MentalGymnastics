@@ -286,34 +286,20 @@ class ComposedFunction(nn.Module):
             if self._verbose: print(status_message)
     
     def forward(self, input: Tensor) -> Tensor:
-        err_msg = """Forward Not Fully Implemented:
+        """Calls a recursive forward on passed input.
 
-        This function should execute a PyTorch Graph.
-        This should be calling recursive forward
+        This is assuming that it is getting a Torch Tensor as *wide
+        as the number of inputs
         """
         # This is getting the 'tail end' of the graph.
         last_id = self._net_subspace.loc[
             self._net_subspace["type"] == "sink", "input"
         ].item()
         # This is then recursively walking back up the computation
-        #   graph all the way to the inputs.
+        #   graph all the way to the inputs. Turning on verbose here
+        #   is going to make a *bunch* of print statements.
         last_out = self._recursive_forward(last_id, input)
-        # last_id here because we haven't connected the output layer yet - nn.CrossEntropy or what have you
-        print(last_out)
-        raise Exception(err_msg)
-
-        # as a sanity check, last_out.requires_grad should be True...if it's not, then a comp graph wasn't built properly
-
-        from torchviz import makedot
-
-        makedot(last_out).render("comp_graph", format="png")    # visualize the output comp graph
-        # --------------------------
-
-
-
-
-
-        raise NotImplementedError(err_msg)
+        return last_out
 
     def save(self):
         # Get the directory shorthand for readability
@@ -443,9 +429,8 @@ class ComposedFunction(nn.Module):
                     ):
                         cur_inputs.append(inp)
         net_df = net_df[persist_fields]
-        net_df.sort_values(
-            by = ['id', 'type'],
-            inplace = True
+        net_df = net_df.sort_values(
+            by = ['id', 'type']
         )
         net_df = net_df.reset_index(drop=True)
         status_message = f"""Composed Function: build_from_space

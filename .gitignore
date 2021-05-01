@@ -33,4 +33,4 @@ __pycache__
 ####################################################################
 #                     Deployment Artifacts                         #
 ####################################################################
-src/mentalgym.egg-info*
+src/mentalgym.egg-info/requires.txt

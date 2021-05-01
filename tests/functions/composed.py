@@ -7,6 +7,7 @@ The test cases below represent instances of Directed Acyclic Graphs
 and the expected output.
 """
 import numpy as np
+import os
 import pandas as pd
 pd.options.display.max_columns = 200
 import pytest
@@ -30,8 +31,8 @@ from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
 from torch import nn
-from torchviz import makedot
-from typing import Dict, Iterable, Type
+from torchviz import make_dot
+from typing import Dict, Optional
 
 # TODO: More test cases here would be extremely useful. Ctrl+F for
 #   Simple Test Case and create a new testing case. Ensure the
@@ -61,13 +62,26 @@ test_data.columns = [str(_) for _ in test_data.columns]
 
 def frame_tester(
     df_expected: pd.DataFrame,
-    df_actual: pd.DataFrame
+    df_actual: pd.DataFrame,
+    extra_header_info: Optional[str] = None
 ):
     if not df_expected.equals(df_actual):
         truth_dict = {}
         for col in df_expected.columns:
             truth_dict[col] = df_expected[col].equals(df_actual[col])
-        err_msg = f"""Frame matching disparity:
+        extra_info = pd.DataFrame(
+            data = {
+                'ExpectedType': df_expected.dtypes,
+                'ActualType': df_actual.dtypes,
+                'Column Equality Test': truth_dict
+            }
+        )
+        if extra_header_info is None:
+            extra_header_info = ""
+        err_msg = f"""{extra_header_info}
+        =======================================
+        =      DataFrame Equality Error       =
+        =======================================
 
         Expected Dataset
         ----------------\n{df_expected}
@@ -75,15 +89,10 @@ def frame_tester(
         Actual Dataset
         --------------\n{df_actual}
 
-        Expected Types
-        --------------\n{df_expected.dtypes}
-
-        Actual Types
-        ------------\n{df_actual.dtypes}
-
-        Col for Col Match
-        -----------------\n{truth_dict}
+        Extra Information
+        -----------------\n{extra_info}
         """
+        print(err_msg)
         raise Exception(err_msg)
 
 # This is used in the testing functions to retrieve function objects.
@@ -115,8 +124,6 @@ def drop_layer(
         location = location,
         radius = radius
     )
-    # 1.5 Sort this stupid thing to enforce consistency.
-    input_ids.sort()
     i = experiment_space.shape[0]
     # 2) Make the layer with make_function
     layer_function = make_function(
@@ -198,7 +205,9 @@ test_set_1 = {
         {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'out_features': 2, 'in_features': 2}, 'object': Linear},
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
-    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)})
+    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(in_features=2, out_features=12, bias=True)}),
+    'expected_forward': np.zeros((5,5)),
+    'expected_graph_render': 'test_set_one.svg'
 }
 
 ####################################################################
@@ -287,17 +296,8 @@ def minimal_subspace_tester(
     of the functions within it. This subspace is showing a difference
     between the actual and expected values.
 
-    Expected Value
-    --------------\n{expected_space.to_dict(orient='records')}
-
-    Actual Value
-    ------------\n{actual_space}
     """
-    try:
-        frame_tester(expected_space, actual_space)
-    except Exception as e:
-        print(err_msg)
-        raise e
+    frame_tester(expected_space, actual_space, err_msg)
 
 def graph_tester(
     expected_graph: nn.ModuleDict,
@@ -364,6 +364,46 @@ def graph_tester(
     assert np.all(all_modules.TypeMatch), err_msg
     # TODO: 3. Consider doing more here.
 
+def forward_tester(
+    expected_forward: torch.Tensor,
+    composed_function: ComposedFunction,
+    expected_svg_path: str,
+    input: torch.Tensor
+):
+    """Tests the composed function's forward.
+
+    This calls the recursive forward for the composed function.
+
+    Parameters
+    ----------
+    expected_forward: torch.Tensor
+        The expected results from calling forward
+    composed_function: ComposedFunction
+        The composed function object created in the tests.
+    input: torch.Tensor
+        The input dataset.
+    """
+    actual_forward = composed_function(input)
+    svg_dir = os.path.join(
+        os.path.dirname(__file__),
+        'expected_graphs'
+    )
+    graph_dot = make_dot(actual_forward)
+    graph_dot.format = 'svg'
+    graph_dot.render(
+        os.path.join(svg_dir,'test')
+    )
+    diff = expected_forward - actual_forward
+    zeros = torch.zeros_like(diff)
+    err_msg = f"""ComposedFunction Forward Error:
+
+    When calling the Composed Function's forward on the input
+    a disparity exists.
+
+    Difference Between Expected And Actual
+    --------------------------------------\n{diff}
+    """
+    assert torch.isclose(diff, zeros), err_msg
 ####################################################################
 #                       Integration Testing                        #
 ####################################################################
@@ -375,7 +415,7 @@ test_sets = [
     test_set_1,
     test_set_2
 ]
-verbose = True
+verbose = False
 
 @pytest.mark.parametrize('test_set', test_sets)
 def test_composed_function(test_set):
@@ -423,13 +463,6 @@ def test_composed_function(test_set):
             experiment_space.query('type == "sink"').index.item(),
             "input"
         ] = [nearest_id]
-        status_message = f"""
-
-        Experiment Space Posterior to Actions
-        -------------------------------------\n{experiment_space}
-        """
-        if verbose:
-            print(status_message)
         # Now we are going to create a Composed Function from these
         #   actions.
         composed_function = make_function(
@@ -438,7 +471,16 @@ def test_composed_function(test_set):
             function_object = ComposedFunction,
             function_hyperparameters = {}
         )
-        print("COMPOSED FUNCTION:\n", composed_function)
+        status_message = f"""
+
+        Experiment Space Posterior to Actions
+        -------------------------------------\n{experiment_space}
+
+        Composed Function Created
+        -------------------------\n{composed_function}
+        """
+        if verbose:
+            print(status_message)
         # This, when it's called for the first time, builds
         #   a net and assigns it to forward.
         composed_instance = ComposedFunction(
@@ -471,8 +513,13 @@ def test_composed_function(test_set):
             return torch.tensor(x.drop('y', axis=1).values), y
 
         X, y = torchify(test_data)
-        pred = composed_instance(X)
-        print(pred)
+        forward_tester(
+            test_set['expected_forward'],
+            composed_instance,
+            test_set['expected_graph_render'],
+            X
+        )
+        
 
 
 

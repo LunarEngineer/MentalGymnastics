@@ -9,6 +9,7 @@ and the expected output.
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 from mentalgym.functions import Linear, ReLU, Dropout
 from mentalgym.functionbank import FunctionBank
 from mentalgym.functions import (
@@ -183,7 +184,7 @@ def drop_layer(
 ####################################################################
 test_set_1 = {
     'actions': [
-        {'id': 0, 'location': (0,0), 'radius': 2},
+        {'id': 0, 'location': (0,0), 'radius': 2}
     ],
     'expected_inputs': {'1': 0, '0': 1},
     'expected_minimal_space': pd.DataFrame([
@@ -276,7 +277,7 @@ def minimal_subspace_tester(
     between the actual and expected values.
 
     Expected Value
-    --------------\n{expected_space}
+    --------------\n{expected_space.to_dict(orient='records')}
 
     Actual Value
     ------------\n{actual_space}
@@ -291,11 +292,11 @@ def graph_tester(
     expected_graph: nn.ModuleDict,
     actual_graph: nn.ModuleDict
 ):
-    """Tests the minimal subspace retained by a Function.
+    """Tests the PyTorch module created.
 
-    The function maintains a small Frame that it uses to build
-    the graph. It's likely not necessary to persist, but it's
-    there.
+    The Composed Function creates a ModuleDict; this checks to
+    see if the *structure* for the DaG is valid, not so much the
+    weight values. This also does not check class properties
 
     Parameters
     ----------
@@ -305,13 +306,33 @@ def graph_tester(
         The actual graph
     """
     all_modules = {}
-    for module_name, module in expected_graph.items():
-        in_right = module_name in actual_graph.keys()
-        structure_identical = Type[module] == Type[actual_graph[module_name]]
+    # 1) Check all the keys.
+    err_msg = f"""ComposedFunction Graph Error:
+
+    The ComposedFunction uses ModuleDict to store a computation
+    graph. The keys for the expected and actual ModuleDict items do
+    not match.
+
+    Expected Keys
+    -------------\n{set(expected_graph.keys())}
+
+    Actual Keys
+    -----------\n{set(actual_graph.keys())}
+    """
+    assert set(expected_graph.keys()) == set(actual_graph.keys()), err_msg
+    for module_name in expected_graph.keys():
+        # 2) For all the modules just check the type
         all_modules[module_name] = {
-            'Present in actual data': in_right,
-            'Identical structure': structure_identical
+            'TypeMatch': type(
+                expected_graph[module_name]
+                ) == type(
+                    actual_graph[module_name]
+                )
         }
+    all_modules = pd.DataFrame.from_dict(
+        all_modules,
+        orient='index'
+    )
     err_msg = f"""ComposedFunction Graph Error:
 
     The ComposedFunction uses ModuleDict to store a computation
@@ -324,14 +345,16 @@ def graph_tester(
     ------------\n{actual_graph}
 
     Module-by-Module Inspection
-    ---------------------------\n{pd.DataFrame(all_modules)}
+    ---------------------------\n{all_modules}
+
+    Type Equality
+    -------------\n{np.all(all_modules.TypeMatch)}
     """
     raise Exception(err_msg)
-    try:
-        frame_tester(expected_space, actual_space)
-    except Exception as e:
-        print(err_msg)
-        raise e
+    assert np.all(all_modules.TypeMatch), err_msg
+    # TODO: 3. Consider doing more here.
+
+
 ####################################################################
 #                       Integration Testing                        #
 ####################################################################
@@ -406,6 +429,7 @@ def test_composed_function(test_set):
             function_object = ComposedFunction,
             function_hyperparameters = {}
         )
+        print("COMPOSED FUNCTION:\n", composed_function)
         # This, when it's called for the first time, builds
         #   a net and assigns it to forward.
         composed_instance = ComposedFunction(
@@ -426,23 +450,21 @@ def test_composed_function(test_set):
             composed_instance._net_subspace
         )
         # Does the Torch graph match?
-        graph_tester(
-            test_set['expected_graph'],
-            composed_instance._module_dict
-        )
-        composed_function['inputs'] = composed_instance.inputs
-        composed_function['hyperparameters']['id'] = composed_function['id']
-        status_message = f"""
+        # graph_tester(
+        #     test_set['expected_graph'],
+        #     composed_instance._module_dict
+        # )
+        # # What about the forward method?
+        # # Let's turn the data into a torch Tensor.
+        # def torchify(x):
+        #     """Turns a dataset into two torch tensors."""
+        #     y = torch.tensor(x['y'].values)
+        #     return torch.tensor(x.drop('y', axis=1).values), y
 
-        Composed Function Representation
-        --------------------------------\n{composed_function}
-        """
-        if verbose:
-            print(status_message)
-####################################################################
-#  The example PyTorch equivalent is shown below and the resultant #
-#   weight structures compared.                                    #
-####################################################################
+        # X, y = torchify(test_data)
+        # pred = composed_instance(X)
+        # print(pred)
+
 
 
 

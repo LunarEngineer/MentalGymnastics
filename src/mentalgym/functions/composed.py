@@ -5,14 +5,14 @@ import pandas as pd
 import torch
 from copy import deepcopy
 
+from torch import Tensor
 from torch.nn.modules.container import ModuleDict
-
 from mentalgym.functions import atomic_constants
 from mentalgym.types import ExperimentSpace, FunctionBank
 from typing import Any, Dict, Iterable, Optional, Union
 import torch.nn as nn
 
-class ComposedFunction():
+class ComposedFunction(nn.Module):
     """Composed of multiple atomic functions.
 
     This class is used to build, run, and load a composed function.
@@ -51,6 +51,7 @@ class ComposedFunction():
         function_bank: Optional[FunctionBank] = None,
         verbose: bool = True
     ):
+        super().__init__()
         self._n_inputs = 0
         self.input = {}
         self._net_subspace = None
@@ -141,7 +142,11 @@ class ComposedFunction():
             -----------------\n{self._net_subspace}
             """
             assert len(row)==1, err_msg
+            # Now that we *know* it's a single row we get that value
+            #   as a Series.
             row = row[0]
+            # If it's a *source* then we need to increment the
+            #   number of inputs and assign this column a position.
             if row['type'] == 'source':
                 self.inputs[ind] = self._n_inputs
                 self._n_inputs += 1
@@ -188,11 +193,11 @@ class ComposedFunction():
             #     )
         return
 
-    def _recusive_forward(
+    def _recursive_forward(
         self,
         id: str,
-        x: torch.Tensor
-    ) -> nn.Module:
+        input: Tensor
+    ) -> torch.Tensor:
         """Recursively call forward on internal layers.
 
         This uses the internal minimal experiment subspace and the
@@ -222,34 +227,31 @@ class ComposedFunction():
         if is_source:
             # This points at the correct input in the passed tensor.
             # This is assuming Torch input.
-            input_col: torch.Tensor = map_to_output(
-                x,
+            input_data: torch.Tensor = map_to_output(
+                inputs,
+                # TODO: Dig into this
                 self.inputs[id]
             )
-            #
-            layer = torch.tensor(
-                # TODO: Fix this to point at the right column
-                input_col,
-                dtype = torch.float, # TODO: This needs to be handled differently, I think.
-                requires_grad = True
-            )
-            return layer
+            return input_data
         # If it's *not* a source, then we recurse.
         for inp in inputs:
+            # On the far side of the recursion we're going to wind
+            #   up with a series of torch tensors that need to be
+            #   smooshed together.
             output = torch.cat(
                 (
                     output,
-                    self._recusive_forward(id, x)
+                    self._recursive_forward(id, inp)
                 )
-            )  # concatenate all the inputs
-        
+            )
+
         type_ = data.type.iloc[0]       # get the type of the input we're currently on
         name = data.name.iloc[0]        # name of the input we're currently on
 
         output = torch.zeros(1)         # cannot concat empty tensors, so this must be zeros(1)
 
-        if type_ == 'source':
-            return torch.tensor(dataset.values[0], dtype=torch.float, requires_grad=True)  # return the modeling data point
+        # if type_ == 'source':
+        #     return torch.tensor(dataset.values[0], dtype=torch.float, requires_grad=True)  # return the modeling data point
         
         
         
@@ -288,19 +290,22 @@ class ComposedFunction():
             """
             if self._verbose: print(status_message)
     
-    def forward(self):
+    def forward(self, input: Tensor) -> Tensor:
         err_msg = """Forward Not Fully Implemented:
 
         This function should execute a PyTorch Graph.
         This should be calling recursive forward
         """
-        
+        # This is getting the 'tail end' of the graph.
+        last_id = self._net_subspace.loc[
+            self._net_subspace["type"] == "sink", "input"
+        ].item()
+        # This is then recursively walking back up the computation
+        #   graph all the way to the inputs.
+        last_out = self._recursive_forward(last_id, input)
+        # last_id here because we haven't connected the output layer yet - nn.CrossEntropy or what have you
+        # print(last_out)
         raise Exception(err_msg)
-        last_id = self._net_subset.loc[
-                          self._experiment_space["type"] == "sink", "input"
-                      ].item()
-
-        last_out = self._recusive_forward(experiment_space, last_id)   # last_id here because we haven't connected the output layer yet - nn.CrossEntropy or what have you
 
         # as a sanity check, last_out.requires_grad should be True...if it's not, then a comp graph wasn't built properly
 
@@ -458,15 +463,35 @@ class ComposedFunction():
 
 
 def map_to_output(
-    x: torch.tensor,
-    inputs: Dict[str, int]
+    data: Tensor,
+    inputs: Dict[str, int],
+    ids: Union[Iterable[str], str]
 ):
     """Subsets a tensor to provide the correct input data.
 
     Using a dict like {'input_0': 6, 'input_1': 3} put together
     an m x 2 dataset from a torch tensor.
+
+    Parameters
+    ----------
+    data: torch.Tensor
+
+    Returns
+    -------
+    subset: torch.Tensor
+        A subset of the data, dependent on the IDs
+
+    Examples
+    --------
+    >>> import torch
+    >>> l = torch.rand((5,5))
+    >>> {'input_0': 0, }
     """
-    err_msg = """TODO:
-    Use a key mapping to pull back appropriate input.
-    """
-    raise NotImplementedError
+    if isinstance(ids, str):
+        ids = [ids]
+    layer = torch.tensor(
+        inputs[:, [v for k, v in inputs.items() if k in ids]],
+        dtype = torch.float,
+        requires_grad = True
+    )
+    return layer

@@ -394,13 +394,13 @@ def forward_tester(
     graph_dot = make_dot(actual_forward)
     # To generate data, uncomment this section, then ensure you
     #   commit the testing data.
-    with open(graph_path, 'w') as f:
-        f.writelines(graph_dot)
+    # GENERATE_DATA: Uncomment this section to *make* the graphs.
+    # with open(graph_path, 'w') as f:
+    #     f.writelines(graph_dot)
     with open(graph_path, 'r') as f:
         digraph = f.readlines()
-    print(digraph)
+    print(type(digraph))
     # graph_dot.format = 'svg'
-    print(graph_dot.source)
     # graph_dot.render(
     #     # Swap out these lines to generate dot output
     #     os.path.join(svg_dir,'test')

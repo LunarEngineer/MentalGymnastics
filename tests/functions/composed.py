@@ -32,7 +32,7 @@ from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
 from torch import nn
 from torchviz import make_dot
-from typing import Dict, Optional
+from typing import Dict, Optional, Type
 
 # TODO: More test cases here would be extremely useful. Ctrl+F for
 #   Simple Test Case and create a new testing case. Ensure the
@@ -206,7 +206,8 @@ test_set_1 = {
         {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'output_size': 2, 'input_size': 2}, 'object': Linear},
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
-    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)})
+    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)}),
+    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
 }
 
 ####################################################################
@@ -434,15 +435,80 @@ def composed_append_tester(
         The input dataset.
     test_name: str
         The name of the test set, also used as a unique filename.
+
+    Returns
+    -------
+    newly_queried_composed: ComposedFunction
+        This is the function returned by the FunctionBank
     """
     composed_id = composed_function['id']
     function_bank.append(composed_function)
-    new_composed = function_bank.query(f'id=="{composed_id}"').iloc[0]
+    new_composed = function_bank.query(f'id=="{composed_id}"').iloc[0].to_dict()
+    # Here we test for equality for the composed and new composed.
     new_instance = new_composed['object'](**new_composed['hyperparameters'])
     # If we've gotten this far then we've pulled the item from
     #   the function bank and we can check to see if it's ok.
-    print(new_instance)
+    err_msg = """Composed Function Append Error:
 
+    When checking the {} field there was a discrepancy between the
+    original value and the value returned by the Function Bank.
+
+    Original Value
+    --------------\n{}
+
+    Value Returned by Function Bank
+    -------------------------------\n{}
+    """
+    # 1. Check the IDs
+    assert composed_function['id'] == new_composed['id'], err_msg.format(
+        'id',
+        composed_function['id'],
+        new_composed['id']
+    )
+    # 2. Check the i
+    assert composed_function['i'] == new_composed['i'], err_msg.format(
+        'id',
+        composed_function['i'],
+        new_composed['i']
+    )
+    # 3. Check the type
+    assert composed_function['type'] == new_composed['type'], err_msg.format(
+        'type',
+        composed_function['type'],
+        new_composed['type']
+    )
+    # 4. Check the input (nan/None)
+    if composed_function['input'] is None or np.isnan(composed_function['input']):
+        boolstatement = new_composed['input'] is None or np.isnan(new_composed['input'])
+        assert boolstatement, err_msg.format(
+            'type',
+            composed_function['type'],
+            new_composed['type']
+        )
+    else:
+        assert composed_function['input'] == new_composed['input'], err_msg.format(
+            'input',
+            composed_function['input'],
+            new_composed['input']
+        )
+    # 5. Check living
+    assert composed_function['living'] == new_composed['living'], err_msg.format(
+        'living',
+        composed_function['living'],
+        new_composed['living']
+    )
+    # 6. Check object and hyperparameters
+    assert Type[composed_function['object']] == Type[new_composed['object']], err_msg.format(
+        'object',
+        composed_function['object'],
+        new_composed['object']
+    )
+    assert composed_function['hyperparameters'] == new_composed['hyperparameters'], err_msg.format(
+        'hyperparameters',
+        composed_function['hyperparameters'],
+        new_composed['hyperparameters']
+    )
+    return new_instance
 
 
 def score_tester(
@@ -451,8 +517,25 @@ def score_tester(
     score,
     expected_scores
 ):
-    # TODO: Call function_bank.score()
-    raise NotImplementedError
+    scores = function_bank.score(
+        function_set = ids,
+        score = score
+    )
+    actual_scores = function_bank.function_statistics(
+        ids = ids
+    ).drop('id', axis=1).iloc[0].to_dict()
+    err_msg = f"""Composed Function Scoring Error:
+
+    When scoring the composed function the values did not match
+    expectations.
+
+    Expected Values
+    ---------------\n{expected_scores}
+
+    Actual Values
+    -------------\n{actual_scores}
+    """
+    assert actual_scores == expected_scores, err_msg
 
 ####################################################################
 #                       Integration Testing                        #
@@ -584,12 +667,31 @@ def test_composed_function(test_set):
 
         # Now, we're going to score this function.
         # This actually tests the statistics reporting at the same time.
-        score_tester(
+        # This *also* returns the copied object.
+        composed_instance_new = score_tester(
             function_bank = function_bank,
-            ids = composed_instance.ids + composed_function["id"],
+            ids = list(composed_instance.input.keys()) + [composed_function["id"]],
             score = .7,
-            expected_scores = 0
+            expected_scores = test_set['expected_scores']
         )
+        
+        # This test calls forward on the composed new
+        try:
+            forward_tester(
+                composed_instance_new,
+                X,
+                test_set['name']
+            )
+        except:
+            err_msg = """Composed Function Forward Error:
+
+            When attempting to call forward with a Composed Function
+            instantiated *from the Function Bank* the results did not
+            match the expected values.
+            """
+            print(err_msg)
+
+
 
 
 

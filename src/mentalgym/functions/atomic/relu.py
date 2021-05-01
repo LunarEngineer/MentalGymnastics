@@ -5,7 +5,7 @@ from ._atomic import AtomicFunction
 
 
 class ReLU(nn.ReLU, AtomicFunction):
-    def __init__(self, in_features: int, out_features: int,
+    def __init__(self, input_size: int, output_size: int,
                  inplace: bool = False) -> None:
         super().__init__(inplace)
         self.class_name = 'ReLU'

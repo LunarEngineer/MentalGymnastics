@@ -6,7 +6,7 @@ from ._atomic import AtomicFunction
 
 class Dropout(nn.Dropout, AtomicFunction):
     # TODO: Can we remove these and put in Atomic?
-    def __init__(self, in_features: int, out_features: int,
+    def __init__(self, input_size: int, output_size: int,
                  p: float, inplace: bool = False, training: bool = False) -> None:
         self.p = p
         self.training = training

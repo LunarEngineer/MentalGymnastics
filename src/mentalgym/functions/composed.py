@@ -68,7 +68,7 @@ class ComposedFunction(nn.Module):
         #   Function's directory exists.
         self._function_dir = os.path.join(
             function_bank._function_bank_directory,
-            id
+            str(id)                                     # check that ID is actually a string
         )
         folder_exists = os.path.isdir(self._function_dir)
         # If the folder does not exist, then we are going to build
@@ -328,11 +328,11 @@ class ComposedFunction(nn.Module):
             os.path.join(d,'module_dict.pt')
         )
         self.inputs = pd.read_json(
-            'inputs.json',
-            type='series',
-            orient='records'
+            os.path.join(d,'inputs.json'),
+            typ='series',
+            orient='records' 
         ).to_dict()
-        self._net_subspace = pd.read_json('net_subspace.json')
+        self._net_subspace = pd.read_json(os.path.join(d,'net_subspace.json'))
 
     def build_from_space(
         self,

@@ -6,9 +6,9 @@ from ._atomic import AtomicFunction
 
 # Tim note: I refactored this to match the env.
 class Linear(nn.Linear, AtomicFunction):
-    def __init__(self, in_features: int, out_features: int,
+    def __init__(self, input_size: int, output_size: int,
                  bias: bool = True) -> None:
-        super().__init__(in_features, out_features, bias)
+        super().__init__(input_size, output_size, bias)
         # TODO: Review this with Vahe
         # nn.Linear.__init__(self, input_size, output_size, bias)
         self.class_name = 'Linear'

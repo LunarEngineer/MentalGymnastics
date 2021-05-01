@@ -11,7 +11,7 @@ class MentalAgent:
 
         # Instantiate environment
         self.env = MentalEnv(
-            testing_df,
+            dataset=hparams["dataset"],
             number_functions=hparams["number_functions"],
             max_steps=hparams["max_steps"],
             verbose=hparams["verbose"],
@@ -55,6 +55,7 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
+    hparams["dataset"] = testing_df
     hparams["verbose"] = 0
     hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     hparams["epsilon_const"] = 20.0
     hparams["epsilon_maintain"] = 0.01
     hparams["buffer_len"] = 100
-    hparams["num_functions"] = 8
+    # hparams["num_functions"] = 8
     hparams["num_active_fns_init"] = 3
     hparams["epochs"] = 5
     hparams["net_lr"] = 0.0001
@@ -77,3 +78,5 @@ if __name__ == "__main__":
 
     agent = MentalAgent(hparams)
     agent.train()
+
+

@@ -164,10 +164,9 @@ def drop_layer(
             sum_of_inputs += parameter_dict["output_size"]
 
     # Set function-specific hyperparameters
-    # TODO: Come back to this tomorrow morning.
     if atomic_constants[index] == ReLU:
         new_function['hyperparameters'] = {
-            "output_size": sum_of_inputs, #TODO: Think this needs to change to 
+            "output_size": sum_of_inputs,
             "input_size": sum_of_inputs,
         }
     elif atomic_constants[index] == Dropout:
@@ -543,6 +542,25 @@ def test_place_composed(
     actions,
     composed_id
 ):
+    for action in actions:
+        experiment_space = drop_layer(
+            experiment_space = experiment_space,
+            function_bank = function_bank,
+            index = action['id'],
+            location = action['location'],
+            radius = action['radius']
+        )
+    # Then snap the nearest node to the output.
+    nearest_id: str = get_output_inputs(
+        experiment_space = experiment_space
+    )
+    # Add that information to the experiment space.
+    experiment_space.at[
+        experiment_space.query('type == "sink"').index.item(),
+        "input"
+    ] = [nearest_id]
+    # Now we are going to create a Composed Function from these
+    #   actions.
     raise
 
 
@@ -669,15 +687,14 @@ def test_composed_function(test_set):
 
         # Awesome, now that it's been used for forward, let's
         #   append it to the function bank.
-        composed_append_tester(
+        composed_instance_new = composed_append_tester(
             function_bank,
             composed_function
         )
-
         # Now, we're going to score this function.
         # This actually tests the statistics reporting at the same time.
         # This *also* returns the copied object.
-        composed_instance_new = score_tester(
+        score_tester(
             function_bank = function_bank,
             ids = list(composed_instance.input.keys()) + [composed_function["id"]],
             score = .7,
@@ -685,20 +702,11 @@ def test_composed_function(test_set):
         )
         
         # This test calls forward on the composed new
-        try:
-            forward_tester(
-                composed_instance_new,
-                X,
-                test_set['name']
-            )
-        except:
-            err_msg = """Composed Function Forward Error:
-
-            When attempting to call forward with a Composed Function
-            instantiated *from the Function Bank* the results did not
-            match the expected values.
-            """
-            print(err_msg)
+        forward_tester(
+            composed_instance_new,
+            X,
+            test_set['name'] + '_reload'
+        )
 
         # Now, we simulate a second episode. In this episode we refresh
         #   the container
@@ -710,7 +718,9 @@ def test_composed_function(test_set):
         print(experiment_space)
         # Finally, what happens when this Composed Function is used
         #   in a new episode?
-        test_place_composed()
+        test_place_composed(
+            
+        )
 
 
 

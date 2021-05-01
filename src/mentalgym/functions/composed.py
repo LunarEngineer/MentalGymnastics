@@ -52,7 +52,7 @@ class ComposedFunction(nn.Module):
         function_dir: Optional[str] = None,
         input_size: Optional[int] = None,
         output_size: Optional[int] = None,
-        verbose: bool = True
+        verbose: bool = False
     ):
         super().__init__()
         self._n_inputs = 0
@@ -256,7 +256,7 @@ class ComposedFunction(nn.Module):
         The ID of the forward function we are calling: {data.id.item()}
         The size of the input data: {input_data.shape}
         The Module we are calling: {self._module_dict[data.id.item()]}
-        The input size of the module: {self._module_dict[data.id.item()].in_features}
+        The input size of the module: {self._module_dict[data.id.item()].input_size}
         """
         if self._verbose:
             print(status_message)
@@ -352,6 +352,9 @@ class ComposedFunction(nn.Module):
             typ='series',
             orient='records' 
         ).to_dict()
+        # This is a band-aid that prevents integer fields
+        self.inputs = {str(k): v for k,v in self.inputs.items()}
+
         self._net_subspace = pd.read_json(os.path.join(d,'net_subspace.json'))
 
     def build_from_space(

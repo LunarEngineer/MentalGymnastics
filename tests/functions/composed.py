@@ -114,6 +114,8 @@ def drop_layer(
         location = location,
         radius = radius
     )
+    # 1.5 Sort this stupid thing to enforce consistency.
+    input_ids.sort()
     i = experiment_space.shape[0]
     # 2) Make the layer with make_function
     layer_function = make_function(
@@ -473,4 +475,4 @@ def test_composed_function(test_set):
 
 
 
-test_composed_function(test_set_2)
+test_composed_function(test_set_1)

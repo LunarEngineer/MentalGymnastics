@@ -30,6 +30,7 @@ from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
 from torch import nn
+from torchviz import makedot
 from typing import Dict, Iterable, Type
 
 # TODO: More test cases here would be extremely useful. Ctrl+F for

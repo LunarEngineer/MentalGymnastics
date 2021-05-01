@@ -241,10 +241,6 @@ class ComposedFunction(nn.Module):
         #   for this layer.
         input_data = torch.cat(
             other_inputs,
-            # (
-            #     input,
-            #     *other_inputs
-            # ),
             axis = 1
         )
         status_message = f"""Composed Function Status: Recursive Forward
@@ -254,14 +250,8 @@ class ComposedFunction(nn.Module):
         The Module we are calling: {self._module_dict[data.id.item()]}
         The input size of the module: {self._module_dict[data.id.item()].in_features}
         """
-
-        # type_ = data.type.iloc[0]       # get the type of the input we're currently on
-        # name = data.name.iloc[0]        # name of the input we're currently on
-
-        # output = torch.zeros(1)         # cannot concat empty tensors, so this must be zeros(1)
-
-        # output = output[1:]             # remove the added zeros(1) we created
-        print(status_message)
+        if self._verbose:
+            print(status_message)
         return self._module_dict[data.id.item()](input_data)
 
 
@@ -309,7 +299,7 @@ class ComposedFunction(nn.Module):
         #   graph all the way to the inputs.
         last_out = self._recursive_forward(last_id, input)
         # last_id here because we haven't connected the output layer yet - nn.CrossEntropy or what have you
-        # print(last_out)
+        print(last_out)
         raise Exception(err_msg)
 
         # as a sanity check, last_out.requires_grad should be True...if it's not, then a comp graph wasn't built properly

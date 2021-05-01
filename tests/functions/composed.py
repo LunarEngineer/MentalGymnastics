@@ -350,10 +350,8 @@ def graph_tester(
     Type Equality
     -------------\n{np.all(all_modules.TypeMatch)}
     """
-    raise Exception(err_msg)
     assert np.all(all_modules.TypeMatch), err_msg
     # TODO: 3. Consider doing more here.
-
 
 ####################################################################
 #                       Integration Testing                        #
@@ -450,20 +448,20 @@ def test_composed_function(test_set):
             composed_instance._net_subspace
         )
         # Does the Torch graph match?
-        # graph_tester(
-        #     test_set['expected_graph'],
-        #     composed_instance._module_dict
-        # )
-        # # What about the forward method?
-        # # Let's turn the data into a torch Tensor.
-        # def torchify(x):
-        #     """Turns a dataset into two torch tensors."""
-        #     y = torch.tensor(x['y'].values)
-        #     return torch.tensor(x.drop('y', axis=1).values), y
+        graph_tester(
+            test_set['expected_graph'],
+            composed_instance._module_dict
+        )
+        # What about the forward method?
+        # Let's turn the data into a torch Tensor.
+        def torchify(x):
+            """Turns a dataset into two torch tensors."""
+            y = torch.tensor(x['y'].values)
+            return torch.tensor(x.drop('y', axis=1).values), y
 
-        # X, y = torchify(test_data)
-        # pred = composed_instance(X)
-        # print(pred)
+        X, y = torchify(test_data)
+        pred = composed_instance(X)
+        print(pred)
 
 
 

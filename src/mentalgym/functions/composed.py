@@ -216,8 +216,6 @@ class ComposedFunction(nn.Module):
             this composed function. This can be used to pull out
             required data from a dataset.
         """
-        raise
-        temp_outpu
         # Pull out the row for this ID
         data = self._net_subspace.query("id==@id")
         # Then get the inputs that feed into it.
@@ -230,9 +228,9 @@ class ComposedFunction(nn.Module):
             # This points at the correct input in the passed tensor.
             # This is assuming Torch input.
             input_data: torch.Tensor = map_to_output(
-                inputs,
-                # TODO: Dig into this
-                self.inputs[id]
+                data = input,
+                input_mapping = self.inputs,
+                ids = [id]
             )
             return input_data
         # If it's *not* a source, then we recurse.
@@ -450,10 +448,9 @@ class ComposedFunction(nn.Module):
                     ):
                         cur_inputs.append(inp)
         net_df = net_df[persist_fields]
-        print(net_df)
         net_df.sort_values(
             by = ['id', 'type'],
-            inplace=True
+            inplace = True
         )
         status_message = f"""Composed Function: build_from_space
 
@@ -471,7 +468,7 @@ class ComposedFunction(nn.Module):
 
 def map_to_output(
     data: Tensor,
-    inputs: Dict[str, int],
+    input_mapping: Dict[str, int],
     ids: Union[Iterable[str], str]
 ):
     """Subsets a tensor to provide the correct input data.
@@ -491,14 +488,27 @@ def map_to_output(
     Examples
     --------
     >>> import torch
-    >>> l = torch.rand((5,5))
-    >>> {'input_0': 0, }
+    >>> l = torch.tensor([
+    ...     [1, 2, 3, 4, 5],
+    ...     [3, 4, 5, 6, 7],
+    ...     [5, 6, 7, 8, 9]
+    ... ], dtype= torch.float)
+    >>> d = {'input_0': 0, 'input_1': 3}
+    >>> map_to_output(l, d, ['input_0'])
+    tensor([[1.],
+            [3.],
+            [5.]], requires_grad=True)
+    >>> map_to_output(l, d, ['input_0', 'input_1'])
+    tensor([[1., 4.],
+            [3., 6.],
+            [5., 8.]], requires_grad=True)
     """
+    # Ensure the list of strings is a list.
     if isinstance(ids, str):
         ids = [ids]
-    layer = torch.tensor(
-        inputs[:, [v for k, v in inputs.items() if k in ids]],
-        dtype = torch.float,
-        requires_grad = True
-    )
+    # Then use that list to subset the columns, using the key
+    #   mapping to pull the integer values for the named elements.
+    layer = data[
+        :, [v for k, v in input_mapping.items() if k in ids]
+    ].clone().detach().requires_grad_(True)
     return layer

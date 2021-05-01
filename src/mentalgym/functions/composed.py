@@ -216,6 +216,8 @@ class ComposedFunction(nn.Module):
             this composed function. This can be used to pull out
             required data from a dataset.
         """
+        raise
+        temp_outpu
         # Pull out the row for this ID
         data = self._net_subspace.query("id==@id")
         # Then get the inputs that feed into it.
@@ -448,6 +450,11 @@ class ComposedFunction(nn.Module):
                     ):
                         cur_inputs.append(inp)
         net_df = net_df[persist_fields]
+        print(net_df)
+        net_df.sort_values(
+            by = ['id', 'type'],
+            inplace=True
+        )
         status_message = f"""Composed Function: build_from_space
 
         Input Experiment Space

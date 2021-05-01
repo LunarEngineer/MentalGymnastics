@@ -209,7 +209,7 @@ class ComposedFunction(nn.Module):
         ----------
         id: str
             The ID of the layer in the experiment space.
-        x: torch.Tensor
+        input: torch.Tensor
             The input data which is getting forward called on it.
             This is an m x len(self.inputs) tensor with each of the
             columns representing one of the inputs which goes into
@@ -217,11 +217,15 @@ class ComposedFunction(nn.Module):
             required data from a dataset.
         """
         # Pull out the row for this ID
+        print("ID: ", id)
         data = self._net_subspace.query("id==@id")
+        print("DATA:\n", data)
         # Then get the inputs that feed into it.
         inputs = data.input.iloc[0]
+        print("INPUTS: ", inputs)
         # And determine if it is a source node.
-        is_source = data.input.iloc[0] == 'source'
+        is_source = data.type.iloc[0] == 'source'
+        print("IS_SOURCE", is_source)
         # If it's a source node we're simply going to return the
         #   column of the dataset that matches *this* input.
         if is_source:
@@ -233,31 +237,29 @@ class ComposedFunction(nn.Module):
                 ids = [id]
             )
             return input_data
-        # If it's *not* a source, then we recurse.
-        for inp in inputs:
-            # On the far side of the recursion we're going to wind
-            #   up with a series of torch tensors that need to be
-            #   smooshed together.
-            output = torch.cat(
-                (
-                    output,
-                    self._recursive_forward(id, inp)
-                )
-            )
+        # If it's *not* a source, then we recurse down each leg.
+        other_inputs = [
+            self._recursive_forward(inp, input) for inp in inputs
+        ]
+        # And concatenate the results together to make the input
+        #   for this layer.
+        input_data = torch.cat(
+            (
+                input,
+                *other_inputs
+            ),
+            axis = 1
+        )
+        print("INPUT_DATA: ", input_data)
 
-        type_ = data.type.iloc[0]       # get the type of the input we're currently on
-        name = data.name.iloc[0]        # name of the input we're currently on
+        # type_ = data.type.iloc[0]       # get the type of the input we're currently on
+        # name = data.name.iloc[0]        # name of the input we're currently on
 
-        output = torch.zeros(1)         # cannot concat empty tensors, so this must be zeros(1)
+        # output = torch.zeros(1)         # cannot concat empty tensors, so this must be zeros(1)
 
-        # if type_ == 'source':
-        #     return torch.tensor(dataset.values[0], dtype=torch.float, requires_grad=True)  # return the modeling data point
-        
-        
-        
-        output = output[1:]             # remove the added zeros(1) we created
-        
-        return self.module_dict[name](output)
+        # output = output[1:]             # remove the added zeros(1) we created
+        print("ID: ", data.id.item())
+        return self._module_dict[data.id.item()](input_data)
 
 
     def build_forward(
@@ -507,9 +509,11 @@ def map_to_output(
     # Ensure the list of strings is a list.
     if isinstance(ids, str):
         ids = [ids]
+    print("IDS: ", ids)
     # Then use that list to subset the columns, using the key
     #   mapping to pull the integer values for the named elements.
-    layer = data[
-        :, [v for k, v in input_mapping.items() if k in ids]
-    ].clone().detach().requires_grad_(True)
-    return layer
+    subset = [v for k, v in input_mapping.items() if k in ids]
+    print("SUBSET: ", subset)
+    print(data)
+    layer = data[:, subset]
+    return layer.clone().detach().requires_grad_(True)

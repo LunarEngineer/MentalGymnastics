@@ -450,11 +450,11 @@ class ComposedFunction(nn.Module):
                     ):
                         cur_inputs.append(inp)
         net_df = net_df[persist_fields]
-        print(net_df)
         net_df.sort_values(
             by = ['id', 'type'],
             inplace=True
         )
+        net_df = net_df.reset_index(drop=True)
         status_message = f"""Composed Function: build_from_space
 
         Input Experiment Space

@@ -542,6 +542,21 @@ def test_place_composed(
     actions,
     composed_id
 ):
+    # Drop the new composed layer.
+    composed_func = function_bank.query(
+        f'id=="{composed_id}"'
+    ).iloc[0].to_dict()
+    print(composed_func)
+    action_loc = actions[0]['location']
+    locs = {
+        f'exp_loc_{i}': action_loc[i] for i in range(len(action_loc))
+    }
+    composed_func.update(locs)
+    experiment_space = append_to_experiment(
+        experiment_space_container = experiment_space,
+        function_bank = function_bank,
+        composed_functions = [composed_func],
+    )
     for action in actions:
         experiment_space = drop_layer(
             experiment_space = experiment_space,
@@ -559,8 +574,28 @@ def test_place_composed(
         experiment_space.query('type == "sink"').index.item(),
         "input"
     ] = [nearest_id]
+    composed_function = make_function(
+        function_index = function_bank.idxmax() + 1,
+        function_type = 'composed',
+        function_object = ComposedFunction,
+        function_hyperparameters = {}
+    )
+    print(experiment_space)
+    print(composed_function)
+    composed_instance = ComposedFunction(
+        id = composed_function['id'],
+        experiment_space = experiment_space,
+        function_bank = function_bank
+    )
+    extra_keys = {
+        'input_size': composed_instance.input_size,
+        'output_size': composed_instance.output_size,
+        'function_dir': composed_instance._function_dir,
+    }
+    composed_function['hyperparameters'].update(extra_keys)
     # Now we are going to create a Composed Function from these
     #   actions.
+    print(composed_instance.__dict__)
     raise
 
 
@@ -719,7 +754,10 @@ def test_composed_function(test_set):
         # Finally, what happens when this Composed Function is used
         #   in a new episode?
         test_place_composed(
-            
+            function_bank= function_bank,
+            experiment_space=experiment_space,
+            actions = test_set['actions'],
+            composed_id=composed_function["id"]
         )
 
 

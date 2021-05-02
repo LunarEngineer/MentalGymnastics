@@ -18,6 +18,7 @@ from mentalgym.functions import (
     atomic_constants,
 
 )
+from mentalgym.constants import linear_output_size, dropout_p
 from mentalgym.functions.composed import ComposedFunction
 from mentalgym.types import ExperimentSpace
 from mentalgym.utils.function import make_function
@@ -49,7 +50,7 @@ from typing import Dict, Optional, Type
 
 # Make a testing dataset.
 X, y = make_classification(
-    n_features = 100,
+    n_features = 101,
     n_informative = 40,
     n_redundant = 40,
     random_state = 0
@@ -125,6 +126,11 @@ def drop_layer(
         radius = radius
     )
     i = experiment_space.shape[0]
+
+    # Do not add to experiment space if function is invalid (unconnected)
+    if not input_ids:
+        return experiment_space
+
     # 2) Make the layer with make_function
     layer_function = make_function(
         function_index = index,
@@ -171,13 +177,13 @@ def drop_layer(
         }
     elif atomic_constants[index] == Dropout:
         new_function['hyperparameters'] = {
-            "p": .5,
+            "p": 0.5,
             "output_size": sum_of_inputs,
             "input_size": sum_of_inputs,
         }
     elif atomic_constants[index] == Linear:
         new_function['hyperparameters'] = {
-            "output_size": sum_of_inputs,
+            "output_size": linear_output_size,
             "input_size": sum_of_inputs,
         }
     experiment_space = append_to_experiment(
@@ -191,51 +197,336 @@ def drop_layer(
 #                        Simple Test Case 1                        #
 ####################################################################
 # In this test case a very simple Linear Layer is produced which   #
-#   takes as input two features ([1, 0]).                          #
+#   takes as input three features                                  #
 ####################################################################
 test_set_1 = {
-    'name': 'test_set_1_simple_linear',
-    'actions': [
-        {'id': 0, 'location': (0,0), 'radius': 2}
-    ],
-    'expected_inputs': {'1': 1, '0': 0},
-    'expected_minimal_space': pd.DataFrame([
-        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'output_size': 2, 'input_size': 2}, 'object': Linear},
-        {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
-    ]),
-    'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)}),
+    "name": "test_set_1_simple_linear",
+    "actions": [{"id": 0, "location": (50, 0), "radius": 1}],
+    "expected_inputs": {"49": 0, "50": 1, "51": 2},
+    "expected_minimal_space": pd.DataFrame(
+        [
+            {
+                "id": "49",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "50",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "51",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "FAKE_ACTION_102",
+                "type": "intermediate",
+                "input": ["49", "50", "51"],
+                "hyperparameters": {
+                    "output_size": linear_output_size,
+                    "input_size": 3,
+                },
+                "object": Linear,
+            },
+            {
+                "id": "y",
+                "type": "sink",
+                "input": ["FAKE_ACTION_102"],
+                "hyperparameters": {},
+                "object": None,
+            },
+        ]
+    ),
+    "expected_graph": nn.ModuleDict(
+        {
+            "FAKE_ACTION_102": Linear(
+                input_size=3, output_size=linear_output_size, bias=True
+            )
+        }
+    ),
     'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
 }
 
 ####################################################################
 #                        Simple Test Case 2                        #
 ####################################################################
-# In this test case a very simple Linear Layer is produced which   #
-#   takes as input two features ([1, 0]). Then, a ReLU layer is    #
-#   placed on top of that. In this instance the ReLU layer is      #
-#   closest to the sink.
+# Input -> Linear -> ReLU -> Sink.  There is a skip connection     #
+# from the inputs to the ReLU and the ReLU                         #
+# layer is closest to the sink.                                    #
 ####################################################################
 test_set_2 = {
-    'name': 'test_set_2_two_layer',
-    'actions': [
-        {'id': 0, 'location': (0,0), 'radius': 2},
-        {'id': 1, 'location': (0,1), 'radius': 2},
+    "name": "test_set_2_two_layer",
+    "actions": [
+        {"id": 0, "location": (0, 0), "radius": 2},
+        {"id": 1, "location": (0, 1), "radius": 2},
     ],
-    'expected_inputs': {'0': 2, '1': 3},
-    'expected_minimal_space': pd.DataFrame([
-        {'id': '0', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},        
-        {'id': '1', 'type': 'source', 'input': None, 'hyperparameters': {}, 'object': None},
-        {'id': 'FAKE_ACTION_101', 'type': 'intermediate', 'input': ['0', '1'], 'hyperparameters': {'output_size': 12, 'input_size': 2}, 'object': Linear},
-        {'id': 'FAKE_ACTION_102', 'type': 'intermediate', 'input': ['0', '1', 'FAKE_ACTION_101'], 'hyperparameters': {'output_size': 14, 'input_size': 14}, 'object': ReLU},
-        {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_102'], 'hyperparameters': {}, 'object': None}
-    ]),
-    'expected_graph': nn.ModuleDict({
-        'FAKE_ACTION_102': ReLU(input_size=14, output_size=14),
-        'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)
-    })
+    "expected_inputs": {"0": 2, "1": 3, "2": 4},
+    "expected_minimal_space": pd.DataFrame(
+        [
+            {
+                "id": "0",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "1",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "2",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "FAKE_ACTION_102",
+                "type": "intermediate",
+                "input": ["0", "1", "2"],
+                "hyperparameters": {
+                    "output_size": linear_output_size,
+                    "input_size": 3,
+                },
+                "object": Linear,
+            },
+            {
+                "id": "FAKE_ACTION_103",
+                "type": "intermediate",
+                "input": ["0", "1", "FAKE_ACTION_102"],
+                "hyperparameters": {
+                    "output_size": linear_output_size + 2,
+                    "input_size": linear_output_size + 2,
+                },
+                "object": ReLU,
+            },
+            {
+                "id": "y",
+                "type": "sink",
+                "input": ["FAKE_ACTION_103"],
+                "hyperparameters": {},
+                "object": None,
+            },
+        ]
+    ),
+    "expected_graph": nn.ModuleDict(
+        {
+            "FAKE_ACTION_103": ReLU(
+                input_size=linear_output_size + 2,
+                output_size=linear_output_size + 2,
+            ),
+            "FAKE_ACTION_102": Linear(
+                input_size=3, output_size=linear_output_size, bias=True
+            ),
+        }
+    ),
 }
+
+####################################################################
+#                        Simple Test Case 3                        #
+####################################################################
+# In this test case we have Input -> Linear -> ReLU -> Dropout     #
+# with a skip connection from the inputs to the RELU.              #
+# The dropout layer is closest to the sink.                        #
+####################################################################
+test_set_3 = {
+    "name": "test_set_3_three_layer",
+    "actions": [
+        {"id": 0, "location": (5, 0), "radius": 1},
+        {"id": 1, "location": (6, 2), "radius": 3},
+        {"id": 2, "location": (4, 4), "radius": 3},
+    ],
+    "expected_inputs": {"4": 5, "5": 6, "6": 7, "7": 3, "8": 4},
+    "expected_minimal_space": pd.DataFrame(
+        [
+            {
+                "id": "4",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "5",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "6",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "7",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "8",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "FAKE_ACTION_102",
+                "type": "intermediate",
+                "input": ["4", "5", "6"],
+                "hyperparameters": {
+                    "output_size": linear_output_size,
+                    "input_size": 3,
+                },
+                "object": Linear,
+            },
+            {
+                "id": "FAKE_ACTION_103",
+                "type": "intermediate",
+                "input": ["4", "5", "6", "7", "8", "FAKE_ACTION_102"],
+                "hyperparameters": {
+                    "output_size": linear_output_size + 5,
+                    "input_size": linear_output_size + 5,
+                },
+                "object": ReLU,
+            },
+            {
+                "id": "FAKE_ACTION_104",
+                "type": "intermediate",
+                "input": ["FAKE_ACTION_103"],
+                "hyperparameters": {
+                    "output_size": linear_output_size + 5,
+                    "input_size": linear_output_size + 5,
+                    "p": dropout_p,
+                },
+                "object": Dropout,
+            },
+            {
+                "id": "y",
+                "type": "sink",
+                "input": ["FAKE_ACTION_104"],
+                "hyperparameters": {},
+                "object": None,
+            },
+        ]
+    ),
+    "expected_graph": nn.ModuleDict(
+        {
+            "FAKE_ACTION_104": Dropout(
+                input_size=linear_output_size + 3,
+                output_size=linear_output_size + 3,
+                p = dropout_p,
+            ),
+            "FAKE_ACTION_103": ReLU(
+                input_size=linear_output_size + 3,
+                output_size=linear_output_size + 3,
+            ),
+            "FAKE_ACTION_102": Linear(
+                input_size=3, output_size=linear_output_size, bias=True
+            ),
+        }
+    ),
+}
+
+####################################################################
+#                        Simple Test Case 4                        #
+####################################################################
+# In this test case we have Input -> Linear -> [ReLU] -> Dropout   #
+# where the ReLU has a small enough radius that it doesn't connect #
+# to the Linear.  The dropout layer is closest to                  #
+# the sink.                                                        #
+####################################################################
+test_set_4 = {
+    "name": "test_set_4_ignored_node",
+    "actions": [
+        {"id": 0, "location": (5, 0), "radius": 1},
+        {"id": 1, "location": (6, 2), "radius": 1},
+        {"id": 2, "location": (5, 1), "radius": 1},
+    ],
+    "expected_inputs": {"4": 1, "5": 2, "6": 3},
+    "expected_minimal_space": pd.DataFrame(
+        [
+            {
+                "id": "4",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "5",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "6",
+                "type": "source",
+                "input": None,
+                "hyperparameters": {},
+                "object": None,
+            },
+            {
+                "id": "FAKE_ACTION_102",
+                "type": "intermediate",
+                "input": ["4", "5", "6"],
+                "hyperparameters": {
+                    "output_size": linear_output_size,
+                    "input_size": 3,
+                },
+                "object": Linear,
+            },
+            {
+                "id": "FAKE_ACTION_103",
+                "type": "intermediate",
+                "input": ["5", "FAKE_ACTION_102"],
+                "hyperparameters": {
+                    "output_size": linear_output_size + 1,
+                    "input_size": linear_output_size + 1,
+                    "p": dropout_p,
+                },
+                "object": Dropout,
+            },
+            {
+                "id": "y",
+                "type": "sink",
+                "input": ["FAKE_ACTION_103"],
+                "hyperparameters": {},
+                "object": None,
+            },
+        ]
+    ),
+    "expected_graph": nn.ModuleDict(
+        {
+            "FAKE_ACTION_103": Dropout(
+                input_size=linear_output_size + 1,
+                output_size=linear_output_size + 1,
+                p = dropout_p,
+            ),
+            "FAKE_ACTION_102": Linear(
+                input_size=3, output_size=linear_output_size, bias=True
+            ),
+        }
+    ),
+}
+
 
 ####################################################################
 #                            Unit Testing                          #
@@ -608,7 +899,9 @@ def test_place_composed(
 ####################################################################
 test_sets = [
     test_set_1,
-    test_set_2
+    test_set_2,
+    test_set_3,
+    test_set_4
 ]
 verbose = False
 

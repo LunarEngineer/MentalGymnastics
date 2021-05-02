@@ -15,10 +15,9 @@ class Dropout(nn.Dropout):
     ):
         self.input_size = input_size
         self.output_size = output_size
-        self.p = p
+        super().__init__(p, inplace)
         self.training = training
-        self.inplace = inplace
         self.class_name = 'Dropout'
 
     def forward(self, input: Tensor) -> Tensor:
-        return F.dropout(input, self.p, self.training, self.inplace)
+        return super().forward(input)

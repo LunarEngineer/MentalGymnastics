@@ -55,6 +55,7 @@ class ComposedFunction(nn.Module):
         verbose: bool = False
     ):
         super().__init__()
+        self.id = id
         self._n_inputs = 0
         self.input = {}
         self.input_size = input_size

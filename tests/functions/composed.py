@@ -6,6 +6,11 @@ FunctionBank, produce a coherent PyTorch structure.
 The test cases below represent instances of Directed Acyclic Graphs
 and the expected output.
 """
+# These are two flags that can be set to *create* testing data
+#  and to output verbose.
+__VERBOSE__ = False
+__GENERATE_DATA__ = False
+
 import numpy as np
 import os
 import pandas as pd
@@ -204,9 +209,6 @@ def drop_layer(
 test_set_1 = {
     'name': 'test_set_1_simple_linear',
     "actions": [{"id": 0, "location": (50, 0), "radius": 1}],
-    'actions': [
-        {'id': 0, 'location': (0,0), 'radius': 2}
-    ],
     "expected_inputs": {"49": 0, "50": 1, "51": 2},
     "expected_minimal_space": pd.DataFrame(
         [
@@ -257,41 +259,7 @@ test_set_1 = {
             )
         }
     ),
-    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7},
-    'expected_params_end_of_episode_2': [
-        (
-            '_module_dict.FAKE_ACTION_102.weight', Parameter(
-                tensor(
-                    [
-                        [-0.0099,  0.3964, -0.0444,  0.1323],
-                        [-0.1511, -0.0983, -0.4777, -0.3311],
-                        [-0.2061,  0.0185,  0.1977,  0.3000],
-                        [-0.3390, -0.2177,  0.1816,  0.4152]
-                    ], requires_grad=True
-                )
-            )
-        ),
-        (
-            '_module_dict.FAKE_ACTION_102.bias', Parameter(
-                tensor([-0.1029,  0.3742, -0.0806,  0.0529], requires_grad=True)
-            )
-        ),
-        (
-            '_module_dict.test_set_1_simple_linear_01._module_dict.FAKE_ACTION_101.weight', Parameter(
-                tensor(
-                    [
-                        [-0.0053,  0.3793],
-                        [-0.5820, -0.5204]
-                    ], requires_grad=True
-                )
-            )
-        ),
-        (
-            '_module_dict.test_set_1_simple_linear_01._module_dict.FAKE_ACTION_101.bias', Parameter(
-                tensor([-0.2723,  0.1896], requires_grad=True)
-            )
-        )
-    ]
+    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
 }
 
 ####################################################################
@@ -371,6 +339,7 @@ test_set_2 = {
             ),
         }
     ),
+    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
 }
 
 ####################################################################
@@ -481,6 +450,7 @@ test_set_3 = {
             ),
         }
     ),
+    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
 }
 
 ####################################################################
@@ -564,6 +534,7 @@ test_set_4 = {
             ),
         }
     ),
+    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
 }
 
 
@@ -636,8 +607,7 @@ def graph_tester(
     """Tests the PyTorch module created.
 
     The Composed Function creates a ModuleDict; this checks to
-    see if the *structure* for the DaG is valid, not so much the
-    weight values. This also does not check class properties
+    see if the *structure* for the DaG is as expected.
 
     Parameters
     ----------
@@ -692,12 +662,10 @@ def graph_tester(
     -------------\n{np.all(all_modules.TypeMatch)}
     """
     assert np.all(all_modules.TypeMatch), err_msg
-    # Finally, check the weights
-    # TODO: 3. Consider doing more here.
 
-def test_weights(
+def weight_tester(
     composed,
-    expected_weights
+    test_name
 ):
     """Tests the weights for a Composed Function.
 
@@ -705,12 +673,35 @@ def test_weights(
     ----------
     composed: ComposedFunction
         A composed function instance
-    expected_weights:
-        torch.tensor
+    test_name:
+        The name of the test set.
     """
+    tensor_dir = os.path.join(
+        os.path.dirname(__file__),
+        'expected_params'
+    )
+    # Create and persist the testing data.
+    # GENERATE_DATA: Uncomment this section to make the tensor.
+    tensor_matching = {}
+    for (param_name, param) in composed.named_parameters():
+        tensor_path = os.path.join(
+            tensor_dir,
+            f'{test_name}_{param_name}.pt'
+        )
+        if __GENERATE_DATA__:
+            torch.save(param, tensor_path)
+        t = torch.load(tensor_path)
+        tensor_matching[param_name] = torch.all(t.eq(param))
+    tensor_match_status = pd.DataFrame(data={'Matches Expected': pd.Series(tensor_matching)})
+    err_msg = f"""Weight Testing Error: {test_name}
 
-    [_.data for _ in composed.parameters()]
-    
+    When attempting to match expected weights there was a disparity:
+
+    Matching Status
+    ---------------\n{tensor_match_status}
+    """
+    assert np.all(tensor_match_status.iloc[:,0]), err_msg
+
 def forward_tester(
     composed_function: ComposedFunction,
     input: torch.Tensor,
@@ -748,7 +739,8 @@ def forward_tester(
         f.write(graph_dot.source)
     # Create and persist the testing data.
     # GENERATE_DATA: Uncomment this section to make the tensor.
-    torch.save(actual_forward,tensor_path)
+    if __GENERATE_DATA__:
+        torch.save(actual_forward, tensor_path)
     # Load the testing data.
     expected_tensor = torch.load(tensor_path)
     # Calculate the difference.
@@ -765,8 +757,7 @@ def forward_tester(
 
 def composed_append_tester(
     function_bank,
-    composed_function,
-    # expected_function
+    composed_function
 ) -> ComposedFunction:
     """Tests FunctionBank to append/return Composed dunction.
 
@@ -887,7 +878,8 @@ def place_composed_tester(
     function_bank,
     experiment_space,
     actions,
-    composed_id
+    composed_id,
+    test_name
 ):
     """Drop a composed layer and use in a net.
     
@@ -901,6 +893,8 @@ def place_composed_tester(
         A set of actions to take after placing the composed node.
     composed_id: str
         The ID of the composed function to place.
+    test_name: str
+        The name of the test routine
     """
     # Go fetch, and place, the composed function into the space.
     composed_func = function_bank.query(
@@ -944,27 +938,12 @@ def place_composed_tester(
         function_object = ComposedFunction,
         function_hyperparameters = {}
     )
-    print(experiment_space)
-    print(composed_function)
     composed_instance = ComposedFunction(
         id = composed_function['id'],
         experiment_space = experiment_space,
         function_bank = function_bank
     )
-    # Update the function with the things the composed function
-    #   needs to run. # TODO: Put this into *append_to_experiment_space*
-    extra_keys = {
-        'input_size': composed_instance.input_size,
-        'output_size': composed_instance.output_size,
-        'function_dir': composed_instance._function_dir,
-    }
-    composed_function['hyperparameters'].update(extra_keys)
-    # Now, we're going to check the Parameters to make sure they
-    #   match expectations, then we're going to call forward and
-    #   test the forward.
-    print(composed_instance.__dict__)
-    print([_ for _ in composed_instance.named_parameters()])
-    raise
+    weight_tester(composed_instance,test_name)
 
 
 ####################################################################
@@ -980,7 +959,7 @@ test_sets = [
     test_set_3,
     test_set_4
 ]
-verbose = True
+
 
 @pytest.mark.parametrize('test_set', test_sets)
 def test_composed_function(test_set):
@@ -1011,7 +990,7 @@ def test_composed_function(test_set):
         Experiment Space Prior to Actions
         ---------------------------------\n{experiment_space}
         """
-        if verbose: print(status_message)
+        if __VERBOSE__: print(status_message)
         # Take the actions, one at a time.
         for action in test_set['actions']:
             experiment_space = drop_layer(
@@ -1047,7 +1026,7 @@ def test_composed_function(test_set):
         Composed Function Created
         -------------------------\n{composed_function}
         """
-        if verbose:
+        if __VERBOSE__:
             print(status_message)
         # This, when it's called for the first time, builds
         #   a net and assigns it to forward.
@@ -1055,7 +1034,7 @@ def test_composed_function(test_set):
             id = composed_function['id'],
             experiment_space = experiment_space,
             function_bank = function_bank,
-            verbose = verbose
+            verbose = __VERBOSE__
         )
         extra_keys = {
             'input_size': composed_instance.input_size,
@@ -1079,6 +1058,11 @@ def test_composed_function(test_set):
             test_set['expected_graph'],
             composed_instance._module_dict
         )
+        # What about the weights?
+        weight_tester(
+            composed_instance,
+            test_set['name'] + '_prior'
+        )
         # What about the forward method?
         # Let's turn the data into a torch Tensor.
         def torchify(x):
@@ -1099,6 +1083,7 @@ def test_composed_function(test_set):
             function_bank,
             composed_function
         )
+
         # Now, we're going to score this function.
         # This actually tests the statistics reporting at the same time.
         # This *also* returns the copied object.
@@ -1129,7 +1114,8 @@ def test_composed_function(test_set):
             function_bank= function_bank,
             experiment_space=experiment_space,
             actions = test_set['actions'],
-            composed_id=composed_function["id"]
+            composed_id = composed_function["id"],
+            test_name = test_set['name'] + 'posterior'
         )
 
 
@@ -1141,3 +1127,5 @@ def test_composed_function(test_set):
 
 test_composed_function(test_set_1)
 test_composed_function(test_set_2)
+test_composed_function(test_set_3)
+test_composed_function(test_set_4)

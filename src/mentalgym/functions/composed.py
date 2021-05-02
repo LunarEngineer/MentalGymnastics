@@ -157,8 +157,9 @@ class ComposedFunction(nn.Module):
             # If it's a *source* then we need to increment the
             #   number of inputs and assign this column a position.
             if row['type'] == 'source':
-                self.inputs[ind] = self._n_inputs
-                self._n_inputs += 1
+                if ind not in self.inputs:
+                    self.inputs[ind] = self._n_inputs
+                    self._n_inputs += 1
                 continue
             # Extract the ID
             fn_id = row['id']

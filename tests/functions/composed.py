@@ -275,7 +275,7 @@ test_set_2 = {
         {"id": 0, "location": (0, 0), "radius": 2},
         {"id": 1, "location": (0, 1), "radius": 2},
     ],
-    "expected_inputs": {"0": 2, "1": 3, "2": 4},
+    "expected_inputs": {"0": 0, "1": 1, "2": 2},
     "expected_minimal_space": pd.DataFrame(
         [
             {
@@ -356,7 +356,7 @@ test_set_3 = {
         {"id": 1, "location": (6, 2), "radius": 3},
         {"id": 2, "location": (4, 4), "radius": 3},
     ],
-    "expected_inputs": {"4": 5, "5": 6, "6": 7, "7": 3, "8": 4},
+    "expected_inputs": {"4": 0, "5": 1, "6": 2, "7": 3, "8": 4},
     "expected_minimal_space": pd.DataFrame(
         [
             {
@@ -468,7 +468,7 @@ test_set_4 = {
         {"id": 1, "location": (6, 2), "radius": 1},
         {"id": 2, "location": (5, 1), "radius": 1},
     ],
-    "expected_inputs": {"4": 1, "5": 2, "6": 3},
+    "expected_inputs": {"4": 1, "5": 0, "6": 2},
     "expected_minimal_space": pd.DataFrame(
         [
             {

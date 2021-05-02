@@ -30,7 +30,9 @@ from mentalgym.utils.spaces import (
 from numpy.typing import ArrayLike
 from sklearn.datasets import make_classification
 from tempfile import TemporaryDirectory
+from torch import tensor
 from torch import nn
+from torch.nn.parameter import Parameter
 from torchviz import make_dot
 from typing import Dict, Optional, Type
 
@@ -206,7 +208,19 @@ test_set_1 = {
         {'id': 'y', 'type': 'sink', 'input': ['FAKE_ACTION_101'], 'hyperparameters': {}, 'object': None}
     ]),
     'expected_graph': nn.ModuleDict({'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)}),
-    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7}
+    'expected_scores': {'score_default_count': 2.0, 'score_default_mean': 0.35, 'score_default_std': 0.49497474683058323, 'score_default_min': 0.0, 'score_default_25%': 0.175, 'score_default_50%': 0.35, 'score_default_75%': 0.5249999999999999, 'score_default_max': 0.7},
+    'expected_params_end_of_episode_2': [
+        ('_module_dict.FAKE_ACTION_102.weight', Parameter(
+                                                    tensor([[-0.0099,  0.3964, -0.0444,  0.1323],
+                                                            [-0.1511, -0.0983, -0.4777, -0.3311],
+                                                            [-0.2061,  0.0185,  0.1977,  0.3000],
+                                                            [-0.3390, -0.2177,  0.1816,  0.4152]], requires_grad=True)
+                                                            ),
+        ('_module_dict.FAKE_ACTION_102.bias', Parameter containing:
+tensor([-0.1029,  0.3742, -0.0806,  0.0529], requires_grad=True)), ('_module_dict.test_set_1_simple_linear_01._module_dict.FAKE_ACTION_101.weight', Parameter containing:
+tensor([[-0.0053,  0.3793],
+        [-0.5820, -0.5204]], requires_grad=True)), ('_module_dict.test_set_1_simple_linear_01._module_dict.FAKE_ACTION_101.bias', Parameter containing:
+tensor([-0.2723,  0.1896], requires_grad=True))]
 }
 
 ####################################################################
@@ -234,7 +248,11 @@ test_set_2 = {
     'expected_graph': nn.ModuleDict({
         'FAKE_ACTION_102': ReLU(input_size=14, output_size=14),
         'FAKE_ACTION_101': Linear(input_size=2, output_size=12, bias=True)
-    })
+    }),
+    'second_episode': {
+        'expected_inputs': {},
+        'expected_minimal_space': pd.DataFrame()
+    }
 }
 
 ####################################################################
@@ -362,8 +380,25 @@ def graph_tester(
     -------------\n{np.all(all_modules.TypeMatch)}
     """
     assert np.all(all_modules.TypeMatch), err_msg
+    # Finally, check the weights
     # TODO: 3. Consider doing more here.
 
+def test_weights(
+    composed,
+    expected_weights
+):
+    """Tests the weights for a Composed Function.
+
+    Parameters
+    ----------
+    composed: ComposedFunction
+        A composed function instance
+    expected_weights:
+        torch.tensor
+    """
+
+    [_.data for _ in composed.parameters()]
+    
 def forward_tester(
     composed_function: ComposedFunction,
     input: torch.Tensor,
@@ -596,6 +631,7 @@ def test_place_composed(
     # Now we are going to create a Composed Function from these
     #   actions.
     print(composed_instance.__dict__)
+    print([_ for _ in composed_instance.named_parameters()])
     raise
 
 
@@ -610,10 +646,12 @@ test_sets = [
     test_set_1,
     test_set_2
 ]
-verbose = False
+verbose = True
 
 @pytest.mark.parametrize('test_set', test_sets)
 def test_composed_function(test_set):
+    # Ensure reproducible results
+    torch.manual_seed(0)
     with TemporaryDirectory() as d:
         # Make a Function Bank.
         function_bank = FunctionBank(
@@ -663,6 +701,7 @@ def test_composed_function(test_set):
         composed_function = make_function(
             function_index = function_bank.idxmax() + 1,
             function_type = 'composed',
+            function_id = test_set['name'] + '_01',
             function_object = ComposedFunction,
             function_hyperparameters = {}
         )

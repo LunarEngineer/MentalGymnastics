@@ -3,6 +3,7 @@ import tempfile
 import pandas as pd
 from mentalgym.functionbank import FunctionBank
 from sklearn.datasets import make_classification
+import gin
 
 ####################################################################
 #                   Create simple testing data                     #
@@ -32,9 +33,17 @@ testing_df = pd.DataFrame(
     ]
 ).assign(output=y)
 
-# TODO: Add Iris Dataset here.
+@gin.configurable
+def make_dataset(name: str):
 
+    dataset = None
 
+    if name == 'iris':
+        from sklearn.datasets import load_iris
+        X, y = load_iris(return_X_y=True, as_frame=True)
+        dataset = X.assign(output=y)
+
+    return dataset
 
 ####################################################################
 #                Create simple Experiment Space                    #

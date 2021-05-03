@@ -3,42 +3,50 @@ from stable_baselines3 import A2C
 from stable_baselines3.common.env_checker import check_env
 from mentalgym.envs import MentalEnv
 from mentalgym.utils.data import testing_df
+import gin
+import gym
 
-
+@gin.configurable
 class MentalAgent:
-    def __init__(self, hparams):
+    def __init__(
+        self, 
+        env: gym.Env,
+        num_episodes: int = 1,
+        hidden_layers: tuple = (10,),
+        gamma: float = 0.99,
+        alpha_start: float = 0.001,
+        alpha_const: float = 2.0,
+        alpha_maintain: float = 0.00001,
+        epsilon_start: float = 1.0,
+        epsilon_const: float = 20.0,
+        epsilon_maintain: float = 0.01,
+        buffer_len: int = 100,
+        num_active_fns_init: int = 3,
+        verbose: bool = False
+    ):
         """Initialize the RL agent, including setting up its environment"""
 
         # Instantiate environment
-        self.env = MentalEnv(
-            dataset=hparams["dataset"],
-            number_functions=hparams["number_functions"],
-            max_steps=hparams["max_steps"],
-            verbose=hparams["verbose"],
-            epochs=hparams["epochs"],
-            net_lr=hparams["net_lr"],
-            net_batch_size=hparams["net_batch_size"],
-        )
+        self.env = env
 
-        self.num_episodes = hparams["num_episodes"]
-        self.max_steps = hparams["max_steps"]
+        self.num_episodes = num_episodes
+        self.max_steps = self.env.max_steps
 
         #  Check custom environment and output additional warnings if needed
-        if hparams["verbose"]:
+        if verbose:
             check_env(self.env)
 
         # Create A2C Agent
-        #        policy_kwargs = dict(act_fun=tf.nn.tanh, net_arch=[32, 32])
+        # policy_kwargs = dict(act_fun=tf.nn.tanh, net_arch=[32, 32])
         self.model = A2C(
             "MlpPolicy",
             self.env,
-            learning_rate=hparams["alpha_start"],
+            learning_rate=alpha_start,
             n_steps=1,
-            gamma=hparams["gamma"],
-            verbose=hparams["verbose"],
+            gamma=gamma,
+            verbose=verbose,
         )
-
-    #                         policy_kwargs)
+        #   policy_kwargs)
 
     def train(self):
         """Train the RL agent.
@@ -70,13 +78,22 @@ if __name__ == "__main__":
     hparams["epsilon_const"] = 20.0
     hparams["epsilon_maintain"] = 0.01
     hparams["buffer_len"] = 100
-    # hparams["num_functions"] = 8
     hparams["num_active_fns_init"] = 3
     hparams["epochs"] = 5
     hparams["net_lr"] = 0.0001
     hparams["net_batch_size"] = 128
 
-    agent = MentalAgent(hparams)
+    env = MentalEnv(
+            dataset=hparams["dataset"],
+            number_functions=hparams["number_functions"],
+            max_steps=hparams["max_steps"],
+            verbose=hparams["verbose"],
+            epochs=hparams["epochs"],
+            net_lr=hparams["net_lr"],
+            net_batch_size=hparams["net_batch_size"],
+        )
+
+    agent = MentalAgent(env)
     agent.train()
 
 

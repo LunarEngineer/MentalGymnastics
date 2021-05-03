@@ -1,0 +1,36 @@
+# ------------------------- #
+#   Environment Variables   #
+# ------------------------- #
+
+mentalgym.utils.data.make_dataset.name = 'iris'
+MentalEnv.dataset = @make_dataset()
+MentalEnv.experiment_space_min = [0.0, 0.0]
+MentalEnv.experiment_space_max = [100.0, 100.0]
+MentalEnv.number_functions = 8
+MentalEnv.max_steps = 4
+MentalEnv.net_lr = 0.0001
+MentalEnv.net_batch_size = 128
+MentalEnv.epochs = 5
+MentalEnv.seed = None
+MentalEnv.verbose = False
+
+# ---------------------- #
+#   RL Agent Variables   #
+# ---------------------- #
+
+MentalAgent.env = @MentalEnv()
+MentalAgent.num_episodes = 1
+MentalAgent.hidden_layers = (10,)
+MentalAgent.gamma = 0.99
+MentalAgent.alpha_start = 0.001
+MentalAgent.alpha_const = 2.0
+MentalAgent.alpha_maintain = 0.00001
+MentalAgent.epsilon_start = 1.0
+MentalAgent.epsilon_const = 20.0
+MentalAgent.epsilon_maintain = 0.01
+MentalAgent.buffer_len = 100
+MentalAgent.num_active_fns_init = 3
+MentalAgent.verbose = False
+
+    
+

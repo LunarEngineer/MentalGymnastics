@@ -5,6 +5,7 @@ from copy import copy, deepcopy
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 import gym
+import gin
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -44,7 +45,7 @@ __FUNCTION_BANK_KWARGS__ = {
 # TODO: Replace print statements.
 logger = logging.getLogger(__name__)
 
-
+@gin.configurable
 class MentalEnv(gym.Env):
     """A Mental Gymnasium Environment.
 
@@ -112,16 +113,17 @@ class MentalEnv(gym.Env):
         This instantiates a function bank and an experiment space.
         """
         super(MentalEnv, self).__init__()
-
+        
         dataset.columns = [str(_) for _ in dataset.columns]
         self.dataset = dataset
+        
         ############################################################
         #                 Store Hyperparameters                    #
         ############################################################
         # These are used in building the experiment space and when
         #   validating agent actions.
-        self.experiment_space_min = experiment_space_min
-        self.experiment_space_max = experiment_space_max
+        self.experiment_space_min = np.array(experiment_space_min)
+        self.experiment_space_max = np.array(experiment_space_max)
         # This is used in the function bank.
         self.number_functions = number_functions
         # The maximum number of actions the agent

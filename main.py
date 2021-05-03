@@ -1,40 +1,36 @@
-import mentalgym
+
 import gym
-
-from mentalgym.utils.data import testing_df
+import mentalgym
+import gin
+from mentalgym.envs import MentalEnv
 from src.agent import MentalAgent
-
-###################
-# Hyperparameters #
-###################
-
-hparams = {}
-hparams["dataset"] = testing_df
-hparams["verbose"] = 0
-hparams["num_episodes"] = 1
-hparams["number_functions"] = 8
-hparams["max_steps"] = 4
-hparams["seed"] = None
-hparams["hidden_layers"] = (10,)
-hparams["gamma"] = 0.99
-hparams["alpha_start"] = 0.001
-hparams["alpha_const"] = 2.0
-hparams["alpha_maintain"] = 0.00001
-hparams["epsilon_start"] = 1.0
-hparams["epsilon_const"] = 20.0
-hparams["epsilon_maintain"] = 0.01
-hparams["buffer_len"] = 100
-hparams["num_functions"] = 8
-hparams["num_active_fns_init"] = 3
-hparams["epochs"] = 5
-hparams["net_lr"] = 0.0001
-hparams["net_batch_size"] = 128
+import numpy as np
+import os
+import datetime
+from shutil import copyfile
 
 
-agent = MentalAgent(hparams)
+# Create 'results' folder
+if not os.path.exists('results'):
+    os.makedirs('results')
+
+# Create timestamped sub-folder
+timestamp = str(datetime.datetime.now())[:-7]
+if not os.path.exists(os.path.join('results', timestamp)):
+    os.makedirs(os.path.join('results', timestamp))
+
+# Copy config file
+copyfile('config.gin', os.path.join(os.path.join('results', timestamp),'config.gin'))
+
+# Parse 'config.gin' for hyperparameters & env setup
+gin.parse_config_file('config.gin')
+
+# Instantiate agent
+agent = MentalAgent()
+
+# Train the agent
 agent.train()
 
-
-#####################
-# Plot/Save Results #
-#####################
+#########################
+#   Plot/Save Results   #
+#########################

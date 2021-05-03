@@ -11,7 +11,7 @@ from mentalgym.constants import intermediate_i
 from mentalgym.utils.function import make_function
 from mentalgym.utils.validation import function_eq
 from mentalgym.functions.atomic import Linear, ReLU, Dropout
-from sklearn.datasets import make_classification
+from sklearn.datasets import make_classification, load_iris
 from typing import Callable
 import numpy as np
 import pandas as pd
@@ -32,7 +32,6 @@ def make_data(**kwargs):
     ).assign(y=y)
     df.columns = [str(_) for _ in df.columns]
     return df
-
 
 test_case_1 = {
     'init': {

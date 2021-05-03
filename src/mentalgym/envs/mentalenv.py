@@ -13,7 +13,7 @@ import torch.utils.data as data_utils
 import pandas as pd
 from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
-from mentalgym.utils.function import make_function
+from mentalgym.utils.function import make_function, make_id
 from mentalgym.functions.composed import ComposedFunction
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
@@ -272,11 +272,10 @@ class MentalEnv(gym.Env):
         action_index = int(
             np.round(
                 np.clip(
-                    2.5 * action[0], 0, self._function_bank.idxmax()
+                    10.5 * action[0], 0, self._function_bank.idxmax()
                 )  # TODO: remove multiplier
             )
         )
-
         # This extracts the function location from the action.
         # This 'clips' the action location to the interior of the
         #   experiment space. It is already a float array, so nothing
@@ -344,6 +343,9 @@ class MentalEnv(gym.Env):
 
         # Add composed functions directly to experiment space
         if f_type == "composed":
+            fun['exp_loc_0'] = action_location[0]
+            fun['exp_loc_1'] = action_location[1]
+            fun['hyperparameters']["function_bank"] = self._function_bank
             self._experiment_space = append_to_experiment(
                 experiment_space_container=self._experiment_space,
                 function_bank=self._function_bank,
@@ -373,6 +375,7 @@ class MentalEnv(gym.Env):
                 #   episode completion and connect function to sink.
                 output_df = connected_df.query('type == "sink"')
                 if output_df.shape[0]:
+                    last_index = self._experiment_space.tail(1).index.item()
                     connected_to_sink = True
                     self._experiment_space.at[
                         self._experiment_space.query(
@@ -450,31 +453,48 @@ class MentalEnv(gym.Env):
                 ]
 
                 # Find closest intermediate function to sink node and attach
-                last_index = tree.query(sink_loc, k=1)[1][0]
+                last_es_index = tree.query(sink_loc, k=1)[1][0]
 
                 self._experiment_space.at[
                     self._experiment_space.query('type=="sink"').index.item(),
                     "input",
-                ] = [intermediate_es.iloc[last_index].id]
+                ] = [intermediate_es.iloc[last_es_index].id]
 
-            # Get the id of the function that connects to the sink
-            last_id = self._experiment_space.loc[
-                self._experiment_space["type"] == "sink", "input"
-            ].item()
+                # Count number of sources
+                num_sources_and_sinks = len(self._experiment_space.query('(type == "source") or (type == "sink")'))
+                last_index = last_es_index + num_sources_and_sinks
+
+#            # Get the id of the function that connects to the sink
+#            last_id = self._experiment_space.loc[
+#                self._experiment_space["type"] == "sink", "input"
+#            ].item()
 
             print("\n\nEPISODE:", self._episode)
             print("\nFinal Experiment Space:\n", self._experiment_space)
 
             # Build and save net
-            id = 100 # TODO:How to generate ID?
+
             # TODO: Use the make_function to generate the ID, then create
             #   a new composed function like you're doing. The ID will
             #   get updated in the 'id' field and added to the hyperparameter
             #   field {'id': inp}
             # This composed function *is* your net. Assign it to a model,
             #   and call it on the input.
+            id = make_id()
+            composed_output_size = self._experiment_space.iloc[last_index].hyperparameters["output_size"]
+
             new_composed_fn = ComposedFunction(id, self._experiment_space,
-                                                self._function_bank)
+                                               self._function_bank, output_size=composed_output_size)
+ 
+            made_function = make_function(
+                 function_id = id,
+                 function_object = ComposedFunction,
+                 function_hyperparameters = {"output_size": composed_output_size},
+                 function_inputs = list(new_composed_fn.inputs.keys()),
+                 function_type = 'composed', 
+            )
+
+            self._function_bank.append(made_function)
 
             # TODO: Train the net.
             # self._train_net()
@@ -593,59 +613,6 @@ class MentalEnv(gym.Env):
         newly composed function.
 
         """
-        # comment out if function bank only has 'None' in inputs
-        self._experiment_space = self._experiment_space.fillna(
-            np.nan
-        ).replace([np.nan], [None])
-
-        # Create new experiment space with only functions in the net.  This
-        # new data frame will have only intermediate and composite functions,
-        # in reverse order from output to input.
-        net_df = pd.DataFrame().reindex(
-            columns=self._experiment_space.columns
-        )
-        net_df.loc[0] = self._experiment_space.query('type == "sink"').iloc[0]
-        cur_inputs = deepcopy(net_df.tail(1).input.item())
-
-        while len(cur_inputs):
-            cur_input = cur_inputs[0]
-            if cur_input not in net_df.id.values:
-                net_df.loc[len(net_df.index)] = self._experiment_space.query(
-                    "id == @cur_input"
-                ).iloc[0]
-                inps = net_df.tail(1).input.item()
-                if inps != None:
-                    for inp in inps:
-                        if (
-                            inp not in net_df.id.values
-                            and self._experiment_space.query(
-                                "id == @inp"
-                            ).type.values
-                            != "source"
-                        ):
-                            cur_inputs.append(inp)
-            cur_inputs.pop(0)
-
-        print("\n\nFinal Net (df):\n", net_df)
-
-        # for ind in range(len(net_df)):
-        # fn_type = net_df.iloc[ind]["i"]
-        # fn_params = net_df.iloc[ind]["hyperparameters"]
-        # if fn_type == relu_i:
-        # self.net_init.append(nn.ReLU())
-        # elif fn_type == linear_i:
-        # self.net_init.append(
-        # nn.Linear(
-        # fn_params["input_size"], fn_params["output_size"]
-        # )
-        # )
-        # elif fn_type == dropout_i:
-        # self.net_init.append(nn.Dropout(fn_params["p"]))
-
-        # print("\n\nPyTorch Init:\n", self.net_init)
-
-        # TODO: BUILD COMPUTATION GRAPH
-
         # Creating np arrays
         target = self.dataset["output"].values
         features = self.dataset.drop("output", axis=1).values
@@ -658,8 +625,6 @@ class MentalEnv(gym.Env):
             train, batch_size=self.net_batch_size, shuffle=True
         )
 #        for idx, (data, target) in enumerate(train_loader):
-#            print("train_loader:\n", (data, target))
-#            print("column 0 !!\n", (data[:, 0:2], target))
         #        optimizer = torch.optim.Adam(, lr=self.net_lr)
         criterion = nn.CrossEntropyLoss()
 

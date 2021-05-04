@@ -1,4 +1,6 @@
 import numpy as np
+import tensorflow as tf
+import pandas as pd
 from stable_baselines3 import A2C
 from stable_baselines3.common.env_checker import check_env
 from mentalgym.envs import MentalEnv
@@ -63,11 +65,11 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
-    hparams["dataset"] = testing_df
+    hparams["dataset"] = "MNIST"
     hparams["verbose"] = 0
     hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
-    hparams["max_steps"] = 4
+    hparams["max_steps"] = 10
     hparams["seed"] = None
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99
@@ -79,18 +81,38 @@ if __name__ == "__main__":
     hparams["epsilon_maintain"] = 0.01
     hparams["buffer_len"] = 100
     hparams["num_active_fns_init"] = 3
-    hparams["epochs"] = 5
-    hparams["net_lr"] = 0.0001
-    hparams["net_batch_size"] = 128
+    hparams["epochs"] = 1
+    hparams["net_lr"] = 1e-2
+    hparams["net_batch_size"] = 512
+
+    if hparams["dataset"] == "MNIST":
+        (Xtrain, ytrain), (Xtest, ytest) = tf.keras.datasets.mnist.load_data()
+        Xtrain = (Xtrain - np.mean(Xtrain, axis=0)) / (np.std(Xtrain) + 1e-7)
+        Xtest = (Xtest - np.mean(Xtest, axis=0)) / (np.std(Xtest) + 1e-7)
+        Xtrain, Xval = Xtrain[0:5000], Xtrain[50000:55000]
+        ytrain, yval = ytrain[0:5000], ytrain[50000:55000]
+        Xtrain = Xtrain.reshape((Xtrain.shape[0], -1))
+        Xval = Xval.reshape((Xval.shape[0], -1))
+        Xtest = Xtest.reshape((Xtest.shape[0], -1))
+        dataset = pd.DataFrame(Xtrain).assign(output=ytrain)
+        valset = pd.DataFrame(Xval).assign(output=yval)
+        testset = pd.DataFrame(Xtest)
+        hparams["n_classes"] = 10
+    else:
+        dataset = testing_df
+        hparams["n_classes"] = 2 #TODO: Need to bring in from data.py
 
     env = MentalEnv(
-            dataset=hparams["dataset"],
+            dataset=dataset,
+            valset=valset,
+            testset=testset,
             number_functions=hparams["number_functions"],
             max_steps=hparams["max_steps"],
             verbose=hparams["verbose"],
             epochs=hparams["epochs"],
             net_lr=hparams["net_lr"],
             net_batch_size=hparams["net_batch_size"],
+            n_classes=hparams["n_classes"]
         )
 
     agent = MentalAgent(env)

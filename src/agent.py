@@ -68,6 +68,7 @@ if __name__ == "__main__":
     hparams = {}
     hparams["dataset"] = "SK2C"
     hparams["verbose"] = 0
+    hparams["experiment_folder"] = 'experiment_one'
     hparams["num_episodes"] = 500
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
@@ -116,7 +117,8 @@ if __name__ == "__main__":
             epochs=hparams["epochs"],
             net_lr=hparams["net_lr"],
             net_batch_size=hparams["net_batch_size"],
-            n_classes=hparams["n_classes"]
+            n_classes=hparams["n_classes"],
+            function_bank_directory=hparams["experiment_folder"]
         )
 
     agent = MentalAgent(env, num_episodes = hparams["num_episodes"])

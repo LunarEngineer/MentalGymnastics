@@ -102,7 +102,8 @@ def make_sk2c():
         random_state=1
     )
     
-    return dataset, valset, testset
+    set_list = [dataset, valset, testset, 2]
+    return set_list
 ####################################################################
 #                Create simple Experiment Space                    #
 ####################################################################

@@ -35,3 +35,4 @@ __pycache__
 ####################################################################
 src/mentalgym.egg-info/requires.txt
 results
+experiment_one

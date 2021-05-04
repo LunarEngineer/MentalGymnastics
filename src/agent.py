@@ -4,7 +4,7 @@ import pandas as pd
 from stable_baselines3 import A2C
 from stable_baselines3.common.env_checker import check_env
 from mentalgym.envs import MentalEnv
-from mentalgym.utils.data import testing_df
+from mentalgym.utils.data import testing_df, make_dataset
 import gin
 import gym
 import os
@@ -72,9 +72,6 @@ class MentalAgent:
             callback=callback
             )
 
-
-
-
 class CustomCallback(BaseCallback):
     """
     A custom callback that derives from ``BaseCallback``.
@@ -122,13 +119,6 @@ class CustomCallback(BaseCallback):
         # mean by function id
         pass
 
-    def _on_rollout_start(self) -> None:
-        """
-        A rollout is the collection of environment interaction
-        using the current policy.
-        This event is triggered before collecting new samples.
-        """
-        pass
 
     def _on_step(self) -> bool:
         """
@@ -181,7 +171,7 @@ if __name__ == "__main__":
     hparams = {}
     hparams["dataset"] = "MNIST"
     hparams["verbose"] = 0
-    hparams["num_episodes"] = 10
+    hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -200,33 +190,38 @@ if __name__ == "__main__":
     hparams["net_batch_size"] = 512
 
     if hparams["dataset"] == "MNIST":
-        (Xtrain, ytrain), (Xtest, ytest) = tf.keras.datasets.mnist.load_data()
-        Xtrain = (Xtrain - np.mean(Xtrain, axis=0)) / (np.std(Xtrain) + 1e-7)
-        Xtest = (Xtest - np.mean(Xtest, axis=0)) / (np.std(Xtest) + 1e-7)
-        Xtrain, Xval = Xtrain[0:5000], Xtrain[50000:55000]
-        ytrain, yval = ytrain[0:5000], ytrain[50000:55000]
-        Xtrain = Xtrain.reshape((Xtrain.shape[0], -1))
-        Xval = Xval.reshape((Xval.shape[0], -1))
-        Xtest = Xtest.reshape((Xtest.shape[0], -1))
-        dataset = pd.DataFrame(Xtrain).assign(output=ytrain)
-        valset = pd.DataFrame(Xval).assign(output=yval)
-        testset = pd.DataFrame(Xtest)
-        hparams["n_classes"] = 10
+
+        set_list = make_dataset('MNIST')
+        
+        # (Xtrain, ytrain), (Xtest, ytest) = tf.keras.datasets.mnist.load_data()
+        # Xtrain = (Xtrain - np.mean(Xtrain, axis=0)) / (np.std(Xtrain) + 1e-7)
+        # Xtest = (Xtest - np.mean(Xtest, axis=0)) / (np.std(Xtest) + 1e-7)
+        # Xtrain, Xval = Xtrain[0:5000], Xtrain[50000:55000]
+        # ytrain, yval = ytrain[0:5000], ytrain[50000:55000]
+        # Xtrain = Xtrain.reshape((Xtrain.shape[0], -1))
+        # Xval = Xval.reshape((Xval.shape[0], -1))
+        # Xtest = Xtest.reshape((Xtest.shape[0], -1))
+        # dataset = pd.DataFrame(Xtrain).assign(output=ytrain)
+        # valset = pd.DataFrame(Xval).assign(output=yval)
+        # testset = pd.DataFrame(Xtest)
+        # set_list = [dataset, valset, testset] 
+        # hparams["n_classes"] = 10
     else:
         dataset = testing_df
         hparams["n_classes"] = 2 #TODO: Need to bring in from data.py
 
     env = MentalEnv(
-            dataset=dataset,
-            valset=valset,
-            testset=testset,
+            set_list=set_list,
+            # dataset=dataset,
+            # valset=valset,
+            # testset=testset,
             number_functions=hparams["number_functions"],
             max_steps=hparams["max_steps"],
             verbose=hparams["verbose"],
             epochs=hparams["epochs"],
             net_lr=hparams["net_lr"],
-            net_batch_size=hparams["net_batch_size"],
-            n_classes=hparams["n_classes"]
+            net_batch_size=hparams["net_batch_size"]
+            # n_classes=hparams["n_classes"]
         )
 
     agent = MentalAgent(env, num_episodes = hparams["num_episodes"])

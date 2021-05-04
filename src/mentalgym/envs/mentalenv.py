@@ -103,9 +103,10 @@ class MentalEnv(gym.Env):
 
     def __init__(
         self,
-        dataset: pd.DataFrame,
-        valset: pd.DataFrame,
-        testset: pd.DataFrame,
+        set_list: list,
+        # dataset: pd.DataFrame,
+        # valset: pd.DataFrame,
+        # testset: pd.DataFrame,
         experiment_space_min: ArrayLike = np.array([0.0, 0.0]),
         experiment_space_max: ArrayLike = np.array([100.0, 100.0]),
         number_functions: int = 8,
@@ -113,7 +114,7 @@ class MentalEnv(gym.Env):
         epochs: int = 5,
         net_lr: float = 0.0001,
         net_batch_size: int = 128,
-        n_classes: int = 2,
+        # n_classes: int = 2,
         seed: Optional[int] = None,
         verbose: bool = False,
         **kwargs,
@@ -123,11 +124,16 @@ class MentalEnv(gym.Env):
         This instantiates a function bank and an experiment space.
         """
         super(MentalEnv, self).__init__()
+        
+        trainset = set_list[0]
+        valset = set_list[1]
+        testset = set_list[2]
+        n_classes = set_list[3]
 
-        dataset.columns = [str(_) for _ in dataset.columns]
+        trainset.columns = [str(_) for _ in trainset.columns]
         valset.columns = [str(_) for _ in valset.columns]
         testset.columns = [str(_) for _ in testset.columns]
-        self.dataset = dataset
+        self.dataset = trainset
         
         self.done = None
         self.last_reward = None
@@ -611,9 +617,6 @@ class MentalEnv(gym.Env):
         lr = min(lr_max, lr_start / (epoch + 1))
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
-
-        self.last_reward = reward
-        return self.state, reward, done, info
 
     def _build_atomic_function(
         self, action_index, action_location, connected_df

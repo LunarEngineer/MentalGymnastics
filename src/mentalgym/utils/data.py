@@ -4,6 +4,9 @@ import pandas as pd
 from mentalgym.functionbank import FunctionBank
 from sklearn.datasets import make_classification
 import gin
+import tensorflow as tf
+from sklearn.datasets import load_iris, load_digits
+import numpy as np
 
 ####################################################################
 #                   Create simple testing data                     #
@@ -36,14 +39,46 @@ testing_df = pd.DataFrame(
 @gin.configurable
 def make_dataset(name: str):
 
-    dataset = None
+    set_list = None
 
-    if name == 'iris':
-        from sklearn.datasets import load_iris
-        X, y = load_iris(return_X_y=True, as_frame=True)
-        dataset = X.assign(output=y)
+    # if name == 'IRIS':
+        
+    #     bunch = load_iris(as_frame=True)
+    #     X = bunch['data']
+    #     y = bunch['target']
 
-    return dataset
+    #     n_classes = len(bunch['target_names'])
+    #     dataset = X.assign(output=y)
+
+    #     X_train, X_test, y_train, y_test = train_test_split(X, y, 
+    #                                                         test_size=0.33, 
+    #                                                         random_state=42
+    #                                                         )
+    #     set_list = [pd.DataFrame(X_train), pd.DataFrame(X_test), pd.DataFrame(y_test)]
+    #     X_train, X_test, y_train, y_test 
+    #         = train_test_split(X, y, test_size=0.2, random_state=1)
+
+    #     X_train, X_val, y_train, y_val 
+    #         = train_test_split(X_train, y_train, test_size=0.25, random_state=1)
+    #     return 
+
+    if name == 'MNIST':
+        (Xtrain, ytrain), (Xtest, ytest) = tf.keras.datasets.mnist.load_data()
+        Xtrain = (Xtrain - np.mean(Xtrain, axis=0)) / (np.std(Xtrain) + 1e-7)
+        Xtest = (Xtest - np.mean(Xtest, axis=0)) / (np.std(Xtest) + 1e-7)
+        Xtrain, Xval = Xtrain[0:5000], Xtrain[50000:55000]
+        ytrain, yval = ytrain[0:5000], ytrain[50000:55000]
+        Xtrain = Xtrain.reshape((Xtrain.shape[0], -1))
+        Xval = Xval.reshape((Xval.shape[0], -1))
+        Xtest = Xtest.reshape((Xtest.shape[0], -1))
+        dataset = pd.DataFrame(Xtrain).assign(output=ytrain)
+        valset = pd.DataFrame(Xval).assign(output=yval)
+        testset = pd.DataFrame(Xtest)
+        bunch = load_digits()
+        n_classes = len(bunch['target_names'])
+        set_list = [dataset, valset, testset, n_classes] 
+
+    return set_list
 
 ####################################################################
 #                Create simple Experiment Space                    #

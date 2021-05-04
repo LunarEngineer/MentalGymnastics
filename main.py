@@ -38,8 +38,3 @@ agent.train(log_dir=os.path.join('results', timestamp), callback=callback_)
 #########################
 #   Plot/Save Results   #
 #########################
-
-# from stable_baselines3 import A2C
-
-# model = A2C('MlpPolicy', 'CartPole-v1', verbose=0, tensorboard_log="./a2c_cartpole_tensorboard/")
-# model.learn(total_timesteps=1000)

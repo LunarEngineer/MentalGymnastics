@@ -1,7 +1,7 @@
 import logging
+import time
 from typing import Optional
 import numpy as np
-from copy import copy, deepcopy
 from numpy.typing import ArrayLike
 from scipy.spatial import cKDTree
 import gym
@@ -15,6 +15,7 @@ from mentalgym.functionbank import FunctionBank
 from mentalgym.types import Function, FunctionSet
 from mentalgym.utils.function import make_function, make_id
 from mentalgym.functions.composed import ComposedFunction
+import mentalgym.functions.composed
 from mentalgym.utils.reward import connection_reward, linear_completion_reward
 from mentalgym.utils.spaces import (
     refresh_experiment_container,
@@ -45,6 +46,7 @@ __FUNCTION_BANK_KWARGS__ = {
 # TODO: Replace print statements.
 logger = logging.getLogger(__name__)
 
+
 @gin.configurable
 class MentalEnv(gym.Env):
     """A Mental Gymnasium Environment.
@@ -57,6 +59,10 @@ class MentalEnv(gym.Env):
     ----------
     dataset: pd.DataFrame
         This is a modeling dataset.
+    valset: pd.DataFrame
+        This is the validation set.
+    testset: pd.DataFrame
+        This is the test set.
     experiment_space_min: ArrayLike = numpy.array([0., 0.])
         This is an array of numbers which represents the minimum
         coordinates for functions.
@@ -74,6 +80,7 @@ class MentalEnv(gym.Env):
     epochs: int = 5
     net_lr: float = 0.0001
     net_batch_size: int = 128
+    n_classes: int = 2
     seed: Optional[int] = None
         This is used to seed randomness.
     verbose: bool = False
@@ -97,6 +104,8 @@ class MentalEnv(gym.Env):
     def __init__(
         self,
         dataset: pd.DataFrame,
+        valset: pd.DataFrame,
+        testset: pd.DataFrame,
         experiment_space_min: ArrayLike = np.array([0.0, 0.0]),
         experiment_space_max: ArrayLike = np.array([100.0, 100.0]),
         number_functions: int = 8,
@@ -104,6 +113,7 @@ class MentalEnv(gym.Env):
         epochs: int = 5,
         net_lr: float = 0.0001,
         net_batch_size: int = 128,
+        n_classes: int = 2,
         seed: Optional[int] = None,
         verbose: bool = False,
         **kwargs,
@@ -113,13 +123,18 @@ class MentalEnv(gym.Env):
         This instantiates a function bank and an experiment space.
         """
         super(MentalEnv, self).__init__()
-        
+
         dataset.columns = [str(_) for _ in dataset.columns]
+        valset.columns = [str(_) for _ in valset.columns]
+        testset.columns = [str(_) for _ in testset.columns]
         self.dataset = dataset
         
         self.done = None
         self.last_reward = None
         
+        self.valset = valset
+        self.testset = testset
+
         ############################################################
         #                 Store Hyperparameters                    #
         ############################################################
@@ -210,6 +225,7 @@ class MentalEnv(gym.Env):
         self.epochs = epochs
         self.net_lr = net_lr
         self.net_batch_size = net_batch_size
+        self.n_classes = n_classes
 
         if self._verbose:
             status_message = f"""Environment Init:
@@ -254,6 +270,8 @@ class MentalEnv(gym.Env):
             This is a (max_steps + I) x m sized array representing
             the experiment space.
         """
+        # Default values here, or pass some info?
+        info = {}
         ############################################################
         #                       Bookkeeping                        #
         ############################################################
@@ -275,8 +293,8 @@ class MentalEnv(gym.Env):
         action_index = int(
             np.round(
                 np.clip(
-                    10.5 * action[0], 0, self._function_bank.idxmax()
-                )  # TODO: remove multiplier
+                    action[0], 0, self._function_bank.idxmax()
+                )
             )
         )
         # This extracts the function location from the action.
@@ -284,12 +302,12 @@ class MentalEnv(gym.Env):
         #   experiment space. It is already a float array, so nothing
         #   further is required.
         action_location = np.clip(
-            action[1:-1], self.experiment_space_min, self.experiment_space_max
-        )
+            15 * action[1:-1], self.experiment_space_min, self.experiment_space_max
+        )  # TODO: remove multiplier
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
         action_radius = np.clip(
-            50 * action[-1], 0, None
+            20 * action[-1], 0, None
         )  # TODO: remove multiplier
 
         # Verbose logging here for development and troubleshooting.
@@ -344,11 +362,12 @@ class MentalEnv(gym.Env):
         # Dependent on what the Function type is, it will be handled
         #   differently.
 
-        # Add composed functions directly to experiment space
+        # If function is composed, add directly to experiment space after
+        #   providing its location in the experiment space and the function
+        #   bank
         if f_type == "composed":
-            fun['exp_loc_0'] = action_location[0]
-            fun['exp_loc_1'] = action_location[1]
-            fun['hyperparameters']["function_bank"] = self._function_bank
+            fun["exp_loc_0"] = action_location[0]
+            fun["exp_loc_1"] = action_location[1]
             self._experiment_space = append_to_experiment(
                 experiment_space_container=self._experiment_space,
                 function_bank=self._function_bank,
@@ -368,6 +387,12 @@ class MentalEnv(gym.Env):
                 #   experiment space. This can contain input,
                 #   intermediate, composed, and output nodes.
                 connected_df = self._experiment_space.iloc[idx]
+
+                # Don't allow ReLUs to connect to source nodes
+                if action_index == relu_i:
+                    connected_df = connected_df[connected_df.type != "source"]
+                    if connected_df.empty:
+                        return self.state, 0, done, info
 
                 # Add current function to experiment space
                 self._build_atomic_function(
@@ -391,17 +416,12 @@ class MentalEnv(gym.Env):
             debug_message = f"""Function Build:
             Queried Function:\n{fun}
             Queried Function Type: {fun['type']}
-            
+
             New Experiment Space
             --------------------\n{self._experiment_space}
             """
             print(debug_message)
-        ############################################################
-        #                    Reward and Rollup                     #
-        #                                                          #
-        # This uses the experiment space to determine appropriate  #
-        #   rewards and whether or not to build and run the graph. #
-        ############################################################
+
         # Return a minor reward if there are *any* nodes added.
         reward = connection_reward(
             self._experiment_space, self._function_bank
@@ -409,8 +429,10 @@ class MentalEnv(gym.Env):
         self.last_reward = reward
         # Default values here, or pass some info?
         info = {}
+
+
         # Extract the state space.
-        state = self.build_state()
+        self.state = self.build_state()
         if self._verbose:
             debug_message = f"""End of Step:
             Connected to the sink node: {connected_to_sink}
@@ -419,7 +441,7 @@ class MentalEnv(gym.Env):
             Done: {done}
 
             State Observation
-            -----------------\n{state}
+            -----------------\n{self.state}
             """
             print(debug_message)
 
@@ -437,7 +459,7 @@ class MentalEnv(gym.Env):
             # Check if net is empty, and if so, return 0 reward
             if not len(intermediate_es.index):
                 self.last_reward = 0
-                return state, 0, done, info
+                return self.state, 0, done, info
 
             # Check if net has exactly 1 composed function coneected to the
             # sink, and if so return 0 reward
@@ -447,7 +469,7 @@ class MentalEnv(gym.Env):
                 and intermediate_es.iloc[0]["type"] == "composed"
             ):
                 self.last_reward = 0
-                return state, 0, done, info
+                return self.state, 0, done, info
 
             # Else we have a legitimate net: connect to a sink if needed.
             if not connected_to_sink:
@@ -461,25 +483,22 @@ class MentalEnv(gym.Env):
 
                 # Find closest intermediate function to sink node and attach
                 last_es_index = tree.query(sink_loc, k=1)[1][0]
-
                 self._experiment_space.at[
                     self._experiment_space.query('type=="sink"').index.item(),
                     "input",
                 ] = [intermediate_es.iloc[last_es_index].id]
 
-                # Count number of sources
-                num_sources_and_sinks = len(self._experiment_space.query('(type == "source") or (type == "sink")'))
+                # We need to count the number of sources and sinks here
+                #   in order to find the last layer's index, since the
+                #   intermediate experiment space lost that information
+                num_sources_and_sinks = len(
+                    self._experiment_space.query(
+                        '(type == "source") or (type == "sink")'
+                    )
+                )
                 last_index = last_es_index + num_sources_and_sinks
 
-#            # Get the id of the function that connects to the sink
-#            last_id = self._experiment_space.loc[
-#                self._experiment_space["type"] == "sink", "input"
-#            ].item()
-
-            print("\n\nEPISODE:", self._episode)
             print("\nFinal Experiment Space:\n", self._experiment_space)
-
-            # Build and save net
 
             # TODO: Use the make_function to generate the ID, then create
             #   a new composed function like you're doing. The ID will
@@ -487,35 +506,114 @@ class MentalEnv(gym.Env):
             #   field {'id': inp}
             # This composed function *is* your net. Assign it to a model,
             #   and call it on the input.
-            id = make_id()
-            composed_output_size = self._experiment_space.iloc[last_index].hyperparameters["output_size"]
 
-            new_composed_fn = ComposedFunction(id, self._experiment_space,
-                                               self._function_bank, output_size=composed_output_size)
- 
-            made_function = make_function(
-                 function_id = id,
-                 function_object = ComposedFunction,
-                 function_hyperparameters = {"output_size": composed_output_size},
-                 function_inputs = list(new_composed_fn.inputs.keys()),
-                 function_type = 'composed', 
+            # Generate ID and get output size for newly composed function
+            # TODO allow for concatenation of arbitrary number of output
+            #   layers
+            id = make_id()
+            composed_output_size = self._experiment_space.iloc[
+                last_index
+            ].hyperparameters["output_size"]
+
+            # Get final id
+            final_id = self._experiment_space.iloc[last_index].id
+
+            # Instantiate new composed function
+            new_composed_fn = ComposedFunction(
+                id,
+                self._experiment_space,
+                self._function_bank,
+                output_size=composed_output_size,
             )
 
+            # Make new composed function
+            made_function = make_function(
+                function_id=id,
+                function_object=ComposedFunction,
+                function_hyperparameters={
+                    "input_size": new_composed_fn.input_size,
+                    "output_size": new_composed_fn.output_size,
+                    "function_dir": new_composed_fn._function_dir
+                },
+                function_inputs=list(new_composed_fn.inputs.keys()),
+                function_type="composed",
+            )
+
+            # Append new composed function to function bank
             self._function_bank.append(made_function)
+            print("\nFUNCTION BANK:\n", self._function_bank.to_df())
 
-            # TODO: Train the net.
-            # self._train_net()
+            model = new_composed_fn
+            model._module_dict['output'] = nn.Linear(new_composed_fn.output_size, self.n_classes)
 
-            # TODO: Validate the net.
-            # self._validate_net()
+            # Set training data
+            new_fn_space = new_composed_fn._net_subspace
+            cols = new_fn_space.query('type == "source"').id.values
+
+            Xtrain = self.dataset[cols].values
+            ytrain = self.dataset.loc[:, self.dataset.columns == 'output'].values.squeeze()
+
+            # Set validation data
+            Xval = self.valset[cols].values
+            yval = self.valset.loc[:, self.valset.columns == 'output'].values.squeeze()
+
+            print("\nMODEL:", model.parameters)
+            complexity = new_composed_fn.complexity
+            optimizer = torch.optim.Adam(model.parameters(), lr=self.net_lr)
+            criterion = nn.CrossEntropyLoss()
+
+            train_loss_history = []
+            train_acc_history = []
+            valid_loss_history = []
+            valid_acc_history = []
+            best_acc = 0.0
+            for epoch in range(self.epochs):
+                # Train
+                batched_train_data, batched_train_label = self._generate_batched_data(Xtrain, ytrain)
+                self._adjust_learning_rate(optimizer, epoch)
+                epoch_loss, epoch_acc = self._train_net(epoch, batched_train_data, batched_train_label, model, optimizer, criterion, final_id)
+                train_loss_history.append(epoch_loss)
+                train_acc_history.append(epoch_acc)
+
+                # Validate
+                batched_val_data, batched_val_label = self._generate_batched_data(Xval, yval)
+                valid_loss, valid_acc = self._validate_net(batched_val_data, batched_val_label, model, criterion, final_id)
+                print("* Validation Accuracy: {accuracy:.4f}".format(accuracy=valid_acc))
+
+                valid_loss_history.append(valid_loss)
+                valid_acc_history.append(valid_acc)
+
+                if valid_acc > best_acc:
+                    best_acc = valid_acc
 
             # Add the completion reward.
-            # reward += float(
-            #     linear_completion_reward(self._experiment_space, None, 0.5)
-            # )
+            reward += float(
+                linear_completion_reward(self._experiment_space, None, best_acc)
+            )
+
+            # self._function_bank.score(** experiment_space.IDs)
+
+        return self.state, reward, done, info
+
+    def _generate_batched_data(self, data, label):
+        batched_data = []
+        batched_label = []
+        indices = list(range(len(label)))
+
+        for i in range(0, len(label), self.net_batch_size):
+            batched_data.append(np.array([data[j] for j in indices[i:i+self.net_batch_size]]))
+            batched_label.append([label[j] for j in indices[i:i+self.net_batch_size]])
+        return batched_data, batched_label
+
+    def _adjust_learning_rate(self, optimizer, epoch):
+        lr_start = self.net_lr
+        lr_max = 1e-1
+        lr = min(lr_max, lr_start / (epoch + 1))
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
         self.last_reward = reward
-        return state, reward, done, info
+        return self.state, reward, done, info
 
     def _build_atomic_function(
         self, action_index, action_location, connected_df
@@ -544,27 +642,14 @@ class MentalEnv(gym.Env):
         inputs_df = connected_df.query('type != "sink"')
         inputs_hparams = inputs_df.hyperparameters.to_list()
 
-        # TODO: This section, where it determines the size of the input and output layers
-        # todo: should be abstracted to a function.
         # Add all input sizes together
-        sum_of_inputs = 0
-        # This is walking down a list of dictionaries.
-        for parameter_dict in inputs_hparams:
-            # If the dictionary is empty
-            if not len(parameter_dict):
-                # Then it's a single column coming in. Increment the
-                #   count of input by one.
-                sum_of_inputs += 1
-            else:
-                # Otherwise it's the sum of the output size from the
-                #   layer above tacked on to the accumulating value.
-                sum_of_inputs += parameter_dict["output_size"]
+        sum_of_inputs = self._sum_inputs(inputs_hparams)
 
         # Set function-specific hyperparameters
         if function_class == ReLU:
             intermediate_i = relu_i
             function_parameters = {
-                "output_size": sum_of_inputs, #TODO: Think this needs to change to 
+                "output_size": sum_of_inputs,
                 "input_size": sum_of_inputs,
             }
         elif function_class == Dropout:
@@ -606,89 +691,116 @@ class MentalEnv(gym.Env):
             composed_functions=[new_function],
         )
 
-    def _build_net(self):
-        """Builds the experiment space's envisioned net.
+    def _sum_inputs(self, inputs_hparams):
+        """ Checks container of hyperparameter dictionaries in order to
+            compute the input width of a given layer.  Each dictionary
+            in the container should represent a layer that is itself an
+            input to the layer whose input width we're computing.
+            Therefore, we're going to be checking each dict's "output_size".
 
         Inputs
         ----------
-        Takes in the last step's experiment space & layer right before the
-        output layer.
+        Container of dictionaries
 
         Returns
         ----------
-        Adds the newly tested composed function to the function bank.
-        Updates the metrics for the atomic/composed functions used in the
-        newly composed function.
-
+        Sum of the outputs of all layers represented in the container
         """
-        # Creating np arrays
-        target = self.dataset["output"].values
-        features = self.dataset.drop("output", axis=1).values
+        sum_of_inputs = 0
+        for parameter_dict in inputs_hparams:
+            # If the dictionary is empty, assume output of this layer is a
+            #   single column
+            if not len(parameter_dict):
+                sum_of_inputs += 1
+            # Otherwise it's the sum of the output size from the
+            #   layer above tacked on to the accumulating value.
+            else:
+                sum_of_inputs += parameter_dict["output_size"]
+        return sum_of_inputs
 
-        # Passing to DataLoader
-        train = data_utils.TensorDataset(
-            torch.tensor(features), torch.tensor(target)
-        )
-        train_loader = data_utils.DataLoader(
-            train, batch_size=self.net_batch_size, shuffle=True
-        )
-#        for idx, (data, target) in enumerate(train_loader):
-        #        optimizer = torch.optim.Adam(, lr=self.net_lr)
-        criterion = nn.CrossEntropyLoss()
+    def _accuracy(self, output, target):
+        """Computes the precision@k for the specified values of k"""
+        batch_size = target.shape[0]
+        _, pred = torch.max(output, dim=-1)
+        correct = pred.eq(target).sum() * 1.0
+        acc = correct / batch_size
+        return acc
 
-    #        _train_net()
+    def _train_net(self, epoch, batched_train_data, batched_train_label, model, optimizer, criterion, final_id):
 
-    def _train_net(self, data_loader, optimizer, criterion):
-        iter_time = AverageMeter()
-        losses = AverageMeter()
-        acc = AverageMeter()
-
-        for idx, (data, target) in enumerate(data_loader):
-            start = time.time()
-
+        epoch_loss = 0.0
+        hits = 0
+        count_samples = 0.0
+        for idx, (input, target) in enumerate(zip(batched_train_data, batched_train_label)):
+            start_time = time.time()
+            input = torch.Tensor(input)
+            target = torch.LongTensor(target)
             if torch.cuda.is_available():
-                data = data.cuda()
+                input = input.cuda()
                 target = target.cuda()
 
-            ###########################################################
-            # TODO: Complete the body of training loop                #
-            #       1. forward data batch to the model                #
-            #       2. Compute batch loss                             #
-            #       3. Compute gradients and update model parameters  #
-            ###########################################################
-
             optimizer.zero_grad()
-            out = model(data)
+            out = model._recursive_forward(final_id, input)
+
+            try:
+                assert target[target<0].numel() == 0 and target[target>=self.n_classes]. numel() == 0
+            except:
+                print("Bad targets:", target[target<0], target[target>=self.n_classes])
             loss = criterion(out, target)
             loss.backward()
             optimizer.step()
 
-            ###########################################################
-            #                              END OF YOUR CODE           #
-            ###########################################################
+            with torch.no_grad():
+                batch_acc = self._accuracy(out, target)
+                epoch_loss += loss
+                hits += batch_acc * input.shape[0]
+                count_samples += input.shape[0]
+                forward_time = time.time() - start_time
+                if idx % 1 == 0:
+                    print(('Epoch: [{0}][{1}/{2}]\t'
+                      'Batch Time {batch_time:.3f} \t'
+                      'Batch Loss {loss:.4f}\t'
+                      'Train Accuracy ' + "{accuracy:.4f}" '\t').format(
+                    epoch, idx+1, len(batched_train_data), batch_time=forward_time,
+                    loss=loss, accuracy=batch_acc))
+        epoch_loss /= len(batched_train_data)
+        epoch_acc = hits / count_samples
 
-            batch_acc = accuracy(out, target)
+        print("* Average Training Accuracy of Epoch {} is: {:.4f}".format(epoch, epoch_acc))
 
-            losses.update(loss, out.shape[0])
-            acc.update(batch_acc, out.shape[0])
+        return epoch_loss, epoch_acc
 
-            iter_time.update(time.time() - start)
-            if idx % 10 == 0:
-                print(
-                    (
-                        "Epoch: [{0}][{1}/{2}]\t"
-                        "Time {iter_time.val:.3f} ({iter_time.avg:.3f})\t"
-                        "Loss {loss.val:.4f} ({loss.avg:.4f})\t"
-                        "Prec @1 {top1.val:.4f} ({top1.avg:.4f})\t"
-                    ).format(
-                        epoch,
-                        idx,
-                        len(data_loader),
-                        iter_time=iter_time,
-                        loss=losses,
-                        top1=acc,
-                    )
-                )
+    def _validate_net(self, batched_test_data, batched_test_label, model, criterion, final_id):
+        epoch_loss = 0.0
+        hits = 0
+        count_samples = 0.0
+        for idx, (input, target) in enumerate(zip(batched_test_data, batched_test_label)):
+            start_time = time.time()
+            input = torch.Tensor(input)
+            target = torch.LongTensor(target)
+            if torch.cuda.is_available():
+                input = input.cuda()
+                target = target.cuda()
+
+            with torch.no_grad():
+                out = model._recursive_forward(final_id, input) # TODO: Need ID
+                loss = criterion(out, target)
+                batch_acc = self._accuracy(out, target)
+                epoch_loss += loss
+                hits += batch_acc * input.shape[0]
+                count_samples += input.shape[0]
+                forward_time = time.time() - start_time
+                if idx % 1 == 0:
+                    print(('Validate: [{0}/{1}]\t'
+                      'Batch Time {batch_time:.3f} \t'
+                      'Batch Loss {loss:.4f}\t'
+                      'Batch Accuracy ' + "{accuracy:.4f}" '\t').format(
+                        idx+1, len(batched_test_data), batch_time=forward_time,
+                        loss=loss, accuracy=batch_acc))
+        epoch_loss /= len(batched_test_data)
+        epoch_acc = hits / count_samples
+
+        return epoch_loss, epoch_acc
 
     def build_state(self) -> ArrayLike:
         """Builds an observation from experiment space."""
@@ -711,12 +823,15 @@ class MentalEnv(gym.Env):
         self._step = 0
         # Increment the episode counter
         self._episode += 1
+        if self._episode > 0:
+            print("\n\nEPISODE:", self._episode)
         # Fill the experiment space.
         self._experiment_space = refresh_experiment_container(
             function_bank=self._function_bank,
             min_loc=self.experiment_space_min,
             max_loc=self.experiment_space_max,
         )
+
         # Get the number of input and output.
         n_io = self._experiment_space.query(
             'type in ["source", "sink"]'
@@ -724,7 +839,7 @@ class MentalEnv(gym.Env):
         # Set the state length.
         self._state_length = n_io + self.max_steps
         # Then build the state.
-        state = self.build_state()
+        self.state = self.build_state()
         # And save the bank.
         # TODO: Uncomment this when ready to test it.
         self._function_bank._save_bank()
@@ -736,13 +851,13 @@ class MentalEnv(gym.Env):
             ------------------------\n{self._experiment_space}
 
             Current Observation Space
-            -------------------------\n{state}
+            -------------------------\n{self.state}
 
             Current Function Bank
             ---------------------\n{self._function_bank.to_df()}
             """
             print(debug_message)
-        return state
+        return self.state
 
     def render(self, mode="human"):
         pass
@@ -761,22 +876,3 @@ class MentalEnv(gym.Env):
 
     def return_function_bank(self):
         return self._function_bank.to_df()
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count

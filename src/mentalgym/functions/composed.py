@@ -13,6 +13,8 @@ from mentalgym.types import ExperimentSpace, FunctionBank
 from typing import Any, Dict, Iterable, Optional, Union
 import torch.nn as nn
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class ComposedFunction(nn.Module):
     """Composed of multiple atomic functions.
 
@@ -261,6 +263,7 @@ class ComposedFunction(nn.Module):
                 input_mapping = self.inputs,
                 ids = [id]
             ).float()
+
             return input_data
         # If it's *not* a source, then we recurse down each leg.
         other_inputs = [
@@ -272,6 +275,7 @@ class ComposedFunction(nn.Module):
             other_inputs,
             axis = 1
         )
+        
         status_message = f"""Composed Function Status: Recursive Forward
 
         The ID of the forward function we are calling: {data.id.item()}
@@ -281,7 +285,7 @@ class ComposedFunction(nn.Module):
         """
         if self._verbose:
             print(status_message)
-        return self._module_dict[data.id.item()](input_data)
+        return self._module_dict[data.id.item()].to(device)(input_data)
 
     def build_forward(
         self,

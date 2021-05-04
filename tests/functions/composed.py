@@ -759,7 +759,7 @@ def composed_append_tester(
     function_bank,
     composed_function
 ) -> ComposedFunction:
-    """Tests FunctionBank to append/return Composed dunction.
+    """Tests FunctionBank to append/return Composed function.
 
     This sticks the composed function into the FunctionBank and
     tries to query for that composed, returning it.
@@ -1083,7 +1083,6 @@ def test_composed_function(test_set):
             function_bank,
             composed_function
         )
-
         # Now, we're going to score this function.
         # This actually tests the statistics reporting at the same time.
         # This *also* returns the copied object.

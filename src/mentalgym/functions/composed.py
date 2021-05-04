@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import os
 import numpy as np
@@ -42,6 +43,10 @@ class ComposedFunction(nn.Module):
 
     Properties
     ----------
+    .input: Input mapping
+    .input_size: dimensionality of input
+    .output_size: dimensionality of output
+    .complexity: dictionary of count of subordinate atomic functions.
 
     """
     def __init__(
@@ -55,6 +60,7 @@ class ComposedFunction(nn.Module):
         verbose: bool = False
     ):
         super().__init__()
+        self.class_name = 'Composed'
         self.id = id
         self._n_inputs = 0
         self.input = {}
@@ -184,6 +190,19 @@ class ComposedFunction(nn.Module):
                 print(status_message)
             # And instantiate the object!
             self._module_dict[fn_id] = fn_object(**fn_parameters)
+            # Here we're going to harvest some information.
+            # We need to check and see what layer type this is.
+            #   if it is a composed, we're going to update our own
+            #   .complexity by +='ing' each of the subordinate keys
+            #   by their respective values.
+            # If it's an *atomic* layer, though, we just increment
+            #   *that* key by one.
+            is_atomic = self._module_dict[fn_id].class_name != 'Composed'
+            if is_atomic:
+                self.complexity[self._module_dict[fn_id].class_name] += 1
+            else:
+                for layer_name, number in self._module_dict[fn_id].complexity.items():
+                    self.complexity[layer_name] += number
             # Now, call recursive init on *this* input to walk down
             #   the computation tree.
             self._recusive_init(id = ind)
@@ -279,6 +298,8 @@ class ComposedFunction(nn.Module):
         self.inputs properties.
 
         """
+        # This creates a default and empty complexity dict.
+        self.complexity = defaultdict(lambda: 0)
         # This function is creating a ModuleDict to represent the
         # structure
         # Get the id of the sink:
@@ -339,6 +360,10 @@ class ComposedFunction(nn.Module):
         pd.Series(self.inputs).to_json(
             os.path.join(d,'inputs.json')
         )
+        # Save the complexity
+        pd.Series(self.complexity).to_json(
+            os.path.join(d,'complexity.json')
+        )
         # and save the net subspace.
         self._net_subspace.to_json(
             os.path.join(d,'net_subspace.json')
@@ -356,6 +381,13 @@ class ComposedFunction(nn.Module):
         ).to_dict()
         # This is a band-aid that prevents integer fields
         self.inputs = {str(k): v for k,v in self.inputs.items()}
+        # load the complexity
+        self.complexity = pd.read_json(
+            os.path.join(d,'complexity.json'),
+            typ='series',
+            orient='records' 
+        ).to_dict()
+        self.complexity = {str(k): v for k,v in self.complexity.items()}
 
         self._net_subspace = pd.read_json(os.path.join(d,'net_subspace.json'))
 

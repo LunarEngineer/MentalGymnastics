@@ -286,6 +286,7 @@ class MentalEnv(gym.Env):
         ############################################################
         # Parse the function index. This ensures the function index
         #   is in the appropriate range of values.
+        # TODO: If flipping to palette, edit here to palette size.
         action_index = int(
             np.round(
                 np.clip(
@@ -744,6 +745,12 @@ class MentalEnv(gym.Env):
                 count_samples += input.shape[0]
                 forward_time = time.time() - start_time
                 if idx % 1 == 0:
+                    print(epoch)
+                    print(idx)
+                    print(len(batched_train_data))
+                    print(forward_time)
+                    print(loss)
+                    print(batch_acc)
                     print(('Epoch: [{0}][{1}/{2}]\t'
                       'Batch Time {batch_time:.3f} \t'
                       'Batch Loss {loss:.4f}\t'

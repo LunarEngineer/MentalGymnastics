@@ -208,20 +208,6 @@ class ComposedFunction(nn.Module):
             # Now, call recursive init on *this* input to walk down
             #   the computation tree.
             self._recusive_init(id = ind)
-            ########################################################
-            # Holdover Code: Do not delete until the above is tested.
-            # self.module_dict[fn_id] = atomic_constants[fn_i]
-            # if fn_type == relu_i:
-                
-            # elif fn_type == linear_i:
-            #     self.module_dict[fn_id] = nn.Linear(
-            #             self.function_parameters["input_size"],
-            #             self.function_parameters["output_size"],
-            #     )
-            # elif fn_type == dropout_i:
-            #     self.module_dict[fn_id] = nn.Dropout(
-            #         self.function_parameters["p"]
-            #     )
         return
 
     def _recursive_forward(

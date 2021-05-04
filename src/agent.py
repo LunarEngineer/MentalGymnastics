@@ -1,10 +1,11 @@
 import numpy as np
 import tensorflow as tf
 import pandas as pd
+from sklearn.datasets import make_classification
 from stable_baselines3 import A2C
 from stable_baselines3.common.env_checker import check_env
 from mentalgym.envs import MentalEnv
-from mentalgym.utils.data import testing_df
+from mentalgym.utils.data import testing_df, make_sk2c
 import gin
 import gym
 
@@ -65,9 +66,9 @@ class MentalAgent:
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
-    hparams["dataset"] = "MNIST"
+    hparams["dataset"] = "SK2C"
     hparams["verbose"] = 0
-    hparams["num_episodes"] = 10
+    hparams["num_episodes"] = 500
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -98,6 +99,9 @@ if __name__ == "__main__":
         valset = pd.DataFrame(Xval).assign(output=yval)
         testset = pd.DataFrame(Xtest)
         hparams["n_classes"] = 10
+    elif hparams["dataset"] == "SK2C":
+        dataset, valset, testset = make_sk2c()
+        hparams["n_classes"] = 2
     else:
         dataset = testing_df
         hparams["n_classes"] = 2 #TODO: Need to bring in from data.py

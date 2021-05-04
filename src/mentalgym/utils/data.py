@@ -3,6 +3,7 @@ import tempfile
 import pandas as pd
 from mentalgym.functionbank import FunctionBank
 from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
 import gin
 
 ####################################################################
@@ -45,6 +46,28 @@ def make_dataset(name: str):
 
     return dataset
 
+def make_sk2c():
+    X, y = make_classification(
+        n_samples = 100000,
+        n_features = 100,
+        n_informative = 30
+    )
+    dataset = pd.DataFrame(
+        X,
+        columns = [f'INPUT_{_}' for _ in range(X.shape[1])]
+    ).assign(output=y)
+    dataset, testset = train_test_split(
+        dataset,
+        test_size=.2,
+        random_state=0
+    )
+    dataset, valset = train_test_split(
+        dataset,
+        test_size=.3,
+        random_state=1
+    )
+    
+    return dataset, valset, testset
 ####################################################################
 #                Create simple Experiment Space                    #
 ####################################################################

@@ -67,9 +67,9 @@ if __name__ == "__main__":
     hparams = {}
     hparams["dataset"] = "MNIST"
     hparams["verbose"] = 0
-    hparams["num_episodes"] = 1
+    hparams["num_episodes"] = 200
     hparams["number_functions"] = 8
-    hparams["max_steps"] = 10
+    hparams["max_steps"] = 5
     hparams["seed"] = None
     hparams["hidden_layers"] = (10,)
     hparams["gamma"] = 0.99

@@ -382,6 +382,12 @@ class MentalEnv(gym.Env):
                 #   intermediate, composed, and output nodes.
                 connected_df = self._experiment_space.iloc[idx]
 
+                # Don't allow ReLUs to connect to source nodes
+                if action_index == relu_i:
+                    connected_df = connected_df[connected_df.type != "source"]
+                    if connected_df.empty:
+                        return state, 0, done, info
+
                 # Add current function to experiment space
                 self._build_atomic_function(
                     action_index, action_location, connected_df
@@ -480,7 +486,6 @@ class MentalEnv(gym.Env):
                 )
                 last_index = last_es_index + num_sources_and_sinks
 
-            print("\n\nEPISODE:", self._episode)
             print("\nFinal Experiment Space:\n", self._experiment_space)
 
             # TODO: Use the make_function to generate the ID, then create
@@ -540,7 +545,7 @@ class MentalEnv(gym.Env):
             Xval = self.valset[cols].values
             yval = self.valset.loc[:, self.valset.columns == 'output'].values.squeeze()
 
-            print("model parameters:", model.parameters)
+            print("\nMODEL:", model.parameters)
             complexity = new_composed_fn.complexity
             optimizer = torch.optim.Adam(model.parameters(), lr=self.net_lr)
             criterion = nn.CrossEntropyLoss()
@@ -570,9 +575,9 @@ class MentalEnv(gym.Env):
                     best_acc = valid_acc
 
             # Add the completion reward.
-            # reward += float(
-            #     linear_completion_reward(self._experiment_space, None, 0.5)
-            # )
+            reward += float(
+                linear_completion_reward(self._experiment_space, None, best_acc)
+            )
 
             # self._function_bank.score(** experiment_space.IDs)
 
@@ -731,10 +736,9 @@ class MentalEnv(gym.Env):
                 epoch_loss += loss
                 hits += batch_acc * input.shape[0]
                 count_samples += input.shape[0]
-
-            forward_time = time.time() - start_time
-            if idx % 1 == 0:
-                print(('Epoch: [{0}][{1}/{2}]\t'
+                forward_time = time.time() - start_time
+                if idx % 1 == 0:
+                    print(('Epoch: [{0}][{1}/{2}]\t'
                       'Batch Time {batch_time:.3f} \t'
                       'Batch Loss {loss:.4f}\t'
                       'Train Accuracy ' + "{accuracy:.4f}" '\t').format(
@@ -766,10 +770,9 @@ class MentalEnv(gym.Env):
                 epoch_loss += loss
                 hits += batch_acc * input.shape[0]
                 count_samples += input.shape[0]
-
-            forward_time = time.time() - start_time
-            if idx % 1 == 0:
-                print(('Validate: [{0}/{1}]\t'
+                forward_time = time.time() - start_time
+                if idx % 1 == 0:
+                    print(('Validate: [{0}/{1}]\t'
                       'Batch Time {batch_time:.3f} \t'
                       'Batch Loss {loss:.4f}\t'
                       'Batch Accuracy ' + "{accuracy:.4f}" '\t').format(
@@ -794,11 +797,12 @@ class MentalEnv(gym.Env):
         This creates an empty canvas for the experiment space
         consisting of nothing but input and output nodes.
         """
-        self.net_init = nn.ModuleList([])
         # Reset the step counter
         self._step = 0
         # Increment the episode counter
         self._episode += 1
+        if self._episode > 0:
+            print("\n\nEPISODE:", self._episode)
         # Fill the experiment space.
         self._experiment_space = refresh_experiment_container(
             function_bank=self._function_bank,

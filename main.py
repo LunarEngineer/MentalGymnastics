@@ -3,11 +3,13 @@ import gym
 import mentalgym
 import gin
 from mentalgym.envs import MentalEnv
-from src.agent import MentalAgent
+from src.agent import MentalAgent, CustomCallback
 import numpy as np
 import os
 import datetime
 from shutil import copyfile
+
+from stable_baselines3.common import results_plotter
 
 
 # Create 'results' folder
@@ -28,9 +30,16 @@ gin.parse_config_file('config.gin')
 # Instantiate agent
 agent = MentalAgent()
 
+callback_ = CustomCallback(os.path.join('results', timestamp))
+
 # Train the agent
-agent.train()
+agent.train(log_dir=os.path.join('results', timestamp), callback=callback_)
 
 #########################
 #   Plot/Save Results   #
 #########################
+
+# from stable_baselines3 import A2C
+
+# model = A2C('MlpPolicy', 'CartPole-v1', verbose=0, tensorboard_log="./a2c_cartpole_tensorboard/")
+# model.learn(total_timesteps=1000)

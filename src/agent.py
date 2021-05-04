@@ -5,6 +5,9 @@ from mentalgym.envs import MentalEnv
 from mentalgym.utils.data import testing_df
 import gin
 import gym
+import os
+
+from stable_baselines3.common.callbacks import BaseCallback
 
 @gin.configurable
 class MentalAgent:
@@ -39,16 +42,20 @@ class MentalAgent:
         # Create A2C Agent
         # policy_kwargs = dict(act_fun=tf.nn.tanh, net_arch=[32, 32])
         self.model = A2C(
-            "MlpPolicy",
-            self.env,
-            learning_rate=alpha_start,
-            n_steps=1,
-            gamma=gamma,
-            verbose=verbose,
-        )
+                "MlpPolicy",
+                self.env,
+                learning_rate=alpha_start,
+                n_steps=1,
+                gamma=gamma,
+                verbose=1
+            )
         #   policy_kwargs)
 
-    def train(self):
+    def train(
+            self,
+            log_dir: str = None,
+            callback = None
+        ):
         """Train the RL agent.
 
         self.model.n_steps: number of env steps per update
@@ -56,9 +63,116 @@ class MentalAgent:
             be roughly self.num_episodes * self.max_steps
         environment steps needed to achieve the total_timesteps:
             total_timesteps * self.model.n_steps"""
+        
+        self.model.tensorboard_log = log_dir
+        self.model.learn(
+            total_timesteps=self.num_episodes * self.max_steps,
+            callback=callback
+            )
 
-        self.model.learn(total_timesteps=self.num_episodes * self.max_steps)
 
+
+
+class CustomCallback(BaseCallback):
+    """
+    A custom callback that derives from ``BaseCallback``.
+
+    :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
+    """
+    def __init__(self, log_dir, verbose=0):
+        super(CustomCallback, self).__init__(verbose)
+        # Those variables will be accessible in the callback
+        # (they are defined in the base class)
+        # The RL model
+        # self.model = None  # type: BaseAlgorithm
+        # An alias for self.model.get_env(), the environment used for training
+        # self.training_env = None  # type: Union[gym.Env, VecEnv, None]
+        # Number of time the callback was called
+        # self.n_calls = 0  # type: int
+        # self.num_timesteps = 0  # type: int
+        # local and global variables
+        # self.locals = None  # type: Dict[str, Any]
+        # self.globals = None  # type: Dict[str, Any]
+        # The logger object, used to report things in the terminal
+        # self.logger = None  # stable_baselines3.common.logger
+        # # Sometimes, for event callback, it is useful
+        # # to have access to the parent object
+        # self.parent = None  # type: Optional[BaseCallback]
+
+        self.function_stats = {}
+        self.ep_reward = []
+        self.log_dir = log_dir
+
+    def _on_training_start(self) -> None:
+        """
+        This method is called before the first rollout starts.
+        """
+        print('\n --------- Hi ----------- \n')
+        # stats = self.training_env.env_method('return_statistics')[0]
+        # self.function_stats = stats
+
+        # print(stats)
+
+        # self._function_bank
+
+        # Linear, ReLU, Dropout
+
+        # mean by function id
+        pass
+
+    def _on_rollout_start(self) -> None:
+        """
+        A rollout is the collection of environment interaction
+        using the current policy.
+        This event is triggered before collecting new samples.
+        """
+        pass
+
+    def _on_step(self) -> bool:
+        """
+        This method will be called by the model after each call to `env.step()`.
+
+        For child callback (of an `EventCallback`), this will be called
+        when the event is triggered.
+
+        :return: (bool) If the callback returns False, training is aborted early.
+        """
+
+        self.ep_reward.append(self.training_env.env_method('return_last_reward')[0])
+        print(self.ep_reward)
+
+        done = self.training_env.env_method('return_done')[0]
+        if done:
+            print('D O N E')
+            f = open(os.path.join(self.log_dir, 'ep_reward.csv'), "a")  
+  
+            # writing newline character
+            f.write(str(np.sum(self.ep_reward)))
+            f.write(',')
+            f.close()
+
+            fb_stats = self.training_env.env_method('return_function_bank')[0]
+            print(fb_stats)
+
+            self.ep_reward = []
+            # Gather all complexities vs score
+            # TODO: add the score & complexity to this part of the code
+
+        # else:
+            
+        return True
+
+    def _on_rollout_end(self) -> None:
+        """
+        This event is triggered before updating the policy.
+        """
+        pass
+
+    def _on_training_end(self) -> None:
+        """
+        This event is triggered before exiting the `learn()` method.
+        """
+        pass
 
 if __name__ == "__main__":
     # Customize training run **HERE**

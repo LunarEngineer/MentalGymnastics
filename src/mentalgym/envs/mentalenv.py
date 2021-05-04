@@ -117,6 +117,9 @@ class MentalEnv(gym.Env):
         dataset.columns = [str(_) for _ in dataset.columns]
         self.dataset = dataset
         
+        self.done = None
+        self.last_reward = None
+        
         ############################################################
         #                 Store Hyperparameters                    #
         ############################################################
@@ -403,7 +406,7 @@ class MentalEnv(gym.Env):
         reward = connection_reward(
             self._experiment_space, self._function_bank
         )
-
+        self.last_reward = reward
         # Default values here, or pass some info?
         info = {}
         # Extract the state space.
@@ -422,6 +425,8 @@ class MentalEnv(gym.Env):
 
         # Check to see if it's time to call it a day.
         done = connected_to_sink or (self._step >= self.max_steps)
+        self.done = done
+        
         if done:
             # Create an experiment space without sources or sinks.  This is
             # useful for several functions below
@@ -431,6 +436,7 @@ class MentalEnv(gym.Env):
 
             # Check if net is empty, and if so, return 0 reward
             if not len(intermediate_es.index):
+                self.last_reward = 0
                 return state, 0, done, info
 
             # Check if net has exactly 1 composed function coneected to the
@@ -440,6 +446,7 @@ class MentalEnv(gym.Env):
                 and connected_to_sink
                 and intermediate_es.iloc[0]["type"] == "composed"
             ):
+                self.last_reward = 0
                 return state, 0, done, info
 
             # Else we have a legitimate net: connect to a sink if needed.
@@ -507,6 +514,7 @@ class MentalEnv(gym.Env):
             #     linear_completion_reward(self._experiment_space, None, 0.5)
             # )
 
+        self.last_reward = reward
         return state, reward, done, info
 
     def _build_atomic_function(
@@ -697,6 +705,8 @@ class MentalEnv(gym.Env):
         consisting of nothing but input and output nodes.
         """
         self.net_init = nn.ModuleList([])
+        self.done = True        # must be True for callbacks to function properly
+        self.last_reward = 0
         # Reset the step counter
         self._step = 0
         # Increment the episode counter
@@ -739,6 +749,18 @@ class MentalEnv(gym.Env):
 
     def close(self):
         pass
+
+    def return_done(self):
+        return self.done
+    
+    def return_last_reward(self):
+        return self.last_reward
+
+    def return_statistics(self):
+        return self._function_bank.function_statistics()
+
+    def return_function_bank(self):
+        return self._function_bank.to_df()
 
 
 class AverageMeter(object):

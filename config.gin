@@ -19,7 +19,7 @@ MentalEnv.verbose = False
 # ---------------------- #
 
 MentalAgent.env = @MentalEnv()
-MentalAgent.num_episodes = 1
+MentalAgent.num_episodes = 2
 MentalAgent.hidden_layers = (10,)
 MentalAgent.gamma = 0.99
 MentalAgent.alpha_start = 0.001

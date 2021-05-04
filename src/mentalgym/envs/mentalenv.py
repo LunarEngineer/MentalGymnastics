@@ -266,6 +266,8 @@ class MentalEnv(gym.Env):
             This is a (max_steps + I) x m sized array representing
             the experiment space.
         """
+        # Default values here, or pass some info?
+        info = {}
         ############################################################
         #                       Bookkeeping                        #
         ############################################################
@@ -301,7 +303,7 @@ class MentalEnv(gym.Env):
         # This extracts the function radius from the action.
         # This 'clips' the radius to be non-negative
         action_radius = np.clip(
-            30 * action[-1], 0, None
+            20 * action[-1], 0, None
         )  # TODO: remove multiplier
 
         # Verbose logging here for development and troubleshooting.
@@ -386,7 +388,7 @@ class MentalEnv(gym.Env):
                 if action_index == relu_i:
                     connected_df = connected_df[connected_df.type != "source"]
                     if connected_df.empty:
-                        return state, 0, done, info
+                        return self.state, 0, done, info
 
                 # Add current function to experiment space
                 self._build_atomic_function(
@@ -421,10 +423,9 @@ class MentalEnv(gym.Env):
             self._experiment_space, self._function_bank
         )
 
-        # Default values here, or pass some info?
-        info = {}
+
         # Extract the state space.
-        state = self.build_state()
+        self.state = self.build_state()
         if self._verbose:
             debug_message = f"""End of Step:
             Connected to the sink node: {connected_to_sink}
@@ -433,7 +434,7 @@ class MentalEnv(gym.Env):
             Done: {done}
 
             State Observation
-            -----------------\n{state}
+            -----------------\n{self.state}
             """
             print(debug_message)
 
@@ -448,7 +449,7 @@ class MentalEnv(gym.Env):
 
             # Check if net is empty, and if so, return 0 reward
             if not len(intermediate_es.index):
-                return state, 0, done, info
+                return self.state, 0, done, info
 
             # Check if net has exactly 1 composed function coneected to the
             # sink, and if so return 0 reward
@@ -457,7 +458,7 @@ class MentalEnv(gym.Env):
                 and connected_to_sink
                 and intermediate_es.iloc[0]["type"] == "composed"
             ):
-                return state, 0, done, info
+                return self.state, 0, done, info
 
             # Else we have a legitimate net: connect to a sink if needed.
             if not connected_to_sink:
@@ -581,7 +582,7 @@ class MentalEnv(gym.Env):
 
             # self._function_bank.score(** experiment_space.IDs)
 
-        return state, reward, done, info
+        return self.state, reward, done, info
 
     def _generate_batched_data(self, data, label):
         batched_data = []
@@ -727,6 +728,11 @@ class MentalEnv(gym.Env):
 
             optimizer.zero_grad()
             out = model._recursive_forward(final_id, input)
+
+            try:
+                assert target[target<0].numel() == 0 and target[target>=self.n_classes]. numel() == 0
+            except:
+                print("Bad targets:", target[target<0], target[target>=self.n_classes])
             loss = criterion(out, target)
             loss.backward()
             optimizer.step()
@@ -817,7 +823,7 @@ class MentalEnv(gym.Env):
         # Set the state length.
         self._state_length = n_io + self.max_steps
         # Then build the state.
-        state = self.build_state()
+        self.state = self.build_state()
         # And save the bank.
         # TODO: Uncomment this when ready to test it.
         self._function_bank._save_bank()
@@ -829,13 +835,13 @@ class MentalEnv(gym.Env):
             ------------------------\n{self._experiment_space}
 
             Current Observation Space
-            -------------------------\n{state}
+            -------------------------\n{self.state}
 
             Current Function Bank
             ---------------------\n{self._function_bank.to_df()}
             """
             print(debug_message)
-        return state
+        return self.state
 
     def render(self, mode="human"):
         pass

@@ -7,6 +7,6 @@ linear_i = 0
 relu_i = 1
 dropout_i = 2
 
-linear_output_size = 256
+linear_output_size = 128
 
 dropout_p = 0.5

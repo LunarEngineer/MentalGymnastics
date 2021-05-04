@@ -67,7 +67,7 @@ if __name__ == "__main__":
     hparams = {}
     hparams["dataset"] = "MNIST"
     hparams["verbose"] = 0
-    hparams["num_episodes"] = 200
+    hparams["num_episodes"] = 10
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -115,7 +115,7 @@ if __name__ == "__main__":
             n_classes=hparams["n_classes"]
         )
 
-    agent = MentalAgent(env)
+    agent = MentalAgent(env, num_episodes = hparams["num_episodes"])
     agent.train()
 
 

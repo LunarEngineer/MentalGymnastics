@@ -549,6 +549,9 @@ class MentalEnv(gym.Env):
 
             print("\nMODEL:", model.parameters)
             complexity = new_composed_fn.complexity
+            # This works for now
+            complexity_magnitude = sum(complexity.values())
+            complexity_score = 1 / complexity_magnitude
             optimizer = torch.optim.Adam(model.parameters(), lr=self.net_lr)
             criterion = nn.CrossEntropyLoss()
 
@@ -568,7 +571,7 @@ class MentalEnv(gym.Env):
                 # Validate
                 batched_val_data, batched_val_label = self._generate_batched_data(Xval, yval)
                 valid_loss, valid_acc = self._validate_net(batched_val_data, batched_val_label, model, criterion, final_id)
-                print("* Validation Accuracy: {accuracy:.4f}".format(accuracy=valid_acc))
+                # print("* Validation Accuracy: {accuracy:.4f}".format(accuracy=valid_acc))
 
                 valid_loss_history.append(valid_loss)
                 valid_acc_history.append(valid_acc)
@@ -581,7 +584,12 @@ class MentalEnv(gym.Env):
                 linear_completion_reward(self._experiment_space, None, best_acc)
             )
 
-            # self._function_bank.score(** experiment_space.IDs)
+            # Score the nodes in the net.
+            self._function_bank.score(
+                self._experiment_space.id,
+                score = [best_acc,reward,complexity_score],
+                score_name = ['accuracy','reward','complexity']
+            )
 
         return self.state, reward, done, info
 

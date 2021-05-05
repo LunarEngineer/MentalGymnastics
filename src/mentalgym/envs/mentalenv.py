@@ -549,7 +549,6 @@ class MentalEnv(gym.Env):
 
             # Append new composed function to function bank
             self._function_bank.append(made_function)
-#            print("\nFUNCTION BANK:\n", self._function_bank.to_df())
 
             model = new_composed_fn
             model._module_dict['output'] = nn.Linear(new_composed_fn.output_size, self.n_classes)
@@ -578,36 +577,40 @@ class MentalEnv(gym.Env):
             valid_loss_history = []
             valid_acc_history = []
             best_acc = 0.0
-            for epoch in range(self.epochs):
-                # Train
-                batched_train_data, batched_train_label = self._generate_batched_data(Xtrain, ytrain)
-                self._adjust_learning_rate(optimizer, epoch)
-                epoch_loss, epoch_acc = self._train_net(epoch, batched_train_data, batched_train_label, model, optimizer, criterion, final_id)
-                train_loss_history.append(epoch_loss)
-                train_acc_history.append(epoch_acc)
+            # This try block is to catch stupids and just assign a reward of zero.
+            try:
+                for epoch in range(self.epochs):
+                    # Train
+                    batched_train_data, batched_train_label = self._generate_batched_data(Xtrain, ytrain)
+                    self._adjust_learning_rate(optimizer, epoch)
+                    epoch_loss, epoch_acc = self._train_net(epoch, batched_train_data, batched_train_label, model, optimizer, criterion, final_id)
+                    train_loss_history.append(epoch_loss)
+                    train_acc_history.append(epoch_acc)
 
-                # Validate
-                batched_val_data, batched_val_label = self._generate_batched_data(Xval, yval)
-                valid_loss, valid_acc = self._validate_net(batched_val_data, batched_val_label, model, criterion, final_id)
-                # print("* Validation Accuracy: {accuracy:.4f}".format(accuracy=valid_acc))
+                    # Validate
+                    batched_val_data, batched_val_label = self._generate_batched_data(Xval, yval)
+                    valid_loss, valid_acc = self._validate_net(batched_val_data, batched_val_label, model, criterion, final_id)
+                    # print("* Validation Accuracy: {accuracy:.4f}".format(accuracy=valid_acc))
 
-                valid_loss_history.append(valid_loss)
-                valid_acc_history.append(valid_acc)
+                    valid_loss_history.append(valid_loss)
+                    valid_acc_history.append(valid_acc)
 
-                if valid_acc > best_acc:
-                    best_acc = valid_acc
+                    if valid_acc > best_acc:
+                        best_acc = valid_acc
 
-            # Add the completion reward.
-            reward += float(
-                linear_completion_reward(self._experiment_space, None, best_acc)
-            )
+                # Add the completion reward.
+                reward += float(
+                    linear_completion_reward(self._experiment_space, None, best_acc)
+                )
 
-            # Score the nodes in the net.
-            self._function_bank.score(
-                [new_id],
-                score = [best_acc,reward,complexity_score],
-                score_name = ['accuracy','reward','complexity']
-            )
+                # Score the nodes in the net.
+                self._function_bank.score(
+                    [new_id],
+                    score = [best_acc,reward,complexity_score],
+                    score_name = ['accuracy','reward','complexity']
+                )
+            except RuntimeError:
+                reward = 0
 
         return self.state, reward, done, info
 

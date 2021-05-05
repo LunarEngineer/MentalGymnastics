@@ -1,6 +1,7 @@
 
 # import gym
 # import mentalgym
+import argparse
 import gin
 from mentalgym.envs import MentalEnv
 from src.agent import MentalAgent, TensorboardCallback
@@ -24,7 +25,10 @@ if not os.path.exists('results'):
 # copyfile('config.gin', os.path.join(os.path.join('results', timestamp),'config.gin'))
 
 # Parse 'config.gin' for hyperparameters & env setup
-gin.parse_config_file(os.path.join('experiment_configs','experiment_one.gin'))
+parser = argparse.ArgumentParser(description='Run an experiment given an experiment config file.')
+parser.add_argument('--configfile', help='A config.gin file')
+args = parser.parse_args()
+gin.parse_config_file(args.configfile)
 
 # Instantiate agent
 agent = MentalAgent()

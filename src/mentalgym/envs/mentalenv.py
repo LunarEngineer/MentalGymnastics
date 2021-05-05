@@ -40,6 +40,7 @@ __FUNCTION_BANK_KWARGS__ = {
     "dataset_scraper_function",
     "sampling_function",
     "pruning_function",
+    "force_refresh",
 }
 
 # Standard logging.
@@ -117,7 +118,7 @@ class MentalEnv(gym.Env):
         # n_classes: int = 2,
         seed: Optional[int] = None,
         verbose: bool = False,
-        **kwargs,
+        **kwargs
     ):
         """Sets up the gym environment.
 
@@ -134,7 +135,7 @@ class MentalEnv(gym.Env):
         valset.columns = [str(_) for _ in valset.columns]
         testset.columns = [str(_) for _ in testset.columns]
         self.dataset = trainset
-        
+
         self.done = None
         self.last_reward = None
         
@@ -300,7 +301,7 @@ class MentalEnv(gym.Env):
         action_index = int(
             np.round(
                 np.clip(
-                    action[0], 0, self._function_bank.idxmax()
+                    5 * action[0], 0, self._function_bank.idxmax()
                 )
             )
         )
@@ -505,7 +506,7 @@ class MentalEnv(gym.Env):
                 )
                 last_index = last_es_index + num_sources_and_sinks
 
-            print("\nFinal Experiment Space:\n", self._experiment_space)
+#            print("\nFinal Experiment Space:\n", self._experiment_space)
 
             # TODO: Use the make_function to generate the ID, then create
             #   a new composed function like you're doing. The ID will
@@ -517,7 +518,7 @@ class MentalEnv(gym.Env):
             # Generate ID and get output size for newly composed function
             # TODO allow for concatenation of arbitrary number of output
             #   layers
-            id = make_id()
+            new_id = make_id()
             composed_output_size = self._experiment_space.iloc[
                 last_index
             ].hyperparameters["output_size"]
@@ -527,7 +528,7 @@ class MentalEnv(gym.Env):
 
             # Instantiate new composed function
             new_composed_fn = ComposedFunction(
-                id,
+                new_id,
                 self._experiment_space,
                 self._function_bank,
                 output_size=composed_output_size,
@@ -535,7 +536,7 @@ class MentalEnv(gym.Env):
 
             # Make new composed function
             made_function = make_function(
-                function_id=id,
+                function_id=new_id,
                 function_object=ComposedFunction,
                 function_hyperparameters={
                     "input_size": new_composed_fn.input_size,
@@ -548,7 +549,7 @@ class MentalEnv(gym.Env):
 
             # Append new composed function to function bank
             self._function_bank.append(made_function)
-            print("\nFUNCTION BANK:\n", self._function_bank.to_df())
+#            print("\nFUNCTION BANK:\n", self._function_bank.to_df())
 
             model = new_composed_fn
             model._module_dict['output'] = nn.Linear(new_composed_fn.output_size, self.n_classes)
@@ -564,7 +565,7 @@ class MentalEnv(gym.Env):
             Xval = self.valset[cols].values
             yval = self.valset.loc[:, self.valset.columns == 'output'].values.squeeze()
 
-            print("\nMODEL:", model.parameters)
+            # print("\nMODEL:", model.parameters)
             complexity = new_composed_fn.complexity
             # This works for now
             complexity_magnitude = sum(complexity.values())
@@ -603,7 +604,7 @@ class MentalEnv(gym.Env):
 
             # Score the nodes in the net.
             self._function_bank.score(
-                self._experiment_space.id,
+                [new_id],
                 score = [best_acc,reward,complexity_score],
                 score_name = ['accuracy','reward','complexity']
             )
@@ -769,12 +770,12 @@ class MentalEnv(gym.Env):
                 count_samples += input.shape[0]
                 forward_time = time.time() - start_time
                 if idx % 1 == 0:
-                    print(epoch)
-                    print(idx)
-                    print(len(batched_train_data))
-                    print(forward_time)
-                    print(loss)
-                    print(batch_acc)
+#                    print(epoch)
+#                    print(idx)
+#                    print(len(batched_train_data))
+#                    print(forward_time)
+#                    print(loss)
+#                    print(batch_acc)
                     print(('Epoch: [{0}][{1}/{2}]\t'
                       'Batch Time {batch_time:.3f} \t'
                       'Batch Loss {loss:.4f}\t'
@@ -808,13 +809,13 @@ class MentalEnv(gym.Env):
                 hits += batch_acc * input.shape[0]
                 count_samples += input.shape[0]
                 forward_time = time.time() - start_time
-                if idx % 1 == 0:
-                    print(('Validate: [{0}/{1}]\t'
-                      'Batch Time {batch_time:.3f} \t'
-                      'Batch Loss {loss:.4f}\t'
-                      'Batch Accuracy ' + "{accuracy:.4f}" '\t').format(
-                        idx+1, len(batched_test_data), batch_time=forward_time,
-                        loss=loss, accuracy=batch_acc))
+                # if idx % 1 == 0:
+                #     print(('Validate: [{0}/{1}]\t'
+                #       'Batch Time {batch_time:.3f} \t'
+                #       'Batch Loss {loss:.4f}\t'
+                #       'Batch Accuracy ' + "{accuracy:.4f}" '\t').format(
+                #         idx+1, len(batched_test_data), batch_time=forward_time,
+                #         loss=loss, accuracy=batch_acc))
         epoch_loss /= len(batched_test_data)
         epoch_acc = hits / count_samples
 
@@ -883,20 +884,5 @@ class MentalEnv(gym.Env):
     def close(self):
         pass
 
-    def return_done(self):
-        return self.done
-    
-    def return_last_reward(self):
-        return self.last_reward
-
     def return_statistics(self):
         return self._function_bank.function_statistics()
-
-    def return_function_bank(self):
-        return self._function_bank.to_df()
-
-    # def _logger(self):
-
-    #     reward = None
-    #     self.last_reward 
-    #     return 

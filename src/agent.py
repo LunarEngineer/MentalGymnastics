@@ -11,6 +11,7 @@ import gym
 import os
 
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.logger import TensorBoardOutputFormat
 
 @gin.configurable
 class MentalAgent:
@@ -82,122 +83,50 @@ class TensorboardCallback(BaseCallback):
     def __init__(self, verbose=0):
         super(TensorboardCallback, self).__init__(verbose)
 
-    def _on_step(self) -> bool:
-        # Log scalar value (here a random variable)
-        value = np.random.random()
-        self.logger.record('random_value', value)
+    def _on_training_start(self):
+        self._log_freq = 1000  # log every 1000 calls
 
-        # self.logger.record('', )
-
-        return True
-
-class CustomCallback(BaseCallback):
-    """
-    A custom callback that derives from ``BaseCallback``.
-
-    :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
-    """
-    def __init__(self, log_dir, n_episodes, verbose=0):
-        super(CustomCallback, self).__init__(verbose)
-        # Those variables will be accessible in the callback
-        # (they are defined in the base class)
-        # The RL model
-        # self.model = None  # type: BaseAlgorithm
-        # An alias for self.model.get_env(), the environment used for training
-        # self.training_env = None  # type: Union[gym.Env, VecEnv, None]
-        # Number of time the callback was called
-        # self.n_calls = 0  # type: int
-        # self.num_timesteps = 0  # type: int
-        # local and global variables
-        # self.locals = None  # type: Dict[str, Any]
-        # self.globals = None  # type: Dict[str, Any]
-        # The logger object, used to report things in the terminal
-        # self.logger = None  # stable_baselines3.common.logger
-        # # Sometimes, for event callback, it is useful
-        # # to have access to the parent object
-        # self.parent = None  # type: Optional[BaseCallback]
-
-        self.reward_dict = {}
-        self.comp_dict = {}
-        self.reward_history = []
-        self.ep_reward = []
-        self.log_dir = log_dir
-        self.n_episodes = n_episodes
-        self.ep_count = 0
-
-    def _on_training_start(self) -> None:
-        """
-        This method is called before the first rollout starts.
-        """
-        pass
-
+        output_formats = self.logger.Logger.CURRENT.output_formats
+        self.tb_formatter = next(formatter for formatter in output_formats if isinstance(formatter, TensorBoardOutputFormat))
 
     def _on_step(self) -> bool:
-        """
-        This method will be called by the model after each call to `env.step()`.
 
-        For child callback (of an `EventCallback`), this will be called
-        when the event is triggered.
-
-        :return: (bool) If the callback returns False, training is aborted early.
-        """
-
-        # print('REWARDS ----- ', self.model.rewards)
-        # print(self.timestep)
-
-        # self.ep_reward.append(self.training_env.env_method('return_last_reward')[0])
-        # done = self.training_env.env_method('return_done')[0]
-        # if done:
+        max_steps = self.training_env.get_attr('max_steps')[0]
+        if self.num_timesteps % max_steps == 0 and self.num_timesteps != 0:
+            stats = self.training_env.env_method('return_statistics')[0]
+            n_classes = self.training_env.get_attr('n_classes')[0]
             
-        #     print('D O N E')
-        #     if self.ep_count < self.n_episodes:
+            # TODO: un-hardcode this
+            if n_classes == 2:
+                functions = stats.iloc[101+3:]    # SK2C
+            else:
+                functions = stats.iloc[785+3:]    # MNIST
 
-        #         f = open(os.path.join(self.log_dir, 'ep_reward.csv'), "a")  
+            # print('\nREWARD MEAN\n', functions.tail(1).score_reward_mean.item())
+            # print('\nACC MEAN\n', functions.tail(1).score_accuracy_mean.item())
+            # print('\nCOMPLEXITY MEAN\n', functions.tail(1).score_complexity_mean.item())
 
-        #         # writing newline character
-        #         f.write(str(np.sum(self.ep_reward)))
-        #         f.write(',')
-        #         f.close()
+            self.tb_formatter.writer.add_scalars(f'complexity & acc', {
+                                                  'mean_complexity': functions.tail(1).score_complexity_mean.item(),
+                                                  'mean_acc': functions.tail(1).score_accuracy_mean.item(),
+                                                }, self.num_timesteps)
+            self.tb_formatter.writer.add_scalars(f'mean reward', {
+                                                  'mean_reward': functions.tail(1).score_reward_mean.item()
+                                                }, self.num_timesteps)
+            self.tb_formatter.writer.flush()
 
-        #         self.reward_history.append(np.sum(self.ep_reward))
-        #         self.ep_reward = []
-                
-        #         stats = self.training_env.env_method('return_statistics')[0]
-                
-        #         print('\nSTATS\n', stats)
-
-        #         self.function_stats = stats
-        #         functions = stats.iloc[785:]
-
-        #         for _ in range(len(functions.id.to_list())):
-        #             try: 
-        #                 self.reward_dict[functions.iloc[_].id].append(functions.iloc[_].score_reward_mean.item())
-        #             except:
-        #                 self.reward_dict[functions.iloc[_].id] = [functions.iloc[_].score_reward_mean.item()]
-        #             try: 
-        #                 self.comp_dict[functions.iloc[_].id].append(functions.iloc[_].score_complexity_mean.item())
-        #             except:
-        #                 self.comp_dict[functions.iloc[_].id] = [functions.iloc[_].score_complexity_mean.item()]
-                
-        #         print(self.reward_dict)
-        #         print(self.comp_dict)
-        #     self.ep_count+=1
+        # print('NUM Timesteps\n', self.num_timesteps, max_steps)
+        
         return True
 
-    def _on_training_end(self) -> None:
-        """
-        This event is triggered before exiting the `learn()` method.
-        """
-        self.timestep
-        pass
 
 if __name__ == "__main__":
     # Customize training run **HERE**
     hparams = {}
-    hparams["dataset"] = "SK2C"
+    hparams["dataset"] = "MNIST"
     hparams["verbose"] = 0
     hparams["experiment_folder"] = 'experiment_one'
-    hparams["num_episodes"] = 1
+    hparams["num_episodes"] = 50
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -217,9 +146,10 @@ if __name__ == "__main__":
 
     if hparams["dataset"] == "MNIST":
         set_list = make_dataset('MNIST')
-    else:                                
+    else:                                # hparams["dataset"] == "SK2C"
         set_list = make_sk2c()
-        
+
+    kwargs = {"force_refresh": False}
     env = MentalEnv(
             set_list=set_list,
             number_functions=hparams["number_functions"],
@@ -228,7 +158,8 @@ if __name__ == "__main__":
             epochs=hparams["epochs"],
             net_lr=hparams["net_lr"],
             net_batch_size=hparams["net_batch_size"],
-            function_bank_directory=hparams["experiment_folder"]
+            function_bank_directory=hparams["experiment_folder"],
+            **kwargs,
         )
 
     agent = MentalAgent(env, num_episodes = hparams["num_episodes"])

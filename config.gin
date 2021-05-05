@@ -2,10 +2,10 @@
 #   Environment Variables   #
 # ------------------------- #
 
-# mentalgym.utils.data.make_dataset.name = 'MNIST'
-# MentalEnv.set_list = @make_dataset()
+mentalgym.utils.data.make_dataset.name = 'MNIST'
+MentalEnv.set_list = @make_dataset()
 
-MentalEnv.set_list = @make_sk2c()
+# MentalEnv.set_list = @make_sk2c()
 MentalEnv.experiment_space_min = [0.0, 0.0]
 MentalEnv.experiment_space_max = [100.0, 100.0]
 MentalEnv.number_functions = 8
@@ -15,6 +15,8 @@ MentalEnv.net_batch_size = 512
 MentalEnv.epochs = 1
 MentalEnv.seed = None
 MentalEnv.verbose = False
+MentalEnv.function_bank_directory = 'experiment_one'
+MentalEnv.force_refresh = False
 
 # ---------------------- #
 #   RL Agent Variables   #

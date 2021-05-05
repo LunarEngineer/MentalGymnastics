@@ -19,6 +19,8 @@ from numbers import Number
 from pandas.core.algorithms import isin
 from typing import Callable, Iterable, Optional, Union
 
+pd.options.display.max_columns = 200
+
 
 class FunctionBank():
     """Builds and tracks Functions and their history.
@@ -586,6 +588,9 @@ class FunctionBank():
                 function_inputs = func['input'],
                 max_score_len = 100
             )
+            score_cols = [x for x in self._function_manifest[0].keys() if x.startswith("score_")]
+            d = {score_col: deque([0], maxlen=100) for score_col in score_cols}
+            func.update(d)
             # If the hyperparameters do *not* have an id, add it now.
             if 'id' not in func['hyperparameters']:
                 func['hyperparameters']['id'] = func['id']
@@ -708,8 +713,10 @@ class FunctionBank():
         """
         # 0.1) Pretreat the scores:
         if not isinstance(score, Iterable):
+            score = float(score)
             _score = [score]
         else:
+            score = [float(x) for x in score]
             _score = score
         # 0.2) Pretreat the score names:
         if isinstance(score_name, str):
@@ -805,6 +812,7 @@ class FunctionBank():
                     column = score_col,
                     value = [deque([0], maxlen=100) for _ in range(n)]
                 )
+
                 max_col_ind += 1
             # This is an n x m DataFrame where n is the number of
             # functions being scored and m is the number of scoring

@@ -20,7 +20,7 @@ MentalEnv.force_refresh = False
 # ---------------------- #
 
 MentalAgent.env = @MentalEnv()
-MentalAgent.num_episodes = 1000
+MentalAgent.num_episodes = 3
 #MentalAgent.hidden_layers = (10,)
 #MentalAgent.gamma = 0.99
 #MentalAgent.alpha_start = 0.001
@@ -32,6 +32,7 @@ MentalAgent.num_episodes = 1000
 #MentalAgent.buffer_len = 100
 MentalAgent.num_active_fns_init = 3
 MentalAgent.verbose = False
+MentalAgent.model_path = 'model_two'
 
     
 

@@ -3,7 +3,8 @@
 # import mentalgym
 import gin
 from mentalgym.envs import MentalEnv
-from src.agent import MentalAgent, TensorboardCallback
+from src.agent import MentalAgent, TensorboardCallback, SaveOnBestTrainingRewardCallback
+from stable_baselines3.common.callbacks import CallbackList
 # import numpy as np
 import os
 # import datetime
@@ -29,14 +30,17 @@ gin.parse_config_file(os.path.join('experiment_configs','experiment_one.gin'))
 # Instantiate agent
 agent = MentalAgent()
 
-callback_ = TensorboardCallback()
+
+callback_tensorboard = TensorboardCallback(log_freq=agent.max_steps)
+callback_save = SaveOnBestTrainingRewardCallback(check_freq=agent.max_steps*2, log_dir=agent.model_path)
+call_back_list = CallbackList([callback_tensorboard, callback_save])
 
 # Train the agent
-agent.train(log_dir='results', callback=callback_)
+agent.train(log_dir='results', callback=call_back_list)
 
-#########################
-#   Plot/Save Results   #
-#########################
+###########################
+#       Plot Results      #
+###########################
 
 # Results are handled by tensorboard
 # To view, enter the following in command line

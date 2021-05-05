@@ -109,15 +109,19 @@ class TensorboardCallback(BaseCallback):
             else:
                 functions = stats.iloc[785+3:]    # MNIST
 
-            self.tb_formatter.writer.add_scalars(f'complexity & acc', {
-                                                  'mean_complexity': functions.tail(1).score_complexity_mean.item(),
-                                                  'mean_acc': functions.tail(1).score_accuracy_mean.item(),
-                                                }, self.num_timesteps)
-            self.tb_formatter.writer.add_scalars(f'mean reward', {
-                                                  'mean_reward': functions.tail(1).score_reward_mean.item()
-                                                }, self.num_timesteps)
-            self.tb_formatter.writer.flush()
-        
+            try:
+                self.tb_formatter.writer.add_scalars(f'complexity & acc', {
+                                                    'mean_complexity': functions.tail(1).score_complexity_mean.item(),
+                                                    'mean_acc': functions.tail(1).score_accuracy_mean.item(),
+                                                    }, self.num_timesteps)
+                self.tb_formatter.writer.add_scalars(f'mean reward', {
+                                                    'mean_reward': functions.tail(1).score_reward_mean.item()
+                                                    }, self.num_timesteps)
+                self.tb_formatter.writer.flush()
+            except:
+                pass
+
+
         return True
 
 class SaveOnBestTrainingRewardCallback(BaseCallback):

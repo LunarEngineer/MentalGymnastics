@@ -80,7 +80,8 @@ def make_dataset(name: str):
         set_list = [dataset, valset, testset, n_classes] 
 
     return set_list
-
+    
+@gin.configurable
 def make_sk2c():
     X, y = make_classification(
         n_samples = 100000,

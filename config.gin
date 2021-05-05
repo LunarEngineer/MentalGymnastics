@@ -2,9 +2,10 @@
 #   Environment Variables   #
 # ------------------------- #
 
-mentalgym.utils.data.make_dataset.name = 'MNIST'
-MentalEnv.set_list = @make_dataset()
-MentalEnv.n_classes = 10
+# mentalgym.utils.data.make_dataset.name = 'MNIST'
+# MentalEnv.set_list = @make_dataset()
+
+MentalEnv.set_list = @make_sk2c()
 MentalEnv.experiment_space_min = [0.0, 0.0]
 MentalEnv.experiment_space_max = [100.0, 100.0]
 MentalEnv.number_functions = 8
@@ -20,7 +21,7 @@ MentalEnv.verbose = False
 # ---------------------- #
 
 MentalAgent.env = @MentalEnv()
-MentalAgent.num_episodes = 1
+MentalAgent.num_episodes = 3
 #MentalAgent.hidden_layers = (10,)
 #MentalAgent.gamma = 0.99
 #MentalAgent.alpha_start = 0.001

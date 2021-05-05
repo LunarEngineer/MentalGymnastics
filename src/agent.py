@@ -70,8 +70,26 @@ class MentalAgent:
         self.model.tensorboard_log = log_dir
         self.model.learn(
             total_timesteps=self.num_episodes * self.max_steps,
-            callback=callback
+            callback=callback, 
+            log_interval=self.max_steps
             )
+
+class TensorboardCallback(BaseCallback):
+    """
+    Custom callback for plotting additional values in tensorboard.
+    """
+
+    def __init__(self, verbose=0):
+        super(TensorboardCallback, self).__init__(verbose)
+
+    def _on_step(self) -> bool:
+        # Log scalar value (here a random variable)
+        value = np.random.random()
+        self.logger.record('random_value', value)
+
+        # self.logger.record('', )
+
+        return True
 
 class CustomCallback(BaseCallback):
     """
@@ -79,7 +97,7 @@ class CustomCallback(BaseCallback):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
-    def __init__(self, log_dir, verbose=0):
+    def __init__(self, log_dir, n_episodes, verbose=0):
         super(CustomCallback, self).__init__(verbose)
         # Those variables will be accessible in the callback
         # (they are defined in the base class)
@@ -99,25 +117,18 @@ class CustomCallback(BaseCallback):
         # # to have access to the parent object
         # self.parent = None  # type: Optional[BaseCallback]
 
-        self.function_stats = {}
+        self.reward_dict = {}
+        self.comp_dict = {}
+        self.reward_history = []
         self.ep_reward = []
         self.log_dir = log_dir
+        self.n_episodes = n_episodes
+        self.ep_count = 0
 
     def _on_training_start(self) -> None:
         """
         This method is called before the first rollout starts.
         """
-        print('\n --------- Hi ----------- \n')
-        # stats = self.training_env.env_method('return_statistics')[0]
-        # self.function_stats = stats
-
-        # print(stats)
-
-        # self._function_bank
-
-        # Linear, ReLU, Dropout
-
-        # mean by function id
         pass
 
 
@@ -131,40 +142,53 @@ class CustomCallback(BaseCallback):
         :return: (bool) If the callback returns False, training is aborted early.
         """
 
-        self.ep_reward.append(self.training_env.env_method('return_last_reward')[0])
-        print(self.ep_reward)
+        # print('REWARDS ----- ', self.model.rewards)
+        # print(self.timestep)
 
-        done = self.training_env.env_method('return_done')[0]
-        if done:
-            print('D O N E')
-            f = open(os.path.join(self.log_dir, 'ep_reward.csv'), "a")  
-  
-            # writing newline character
-            f.write(str(np.sum(self.ep_reward)))
-            f.write(',')
-            f.close()
-
-            fb_stats = self.training_env.env_method('return_function_bank')[0]
-            print(fb_stats)
-
-            self.ep_reward = []
-            # Gather all complexities vs score
-            # TODO: add the score & complexity to this part of the code
-
-        # else:
+        # self.ep_reward.append(self.training_env.env_method('return_last_reward')[0])
+        # done = self.training_env.env_method('return_done')[0]
+        # if done:
             
-        return True
+        #     print('D O N E')
+        #     if self.ep_count < self.n_episodes:
 
-    def _on_rollout_end(self) -> None:
-        """
-        This event is triggered before updating the policy.
-        """
-        pass
+        #         f = open(os.path.join(self.log_dir, 'ep_reward.csv'), "a")  
+
+        #         # writing newline character
+        #         f.write(str(np.sum(self.ep_reward)))
+        #         f.write(',')
+        #         f.close()
+
+        #         self.reward_history.append(np.sum(self.ep_reward))
+        #         self.ep_reward = []
+                
+        #         stats = self.training_env.env_method('return_statistics')[0]
+                
+        #         print('\nSTATS\n', stats)
+
+        #         self.function_stats = stats
+        #         functions = stats.iloc[785:]
+
+        #         for _ in range(len(functions.id.to_list())):
+        #             try: 
+        #                 self.reward_dict[functions.iloc[_].id].append(functions.iloc[_].score_reward_mean.item())
+        #             except:
+        #                 self.reward_dict[functions.iloc[_].id] = [functions.iloc[_].score_reward_mean.item()]
+        #             try: 
+        #                 self.comp_dict[functions.iloc[_].id].append(functions.iloc[_].score_complexity_mean.item())
+        #             except:
+        #                 self.comp_dict[functions.iloc[_].id] = [functions.iloc[_].score_complexity_mean.item()]
+                
+        #         print(self.reward_dict)
+        #         print(self.comp_dict)
+        #     self.ep_count+=1
+        return True
 
     def _on_training_end(self) -> None:
         """
         This event is triggered before exiting the `learn()` method.
         """
+        self.timestep
         pass
 
 if __name__ == "__main__":
@@ -173,7 +197,7 @@ if __name__ == "__main__":
     hparams["dataset"] = "SK2C"
     hparams["verbose"] = 0
     hparams["experiment_folder"] = 'experiment_one'
-    hparams["num_episodes"] = 500
+    hparams["num_episodes"] = 1
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -193,7 +217,7 @@ if __name__ == "__main__":
 
     if hparams["dataset"] == "MNIST":
         set_list = make_dataset('MNIST')
-    else                                # hparams["dataset"] == "SK2C"
+    else:                                
         set_list = make_sk2c()
         
     env = MentalEnv(

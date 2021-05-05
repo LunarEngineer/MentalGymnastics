@@ -894,3 +894,9 @@ class MentalEnv(gym.Env):
 
     def return_function_bank(self):
         return self._function_bank.to_df()
+
+    # def _logger(self):
+
+    #     reward = None
+    #     self.last_reward 
+    #     return 

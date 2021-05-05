@@ -3,7 +3,7 @@ import gym
 import mentalgym
 import gin
 from mentalgym.envs import MentalEnv
-from src.agent import MentalAgent, CustomCallback
+from src.agent import MentalAgent, CustomCallback, TensorboardCallback
 import numpy as np
 import os
 import datetime
@@ -30,10 +30,12 @@ gin.parse_config_file('config.gin')
 # Instantiate agent
 agent = MentalAgent()
 
-callback_ = CustomCallback(os.path.join('results', timestamp))
+# callback_ = CustomCallback(log_dir=os.path.join('results', timestamp), n_episodes=agent.num_episodes)
+callback_ = TensorboardCallback()
 
 # Train the agent
 agent.train(log_dir=os.path.join('results', timestamp), callback=callback_)
+# agent.train(log_dir=os.path.join('results', timestamp))
 
 #########################
 #   Plot/Save Results   #

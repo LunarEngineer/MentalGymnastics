@@ -32,10 +32,7 @@ agent = MentalAgent()
 callback_ = TensorboardCallback()
 
 # Train the agent
-# agent.train(log_dir='results', callback=callback_)
-agent.train()
-# agent.train(log_dir=os.path.join('results', timestamp), callback=callback_)
-# agent.train(log_dir=os.path.join('results', timestamp))
+agent.train(log_dir='results', callback=callback_)
 
 #########################
 #   Plot/Save Results   #

@@ -68,12 +68,15 @@ class MentalAgent:
         environment steps needed to achieve the total_timesteps:
             total_timesteps * self.model.n_steps"""
         
-        self.model.tensorboard_log = log_dir
-        self.model.learn(
-            total_timesteps=self.num_episodes * self.max_steps,
-            callback=callback, 
-            log_interval=self.max_steps
-            )
+        if log_dir == None or callback == None:
+            self.model.learn(total_timesteps=self.num_episodes * self.max_steps)
+        else:
+            self.model.tensorboard_log = log_dir
+            self.model.learn(
+                total_timesteps=self.num_episodes * self.max_steps,
+                callback=callback, 
+                log_interval=self.max_steps
+                )
 
 class TensorboardCallback(BaseCallback):
     """
@@ -126,7 +129,7 @@ if __name__ == "__main__":
     hparams["dataset"] = "MNIST"
     hparams["verbose"] = 0
     hparams["experiment_folder"] = 'experiment_one'
-    hparams["num_episodes"] = 50
+    hparams["num_episodes"] = 3
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -150,6 +153,7 @@ if __name__ == "__main__":
         set_list = make_sk2c()
 
     kwargs = {"force_refresh": False}
+
     env = MentalEnv(
             set_list=set_list,
             number_functions=hparams["number_functions"],

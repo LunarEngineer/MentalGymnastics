@@ -173,7 +173,7 @@ if __name__ == "__main__":
     hparams["dataset"] = "SK2C"
     hparams["verbose"] = 0
     hparams["experiment_folder"] = 'experiment_one'
-    hparams["num_episodes"] = 500
+    hparams["num_episodes"] = 50
     hparams["number_functions"] = 8
     hparams["max_steps"] = 5
     hparams["seed"] = None
@@ -195,7 +195,8 @@ if __name__ == "__main__":
         set_list = make_dataset('MNIST')
     else:                                # hparams["dataset"] == "SK2C"
         set_list = make_sk2c()
-        
+
+    kwargs = {"force_refresh": False}
     env = MentalEnv(
             set_list=set_list,
             number_functions=hparams["number_functions"],
@@ -204,7 +205,8 @@ if __name__ == "__main__":
             epochs=hparams["epochs"],
             net_lr=hparams["net_lr"],
             net_batch_size=hparams["net_batch_size"],
-            function_bank_directory=hparams["experiment_folder"]
+            function_bank_directory=hparams["experiment_folder"],
+            **kwargs,
         )
 
     agent = MentalAgent(env, num_episodes = hparams["num_episodes"])

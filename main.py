@@ -24,7 +24,7 @@ if not os.path.exists('results'):
 # copyfile('config.gin', os.path.join(os.path.join('results', timestamp),'config.gin'))
 
 # Parse 'config.gin' for hyperparameters & env setup
-gin.parse_config_file(os.path.join('experiment_configs','experiment_two.gin'))
+gin.parse_config_file(os.path.join('experiment_configs','experiment_one.gin'))
 
 # Instantiate agent
 agent = MentalAgent()

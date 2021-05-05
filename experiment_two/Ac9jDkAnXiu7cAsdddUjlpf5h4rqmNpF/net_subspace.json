@@ -1,0 +1,1 @@
+{"id":{"0":"KNnOTukyM6LUApRfOmCz6zETDnbXcNZM","1":"output"},"type":{"0":"intermediate","1":"sink"},"input":{"0":[],"1":["KNnOTukyM6LUApRfOmCz6zETDnbXcNZM"]},"hyperparameters":{"0":{"output_size":0,"input_size":0},"1":{}},"object":{"0":{"T_destination":{},"dump_patches":false},"1":null}}

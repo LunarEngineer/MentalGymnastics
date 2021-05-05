@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
     if hparams["dataset"] == "MNIST":
         set_list = make_dataset('MNIST')
-    else                                # hparams["dataset"] == "SK2C"
+    else:                                # hparams["dataset"] == "SK2C"
         set_list = make_sk2c()
         
     env = MentalEnv(

@@ -9,7 +9,7 @@ MentalEnv.number_functions = 8
 MentalEnv.max_steps = 5
 MentalEnv.net_lr = 1e-2
 MentalEnv.net_batch_size = 512
-MentalEnv.epochs = 1000
+MentalEnv.epochs = 1
 MentalEnv.seed = None
 MentalEnv.verbose = False
 MentalEnv.function_bank_directory = 'experiment_two'
@@ -20,7 +20,7 @@ MentalEnv.force_refresh = False
 # ---------------------- #
 
 MentalAgent.env = @MentalEnv()
-MentalAgent.num_episodes = 3
+MentalAgent.num_episodes = 1000
 #MentalAgent.hidden_layers = (10,)
 #MentalAgent.gamma = 0.99
 #MentalAgent.alpha_start = 0.001

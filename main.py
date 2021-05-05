@@ -1,15 +1,15 @@
 
-import gym
-import mentalgym
+# import gym
+# import mentalgym
 import gin
 from mentalgym.envs import MentalEnv
 from src.agent import MentalAgent, TensorboardCallback
-import numpy as np
+# import numpy as np
 import os
-import datetime
+# import datetime
 from shutil import copyfile
 
-from stable_baselines3.common import results_plotter
+# from stable_baselines3.common import results_plotter
 
 
 # Create 'results' folder
@@ -24,7 +24,7 @@ if not os.path.exists('results'):
 # copyfile('config.gin', os.path.join(os.path.join('results', timestamp),'config.gin'))
 
 # Parse 'config.gin' for hyperparameters & env setup
-gin.parse_config_file('config.gin')
+gin.parse_config_file(os.path.join('experiment_configs','experiment_two.gin'))
 
 # Instantiate agent
 agent = MentalAgent()

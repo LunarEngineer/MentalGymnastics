@@ -34,6 +34,7 @@ gin.parse_config_file(arg_file)
 
 # Instantiate agent
 agent = MentalAgent()
+# instantiated
 
 
 callback_tensorboard = TensorboardCallback(log_freq=agent.max_steps)

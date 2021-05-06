@@ -27,9 +27,10 @@ if not os.path.exists('results'):
 
 # Parse 'config.gin' for hyperparameters & env setup
 parser = argparse.ArgumentParser(description='Run an experiment given an experiment config file.')
-parser.add_argument('--configfile', help='A config.gin file')
+parser.add_argument('--experiment', help='A config.gin file experiment number')
 args = parser.parse_args()
-gin.parse_config_file(args.configfile)
+arg_file = os.path.join("experiment_configs", f"experiment_{args.experiment}.gin")
+gin.parse_config_file(arg_file)
 
 # Instantiate agent
 agent = MentalAgent()
@@ -40,7 +41,7 @@ callback_save = SaveOnBestTrainingRewardCallback(check_freq=agent.max_steps*2, l
 call_back_list = CallbackList([callback_tensorboard, callback_save])
 
 # Train the agent
-agent.train(log_dir='results', callback=call_back_list)
+agent.train(log_dir=f'results_{args.experiment}', callback=call_back_list)
 
 ###########################
 #       Plot Results      #

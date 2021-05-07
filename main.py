@@ -29,7 +29,9 @@ if not os.path.exists('results'):
 parser = argparse.ArgumentParser(description='Run an experiment given an experiment config file.')
 parser.add_argument('--experiment', help='A config.gin file experiment number')
 args = parser.parse_args()
-arg_file = os.path.join("experiment_configs", f"experiment_{args.experiment}.gin")
+exp = args.experiment
+print(exp)
+arg_file = os.path.join("experiment_configs", f"experiment_{exp}.gin")
 gin.parse_config_file(arg_file)
 
 # Instantiate agent
